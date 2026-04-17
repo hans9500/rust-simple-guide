@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rust 학습 가이드 허브</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap');
+
+:root {
+  --bg:   #0d1117;
+  --bg1:  #161b22;
+  --bg2:  #21262d;
+  --bd:   #30363d;
+  --tx1:  #e6edf3;
+  --tx2:  #8b949e;
+  --ac:   #f78166;
+  --ac2:  #ffa657;
+  --ok:   #3fb950;
+  --blue: #58a6ff;
+  --teal: #39d353;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--tx1);
+  font-family: 'Noto Sans KR', sans-serif;
+  min-height: 100vh;
+}
+
+/* ── 헤더 ── */
+header {
+  padding: 56px 40px 44px;
+  border-bottom: 1px solid var(--bd);
+  position: relative;
+  overflow: hidden;
+}
+header::before {
+  content: '';
+  position: absolute;
+  top: -100px; left: -100px;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(247,129,102,.10) 0%, transparent 65%);
+  pointer-events: none;
+}
+.header-inner {
+  max-width: 860px;
+  margin: 0 auto;
+  position: relative;
+}
+.logo-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.logo-icon {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, var(--ac), var(--ac2));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 0 20px rgba(247,129,102,.3);
+  flex-shrink: 0;
+}
+.site-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--ac) 0%, var(--ac2) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.site-sub {
+  font-size: 14px;
+  color: var(--tx2);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 16px;
+}
+.badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.badge {
+  display: inline-block;
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: 20px;
+  padding: 3px 12px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--ok);
+}
+.badge.blue { color: var(--blue); }
+.badge.orange { color: var(--ac2); }
+
+/* ── 메인 ── */
+main {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 40px 40px 80px;
+}
+
+.sec-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--tx2);
+  margin-bottom: 16px;
+  margin-top: 40px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--bd);
+}
+.sec-label:first-child { margin-top: 0; }
+
+/* ── 특별 카드 ── */
+.card-featured {
+  background: linear-gradient(135deg, #1a2032 0%, #1c2540 100%);
+  border: 1px solid var(--blue);
+  border-radius: 12px;
+  padding: 26px 30px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  text-decoration: none;
+  transition: transform .2s, box-shadow .2s;
+  position: relative;
+  overflow: hidden;
+}
+.card-featured::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(88,166,255,.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+.card-featured:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(88,166,255,.18);
+}
+.card-featured .f-icon { font-size: 36px; flex-shrink: 0; }
+.card-featured .f-info h2 {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--blue);
+  margin-bottom: 5px;
+}
+.card-featured .f-info p {
+  font-size: 13px;
+  color: var(--tx2);
+  line-height: 1.6;
+}
+.card-featured .f-arrow {
+  margin-left: auto;
+  font-size: 18px;
+  color: var(--blue);
+  flex-shrink: 0;
+  opacity: .6;
+  transition: opacity .2s, transform .2s;
+}
+.card-featured:hover .f-arrow {
+  opacity: 1;
+  transform: translateX(4px);
+}
+
+/* ── 그리드 ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 14px;
+}
+
+.card {
+  background: var(--bg1);
+  border: 1px solid var(--bd);
+  border-radius: 10px;
+  padding: 18px 20px 16px;
+  text-decoration: none;
+  display: block;
+  position: relative;
+  overflow: hidden;
+  transition: transform .18s, border-color .18s, box-shadow .18s;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 2px;
+  background: var(--c, var(--ac));
+  opacity: 0;
+  transition: opacity .18s;
+}
+.card:hover {
+  transform: translateY(-2px);
+  border-color: var(--c, var(--ac));
+  box-shadow: 0 4px 24px rgba(0,0,0,.35);
+}
+.card:hover::before { opacity: 1; }
+
+.card-icon { font-size: 20px; margin-bottom: 8px; }
+.card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--tx1);
+  margin-bottom: 5px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.card-desc {
+  font-size: 12px;
+  color: var(--tx2);
+  line-height: 1.5;
+}
+.card-tag {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--c, var(--ac));
+  opacity: .7;
+}
+
+/* ── 푸터 ── */
+footer {
+  text-align: center;
+  padding: 30px;
+  color: var(--tx2);
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  border-top: 1px solid var(--bd);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo-row">
+      <div class="logo-icon">⚙️</div>
+      <div class="site-title">Rust 학습 가이드</div>
+    </div>
+    <div class="site-sub">// Java 개발자를 위한 Rust 완전 정복</div>
+    <div class="badges">
+      <span class="badge">Rust 1.82</span>
+      <span class="badge blue">Java 21</span>
+      <span class="badge orange">C++17</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- 메인 가이드 -->
+  <div class="sec-label">⭐ Main Guide</div>
+  <a href="rust_java-developer.html" class="card-featured">
+    <div class="f-icon">☕</div>
+    <div class="f-info">
+      <h2>Java 개발자를 위한 Rust 가이드</h2>
+      <p>Java ↔ Rust 완전 비교 · 소유권 · 트레이트 · 제네릭/템플릿 · 디스패치 · 전체 예제</p>
+    </div>
+    <div class="f-arrow">→</div>
+  </a>
+
+  <!-- 소유권 & 메모리 -->
+  <div class="sec-label">🧠 소유권 &amp; 메모리</div>
+  <div class="grid">
+    <a href="rust_smart-pointer.html" class="card" style="--c:#f78166">
+      <div class="card-icon">📦</div>
+      <div class="card-title">스마트 포인터 · 소유권</div>
+      <div class="card-desc">Box · Rc · Arc · 소유권 이전 · Drop</div>
+      <div class="card-tag">ownership</div>
+    </a>
+    <a href="rust_lifetime.html" class="card" style="--c:#f78166">
+      <div class="card-icon">⏳</div>
+      <div class="card-title">라이프타임</div>
+      <div class="card-desc">dangling 방지 · 생략 규칙 · 'static · struct 라이프타임</div>
+      <div class="card-tag">lifetime</div>
+    </a>
+    <a href="rust_variable-lifecycle.html" class="card" style="--c:#f78166">
+      <div class="card-icon">🔄</div>
+      <div class="card-title">변수 라이프사이클</div>
+      <div class="card-desc">스코프 · Drop · move · borrow 흐름</div>
+      <div class="card-tag">variable</div>
+    </a>
+    <a href="rust_mutable-variables.html" class="card" style="--c:#f78166">
+      <div class="card-icon">✏️</div>
+      <div class="card-title">뮤터블 변수</div>
+      <div class="card-desc">mut · interior mutability · Cell · RefCell</div>
+      <div class="card-tag">mutability</div>
+    </a>
+  </div>
+
+  <!-- 타입 시스템 -->
+  <div class="sec-label">🔷 타입 시스템</div>
+  <div class="grid">
+    <a href="rust_trait.html" class="card" style="--c:#58a6ff">
+      <div class="card-icon">🔌</div>
+      <div class="card-title">트레이트</div>
+      <div class="card-desc">trait 정의 · 구현 · 기본 메서드 · 트레이트 객체</div>
+      <div class="card-tag">trait</div>
+    </a>
+    <a href="rust_impl-guide.html" class="card" style="--c:#58a6ff">
+      <div class="card-icon">🏗️</div>
+      <div class="card-title">impl 패턴</div>
+      <div class="card-desc">struct · impl · 빌더 패턴 · 메서드 체이닝</div>
+      <div class="card-tag">impl</div>
+    </a>
+    <a href="rust_expression.html" class="card" style="--c:#58a6ff">
+      <div class="card-icon">💡</div>
+      <div class="card-title">표현식</div>
+      <div class="card-desc">모든 것이 표현식 · if/match/block 반환값</div>
+      <div class="card-tag">expression</div>
+    </a>
+  </div>
+
+  <!-- 패턴 & 제어 흐름 -->
+  <div class="sec-label">🎯 패턴 &amp; 제어 흐름</div>
+  <div class="grid">
+    <a href="rust_pattern-matching.html" class="card" style="--c:#3fb950">
+      <div class="card-icon">🎲</div>
+      <div class="card-title">패턴 매칭</div>
+      <div class="card-desc">match · if let · while let · let-else · 구조분해</div>
+      <div class="card-tag">pattern</div>
+    </a>
+    <a href="rust_matching-option.html" class="card" style="--c:#3fb950">
+      <div class="card-icon">❓</div>
+      <div class="card-title">매칭 · Option</div>
+      <div class="card-desc">Option · Result · ? 연산자 · 에러 처리</div>
+      <div class="card-tag">option · result</div>
+    </a>
+    <a href="rust_closure.html" class="card" style="--c:#3fb950">
+      <div class="card-icon">λ</div>
+      <div class="card-title">클로저</div>
+      <div class="card-desc">캡처 방식 · Fn/FnMut/FnOnce · move · 고차함수</div>
+      <div class="card-tag">closure</div>
+    </a>
+  </div>
+
+  <!-- 컬렉션 & 함수형 -->
+  <div class="sec-label">📚 컬렉션 &amp; 함수형</div>
+  <div class="grid">
+    <a href="rust_iterator.html" class="card" style="--c:#ffa657">
+      <div class="card-icon">🔁</div>
+      <div class="card-title">Iterator · 함수형</div>
+      <div class="card-desc">map · filter · fold · chain · Iterator 직접 구현</div>
+      <div class="card-tag">iterator</div>
+    </a>
+    <a href="rust_hashmap.html" class="card" style="--c:#ffa657">
+      <div class="card-icon">🗂️</div>
+      <div class="card-title">해시맵</div>
+      <div class="card-desc">HashMap · entry API · BTreeMap · 컬렉션 비교</div>
+      <div class="card-tag">hashmap</div>
+    </a>
+  </div>
+
+  <!-- 모듈 & 구조 -->
+  <div class="sec-label">📁 모듈 &amp; 구조</div>
+  <div class="grid">
+    <a href="rust_module-system.html" class="card" style="--c:#d2a8ff">
+      <div class="card-icon">📂</div>
+      <div class="card-title">모듈 시스템</div>
+      <div class="card-desc">mod · use · pub · crate · 파일 구조</div>
+      <div class="card-tag">module</div>
+    </a>
+  </div>
+
+</main>
+
+<footer>
+  // Rust Learning Hub &nbsp;·&nbsp; GS Neotek &nbsp;·&nbsp; 2026
+</footer>
+
+</body>
+</html>

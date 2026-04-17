@@ -1,0 +1,2192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rust match 표현식과 문장의 차이</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Noto Sans KR', 'Segoe UI', sans-serif;
+  font-size: 16px;
+  line-height: 1.8;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* ══ LIGHT THEME ══ */
+body.light {
+  --bg:       #f8f9fc;
+  --bg2:      #ffffff;
+  --bg3:      #f0f2f7;
+  --bg4:      #e8ebf3;
+  --border:   #dde1ec;
+  --text:     #1a1e2e;
+  --text2:    #3d4463;
+  --text3:    #7880a0;
+  --accent:   #2563eb;
+  --accent2:  #7c3aed;
+  --green:    #059669;
+  --coral:    #dc2626;
+  --amber:    #d97706;
+  --teal:     #0891b2;
+  --tag-bg:   #eff6ff;
+  --tag-txt:  #1d4ed8;
+  --shadow:   0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.06);
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ══ DARK THEME ══ */
+body.dark {
+  --bg:       #0d1117;
+  --bg2:      #161b27;
+  --bg3:      #1e2535;
+  --bg4:      #252d40;
+  --border:   #2a3347;
+  --text:     #e2e8f0;
+  --text2:    #94a3b8;
+  --text3:    #64748b;
+  --accent:   #38bdf8;
+  --accent2:  #a78bfa;
+  --green:    #34d399;
+  --coral:    #fb7185;
+  --amber:    #fbbf24;
+  --teal:     #2dd4bf;
+  --tag-bg:   rgba(56,189,248,0.1);
+  --tag-txt:  #38bdf8;
+  --shadow:   0 1px 3px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.2);
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ── Layout ── */
+.wrap { max-width: 960px; margin: 0 auto; padding: 0 24px 100px; }
+
+/* ── Top bar ── */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 24px;
+  box-shadow: var(--shadow);
+}
+.topbar-title { font-size: 14px; font-weight: 600; color: var(--text2); flex: 1; }
+.theme-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.theme-btn:hover { background: var(--bg4); color: var(--text); }
+
+/* ── Header ── */
+.hero {
+  padding: 72px 0 60px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 56px;
+}
+.hero-badge {
+  display: inline-block;
+  background: var(--tag-bg);
+  color: var(--tag-txt);
+  border: 1px solid currentColor;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 2px; text-transform: uppercase;
+  padding: 4px 14px; border-radius: 20px;
+  margin-bottom: 24px; opacity: 0.8;
+}
+.hero h1 {
+  font-size: clamp(26px, 5vw, 46px);
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -1px;
+  line-height: 1.15;
+  margin-bottom: 18px;
+}
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero-sub {
+  font-size: 16px; color: var(--text3);
+  max-width: 540px; margin: 0 auto 28px;
+  line-height: 1.7;
+}
+.hero-meta { font-size: 13px; color: var(--text3); }
+.hero-meta a { color: var(--accent); text-decoration: none; }
+
+/* ── TOC ── */
+.toc-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px 32px;
+  margin-bottom: 60px;
+  box-shadow: var(--shadow);
+}
+.toc-label {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 18px;
+}
+.toc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px 24px;
+  list-style: none;
+}
+.toc-grid li { display: flex; align-items: baseline; gap: 8px; }
+.toc-grid a {
+  color: var(--text2); font-size: 14px;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.toc-grid a:hover { color: var(--accent); }
+.toc-num {
+  font-size: 11px; color: var(--text3);
+  font-variant-numeric: tabular-nums;
+  min-width: 18px;
+}
+
+/* ── Section ── */
+.section { margin-bottom: 80px; }
+.sec-header {
+  display: flex; align-items: center; gap: 16px;
+  margin-bottom: 32px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--border);
+}
+.sec-num {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 700;
+  color: #fff; flex-shrink: 0;
+}
+.section h2 {
+  font-size: 24px; font-weight: 700;
+  color: var(--text); letter-spacing: -0.5px;
+}
+
+/* ── Sub section ── */
+.sub { margin-bottom: 40px; }
+.sub h3 {
+  font-size: 17px; font-weight: 600;
+  color: var(--accent2);
+  margin-bottom: 14px;
+  padding-left: 14px;
+  border-left: 3px solid var(--accent2);
+  line-height: 1.4;
+}
+.sub h4 {
+  font-size: 15px; font-weight: 600;
+  color: var(--teal);
+  margin: 20px 0 10px;
+}
+
+/* ── Prose ── */
+p { color: var(--text2); margin-bottom: 16px; line-height: 1.8; }
+p strong { color: var(--text); font-weight: 600; }
+ul, ol { color: var(--text2); padding-left: 24px; margin-bottom: 16px; }
+li { margin-bottom: 6px; line-height: 1.75; }
+li strong { color: var(--text); }
+
+/* ── inline code ── */
+code {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 13px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 1px 6px; border-radius: 4px;
+  color: var(--accent);
+}
+
+/* ── Callout boxes ── */
+.callout {
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin: 20px 0;
+  font-size: 14px;
+  line-height: 1.75;
+}
+.callout-title {
+  font-weight: 700; font-size: 13px;
+  margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.callout.info    { background: rgba(56,189,248,0.06);  border-left: 3px solid var(--accent); }
+.callout.success { background: rgba(52,211,153,0.06);  border-left: 3px solid var(--green);  }
+.callout.warn    { background: rgba(251,191,36,0.06);  border-left: 3px solid var(--amber);  }
+.callout.error   { background: rgba(251,113,133,0.06); border-left: 3px solid var(--coral);  }
+.callout.info    .callout-title { color: var(--accent); }
+.callout.success .callout-title { color: var(--green); }
+.callout.warn    .callout-title { color: var(--amber); }
+.callout.error   .callout-title { color: var(--coral); }
+.callout p { margin: 0; color: var(--text2); }
+.callout p + p { margin-top: 8px; }
+
+/* ── Quote ── */
+.quote {
+  border-left: 3px solid var(--accent);
+  background: var(--bg3);
+  padding: 16px 20px;
+  border-radius: 0 8px 8px 0;
+  margin: 20px 0;
+  font-style: italic;
+  color: var(--text2);
+  font-size: 15px;
+  line-height: 1.7;
+}
+.quote cite {
+  display: block; margin-top: 8px;
+  font-style: normal; font-size: 12px;
+  color: var(--text3);
+}
+
+/* ── Figure / SVG ── */
+.figure {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin: 24px 0;
+  overflow-x: auto;
+  box-shadow: var(--shadow);
+}
+.figure svg { display: block; max-width: 100%; height: auto; }
+.fig-cap {
+  text-align: center; margin-top: 12px;
+  font-size: 12px; color: var(--text3);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Code block (VS Code Dark Modern) ── */
+.code-wrap {
+  border-radius: 10px; overflow: hidden;
+  margin: 20px 0;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.code-bar {
+  background: #1e1e1e;
+  border-bottom: 1px solid #333;
+  padding: 8px 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.dot { width: 11px; height: 11px; border-radius: 50%; }
+.code-label {
+  margin-left: auto;
+  font-size: 11px; color: #858585;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.5px;
+}
+pre {
+  background: #1e1e1e;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 13.5px; line-height: 1.7;
+  padding: 20px 22px;
+  overflow-x: auto;
+  color: #d4d4d4;
+  tab-size: 4;
+  margin: 0;
+}
+
+/* VS Code Dark Modern syntax colors */
+.kw  { color: #569cd6; }          /* keywords: let, fn, match, if, for ... */
+.kw2 { color: #c586c0; }          /* control flow: return, break, continue */
+.ty  { color: #4ec9b0; }          /* types: i32, String, Option ... */
+.fn_ { color: #dcdcaa; }          /* functions */
+.st  { color: #ce9178; }          /* strings */
+.nm  { color: #b5cea8; }          /* numbers */
+.cm  { color: #6a9955; font-style: italic; }  /* comments */
+.mc  { color: #dcdcaa; }          /* macros */
+.va  { color: #9cdcfe; }          /* variables */
+.lf  { color: #569cd6; }          /* lifetime */
+.op  { color: #d4d4d4; }          /* operators */
+.at  { color: #c586c0; }          /* attributes #[] */
+.hl  { display: block; background: rgba(255,255,255,0.04); margin: 0 -22px; padding: 0 22px; }
+.err-line { display: block; background: rgba(244,71,71,0.12); margin: 0 -22px; padding: 0 22px; border-left: 3px solid #f44747; }
+.ok-line  { display: block; background: rgba(78,201,176,0.08); margin: 0 -22px; padding: 0 22px; border-left: 3px solid #4ec9b0; }
+
+/* ── Table ── */
+.tbl-wrap { overflow-x: auto; margin: 20px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th {
+  background: var(--bg3); color: var(--accent);
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 10px 16px; border: 1px solid var(--border);
+  text-align: left;
+}
+td {
+  padding: 10px 16px; border: 1px solid var(--border);
+  color: var(--text2); vertical-align: top;
+  font-size: 14px; line-height: 1.6;
+}
+td code { font-size: 12px; }
+tr:nth-child(even) td { background: var(--bg3); }
+
+/* ── Definition list ── */
+dl { margin: 16px 0; }
+dt {
+  font-weight: 700; color: var(--text);
+  font-size: 14px; margin-top: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+dt::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+dd { color: var(--text2); font-size: 14px; padding-left: 20px; margin-top: 4px; }
+
+/* ── Divider ── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 40px 0;
+}
+
+/* ── Footer ── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 32px 24px; text-align: center;
+  color: var(--text3); font-size: 13px;
+}
+footer a { color: var(--accent); text-decoration: none; }
+
+@media (max-width: 640px) {
+  .wrap { padding: 0 16px 80px; }
+  .hero { padding: 48px 0 40px; }
+  .toc-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body class="dark">
+
+<div class="topbar">
+  <span class="topbar-title">Rust match 표현식과 문장의 차이</span>
+  <button class="theme-btn" id="theme-btn">☀ Light</button>
+</div>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="hero-badge">Rust Reference 기반 · 할루시네이션 없음</div>
+  <h1>Rust <em>match</em> 표현식과<br>문장의 차이</h1>
+  <p class="hero-sub">Expression vs Statement — 공식 문서 § 6 기준 완전 정복.<br>
+  블록, 세미콜론, match, enum, never type, if let 까지 모든 예제 수록.</p>
+  <p class="hero-meta">
+    참고:
+    <a href="https://doc.rust-lang.org/reference/statements-and-expressions.html" target="_blank">Rust Reference § Statements and expressions</a> &middot;
+    <a href="https://doc.rust-lang.org/reference/expressions/match-expr.html" target="_blank">§ Match expressions</a>
+  </p>
+</header>
+
+<nav class="toc-box">
+  <div class="toc-label">목차 — 총 11개 섹션</div>
+  <ul class="toc-grid"><li><span class="toc-num">01</span><a href="#s1">공식 문서의 근본 정의</a></li>
+<li><span class="toc-num">02</span><a href="#s2">Expression — 정확한 정의</a></li>
+<li><span class="toc-num">03</span><a href="#s3">Statement — 세 가지 종류</a></li>
+<li><span class="toc-num">04</span><a href="#s4">세미콜론의 두 가지 역할</a></li>
+<li><span class="toc-num">05</span><a href="#s5">Block expression 규칙</a></li>
+<li><span class="toc-num">06</span><a href="#s6">match expression 완전 해부</a></li>
+<li><span class="toc-num">07</span><a href="#s7">match 패턴 종류 총망라</a></li>
+<li><span class="toc-num">08</span><a href="#s8">! never type</a></li>
+<li><span class="toc-num">09</span><a href="#s9">if let / while let / let-else</a></li>
+<li><span class="toc-num">10</span><a href="#s10">Option & Result 실전</a></li>
+<li><span class="toc-num">11</span><a href="#s11">전체 요약 집약 예제</a></li></ul>
+</nav>
+
+<section class="section" id="s1">
+<div class="sec-header"><div class="sec-num">1</div><h2>공식 문서의 근본 정의</h2></div>
+
+<div class="quote">
+  "Rust is primarily an expression language."
+  <cite>— Rust Reference § 6 Statements and expressions</cite>
+</div>
+
+<p>이 한 문장이 Rust 문법의 핵심입니다. Java, C 와 달리 Rust 에서는 <strong>거의 모든 구문이 expression</strong> 입니다.
+<code>if</code>, <code>match</code>, <code>loop</code>, 심지어 블록 <code>{ }</code> 까지 모두 값을 만들어냅니다.
+Statement 는 그 중에서 "값을 목적으로 하지 않는 특별한 형태"일 뿐입니다.</p>
+
+<div class="figure"><svg width="100%" height="400" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="background:transparent;font-family:sans-serif;">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <rect x="250" y="20" width="300" height="44" rx="8" fill="#f1efe8" stroke="#5f5e5a" stroke-width="0.8"/>
+  <text x="400" y="47" text-anchor="middle" font-size="15" font-weight="600" fill="#2c2c2a">Expression vs Statement</text>
+
+  <!-- Expression box -->
+  <rect x="40" y="100" width="320" height="260" rx="12" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1"/>
+  <text x="200" y="130" text-anchor="middle" font-size="15" font-weight="700" fill="#085041">Expression (표현식)</text>
+  <text x="200" y="152" text-anchor="middle" font-size="12" fill="#0f6e56">값(value)을 만들어냅니다</text>
+
+  <rect x="60" y="168" width="280" height="40" rx="6" fill="#9fe1cb" stroke="#0f6e56" stroke-width="0.5"/>
+  <text x="200" y="184" text-anchor="middle" font-size="13" font-weight="600" fill="#04342c">5 + 3</text>
+  <text x="200" y="200" text-anchor="middle" font-size="11" fill="#085041">→ i32 값 8을 반환</text>
+
+  <rect x="60" y="218" width="280" height="40" rx="6" fill="#9fe1cb" stroke="#0f6e56" stroke-width="0.5"/>
+  <text x="200" y="234" text-anchor="middle" font-size="12" font-weight="600" fill="#04342c">if x &gt; 0 { "pos" } else { "neg" }</text>
+  <text x="200" y="250" text-anchor="middle" font-size="11" fill="#085041">→ &amp;str 값을 반환</text>
+
+  <rect x="60" y="268" width="280" height="60" rx="6" fill="#9fe1cb" stroke="#0f6e56" stroke-width="0.5"/>
+  <text x="200" y="286" text-anchor="middle" font-size="12" font-weight="600" fill="#04342c">match x { 1 =&gt; "one", _ =&gt; "other" }</text>
+  <text x="200" y="304" text-anchor="middle" font-size="11" fill="#085041">→ &amp;str 값을 반환</text>
+  <text x="200" y="320" text-anchor="middle" font-size="11" font-style="italic" fill="#0f6e56">match 도 expression!</text>
+
+  <!-- Statement box -->
+  <rect x="440" y="100" width="320" height="260" rx="12" fill="#faece7" stroke="#993c1d" stroke-width="1"/>
+  <text x="600" y="130" text-anchor="middle" font-size="15" font-weight="700" fill="#4a1b0c">Statement (문장)</text>
+  <text x="600" y="152" text-anchor="middle" font-size="12" fill="#993c1d">값을 반환하지 않습니다 → ()</text>
+
+  <rect x="460" y="168" width="280" height="40" rx="6" fill="#f5c4b3" stroke="#993c1d" stroke-width="0.5"/>
+  <text x="600" y="184" text-anchor="middle" font-size="13" font-weight="600" fill="#4a1b0c">let x = 5;</text>
+  <text x="600" y="200" text-anchor="middle" font-size="11" fill="#712b13">→ 값 없음, 세미콜론으로 끝남</text>
+
+  <rect x="460" y="218" width="280" height="40" rx="6" fill="#f5c4b3" stroke="#993c1d" stroke-width="0.5"/>
+  <text x="600" y="234" text-anchor="middle" font-size="13" font-weight="600" fill="#4a1b0c">println!("hello");</text>
+  <text x="600" y="250" text-anchor="middle" font-size="11" fill="#712b13">→ () 반환, 사이드이펙트만</text>
+
+  <rect x="460" y="268" width="280" height="60" rx="6" fill="#f5c4b3" stroke="#993c1d" stroke-width="0.5"/>
+  <text x="600" y="286" text-anchor="middle" font-size="12" font-weight="600" fill="#4a1b0c">match x { 1 =&gt; 10, _ =&gt; 100 };</text>
+  <text x="600" y="304" text-anchor="middle" font-size="11" fill="#712b13">→ 값이 버려짐 (unused)</text>
+  <text x="600" y="320" text-anchor="middle" font-size="11" font-style="italic" fill="#993c1d">; 붙으면 statement 가 됨!</text>
+
+  <!-- Bottom note -->
+  <rect x="40" y="378" width="720" height="16" rx="4" fill="#faeeda" stroke="#ba7517" stroke-width="0.5"/>
+  <text x="400" y="390" text-anchor="middle" font-size="11" font-weight="600" fill="#412402">핵심: 세미콜론(;)이 expression 을 statement 로 바꿉니다</text>
+</svg>
+<div class="fig-cap">그림 1 — Expression vs Statement 기본 개념도</div></div>
+
+<div class="figure"><svg width="100%" height="660" viewBox="0 0 800 660" xmlns="http://www.w3.org/2000/svg" style="background:transparent;font-family:sans-serif;">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- Root -->
+  <rect x="270" y="20" width="260" height="50" rx="10" fill="#f1efe8" stroke="#5f5e5a" stroke-width="1"/>
+  <text x="400" y="40" text-anchor="middle" font-size="15" font-weight="700" fill="#2c2c2a">Rust 코드 단위</text>
+  <text x="400" y="58" text-anchor="middle" font-size="11" fill="#5f5e5a">Reference § 6 — Statements and expressions</text>
+
+  <!-- Root arrows -->
+  <line x1="320" y1="70" x2="190" y2="115" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="480" y1="70" x2="610" y2="115" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <!-- LEFT: Statement -->
+  <rect x="60" y="115" width="260" height="54" rx="8" fill="#faece7" stroke="#993c1d" stroke-width="1"/>
+  <text x="190" y="137" text-anchor="middle" font-size="14" font-weight="700" fill="#4a1b0c">Statement (문장)</text>
+  <text x="190" y="157" text-anchor="middle" font-size="11" fill="#993c1d">값을 반환하지 않음 → ()</text>
+
+  <line x1="190" y1="169" x2="190" y2="200" stroke="#993c1d" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="60" y="200" width="260" height="44" rx="6" fill="#f5c4b3" stroke="#993c1d" stroke-width="0.8"/>
+  <text x="190" y="217" text-anchor="middle" font-size="13" font-weight="600" fill="#4a1b0c">① let statement</text>
+  <text x="190" y="235" text-anchor="middle" font-size="11" fill="#712b13">let x = expr;</text>
+
+  <line x1="190" y1="244" x2="190" y2="274" stroke="#993c1d" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="60" y="274" width="260" height="44" rx="6" fill="#f5c4b3" stroke="#993c1d" stroke-width="0.8"/>
+  <text x="190" y="291" text-anchor="middle" font-size="13" font-weight="600" fill="#4a1b0c">② item declaration</text>
+  <text x="190" y="309" text-anchor="middle" font-size="11" fill="#712b13">fn, struct, impl, use ...</text>
+
+  <line x1="190" y1="318" x2="190" y2="348" stroke="#993c1d" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="60" y="348" width="260" height="44" rx="6" fill="#f5c4b3" stroke="#993c1d" stroke-width="0.8"/>
+  <text x="190" y="365" text-anchor="middle" font-size="13" font-weight="600" fill="#4a1b0c">③ expression statement</text>
+  <text x="190" y="383" text-anchor="middle" font-size="11" fill="#712b13">expr ;  ← 세미콜론으로 값 버림</text>
+
+  <!-- RIGHT: Expression -->
+  <rect x="480" y="115" width="260" height="54" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1"/>
+  <text x="610" y="137" text-anchor="middle" font-size="14" font-weight="700" fill="#04342c">Expression (표현식)</text>
+  <text x="610" y="157" text-anchor="middle" font-size="11" fill="#0f6e56">반드시 어떤 타입 T 의 값을 가짐</text>
+
+  <line x1="610" y1="169" x2="610" y2="200" stroke="#0f6e56" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="480" y="200" width="260" height="44" rx="6" fill="#9fe1cb" stroke="#0f6e56" stroke-width="0.8"/>
+  <text x="610" y="217" text-anchor="middle" font-size="13" font-weight="600" fill="#04342c">리터럴 · 연산자 · 경로</text>
+  <text x="610" y="235" text-anchor="middle" font-size="11" fill="#085041">42, true, "hi", x + 1</text>
+
+  <line x1="610" y1="244" x2="610" y2="274" stroke="#0f6e56" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="480" y="274" width="260" height="44" rx="6" fill="#9fe1cb" stroke="#0f6e56" stroke-width="0.8"/>
+  <text x="610" y="291" text-anchor="middle" font-size="13" font-weight="600" fill="#04342c">블록 { }</text>
+  <text x="610" y="309" text-anchor="middle" font-size="11" fill="#085041">마지막 expr 이 블록의 값</text>
+
+  <line x1="610" y1="318" x2="610" y2="348" stroke="#0f6e56" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="480" y="348" width="260" height="44" rx="6" fill="#9fe1cb" stroke="#0f6e56" stroke-width="0.8"/>
+  <text x="610" y="365" text-anchor="middle" font-size="13" font-weight="600" fill="#04342c">흐름 제어</text>
+  <text x="610" y="383" text-anchor="middle" font-size="11" fill="#085041">if · match · loop · return</text>
+
+  <!-- Divider -->
+  <line x1="400" y1="115" x2="400" y2="405" stroke="#d3d1c7" stroke-width="1" stroke-dasharray="6 4"/>
+
+  <!-- Bottom: semicolon rules -->
+  <rect x="40" y="420" width="340" height="66" rx="8" fill="#faeeda" stroke="#ba7517" stroke-width="1"/>
+  <text x="210" y="441" text-anchor="middle" font-size="13" font-weight="700" fill="#412402">expr ;</text>
+  <text x="210" y="461" text-anchor="middle" font-size="11" fill="#633806">expression → expression statement</text>
+  <text x="210" y="477" text-anchor="middle" font-size="11" fill="#633806">값이 버려지고 () 타입이 됨</text>
+
+  <rect x="420" y="420" width="340" height="66" rx="8" fill="#eeedfe" stroke="#534ab7" stroke-width="1"/>
+  <text x="590" y="441" text-anchor="middle" font-size="13" font-weight="700" fill="#26215c">let x = expr ;</text>
+  <text x="590" y="461" text-anchor="middle" font-size="11" fill="#3c3489">값은 x 에 바인딩됨</text>
+  <text x="590" y="477" text-anchor="middle" font-size="11" fill="#3c3489">let 선언 자체는 () 타입</text>
+
+  <!-- never type -->
+  <rect x="40" y="508" width="720" height="60" rx="8" fill="#f1efe8" stroke="#888780" stroke-width="1"/>
+  <text x="400" y="528" text-anchor="middle" font-size="13" font-weight="700" fill="#2c2c2a">특수: ! (never type)</text>
+  <text x="400" y="548" text-anchor="middle" font-size="11" fill="#444441">return, break, panic!(), continue → 절대 값을 반환하지 않음</text>
+  <text x="400" y="564" text-anchor="middle" font-size="11" fill="#444441">! 는 모든 타입의 subtype — match arm 에서 다른 타입과 공존 가능</text>
+
+  <!-- Source note -->
+  <text x="400" y="636" text-anchor="middle" font-size="10" fill="#888780">Rust Reference § 6 — Statements and expressions</text>
+</svg>
+<div class="fig-cap">그림 2 — Rust 코드 단위 분류 트리</div></div>
+
+<div class="callout info"><div class="callout-title">Java / C 와의 결정적 차이</div><p>Java 에서 <code>if</code> 는 statement 입니다. 값을 반환하지 않습니다 (삼항 연산자 <code>?:</code> 는 expression). Rust 에서 <code>if</code> 는 expression 입니다. 값을 반환합니다. 이 차이가 Rust 코드 스타일 전체를 결정합니다.</p></div>
+
+<div class="sub"><h3>공식 문서 용어 정리</h3>
+<dl>
+  <dt>Expression (표현식)</dt>
+  <dd>평가(evaluate)되어 값(value)을 만들어내는 코드 조각. 반드시 어떤 타입을 가집니다.</dd>
+  <dt>Statement (문장)</dt>
+  <dd>블록 안에서 실행되는 단위. 값을 "생산"하지 않습니다. 공식 문서 기준 세 종류만 존재합니다.</dd>
+  <dt>Block expression (블록 표현식)</dt>
+  <dd><code>{ }</code> 로 감싼 statement 와 expression 의 시퀀스. 그 자체가 expression 입니다.</dd>
+  <dt>Tail expression (꼬리 표현식)</dt>
+  <dd>블록의 맨 마지막에 세미콜론 없이 오는 expression. 블록 전체의 값이 됩니다.</dd>
+  <dt>Scrutinee (심사 대상)</dt>
+  <dd><code>match</code> 에 넘기는 값. 공식 문서가 사용하는 정식 용어입니다.</dd>
+  <dt>Irrefutable pattern (반박 불가 패턴)</dt>
+  <dd>항상 매칭되는 패턴. <code>let</code> 에서는 이것만 사용 가능합니다.</dd>
+</dl>
+</div>
+
+</section><section class="section" id="s2">
+<div class="sec-header"><div class="sec-num">2</div><h2>Expression — 정확한 정의와 예제</h2></div>
+
+<p>공식 문서 (Reference § Expressions): <strong>"An expression may have two roles: it always produces a value, and it may have effects (otherwise known as 'side effects')."</strong></p>
+
+<p>Expression 은 두 가지 일을 동시에 합니다. 항상 어떤 값을 만들고, 부수적으로 부작용(화면 출력, 메모리 변경 등)도 가질 수 있습니다.</p>
+
+<div class="sub"><h3>Place expression vs Value expression</h3><p>공식 문서 (Reference § Expressions § Place expressions and value expressions) 에서는 expression 을 두 종류로 구분합니다.</p>
+  <dl>
+    <dt>Place expression</dt>
+    <dd>메모리 위치를 가리키는 expression. 다른 언어의 lvalue 에 해당합니다.
+    변수(<code>x</code>), 역참조(<code>*p</code>), 필드 접근(<code>s.field</code>), 인덱스(<code>a[0]</code>) 등이 해당합니다.
+    대입의 왼쪽에 올 수 있습니다.</dd>
+    <dt>Value expression</dt>
+    <dd>값을 만들어내는 expression. 다른 언어의 rvalue 에 해당합니다.
+    리터럴, 연산 결과, 함수 호출 결과 등이 해당합니다.</dd>
+  </dl></div>
+
+<div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust — 기본 expression 총람</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="cm">// ─ 리터럴 expression ────────────────────────────────</span>
+    <span class="kw">let</span> <span class="va">_a</span>: <span class="ty">i32</span>  = <span class="nm">42</span>;        <span class="cm">// 정수 리터럴</span>
+    <span class="kw">let</span> <span class="va">_b</span>: <span class="ty">f64</span>  = <span class="nm">3.14</span>;      <span class="cm">// 부동소수점 리터럴</span>
+    <span class="kw">let</span> <span class="va">_c</span>: <span class="ty">bool</span> = <span class="kw">true</span>;       <span class="cm">// bool 리터럴</span>
+    <span class="kw">let</span> <span class="va">_d</span>: <span class="ty">&amp;str</span> = <span class="st">"hello"</span>;    <span class="cm">// 문자열 슬라이스 리터럴</span>
+    <span class="kw">let</span> <span class="va">_e</span>: <span class="ty">char</span> = <span class="st">'A'</span>;        <span class="cm">// char 리터럴</span>
+    <span class="kw">let</span> <span class="va">_f</span>: ()   = ();           <span class="cm">// unit 리터럴 — 타입도 () 이고 값도 ()</span>
+
+    <span class="cm">// ─ 산술 · 비교 · 논리 연산자 expression ────────────</span>
+    <span class="kw">let</span> <span class="va">sum</span>   = <span class="nm">3</span> + <span class="nm">4</span>;           <span class="cm">// i32: 7</span>
+    <span class="kw">let</span> <span class="va">gt</span>    = <span class="nm">10</span> &gt; <span class="nm">5</span>;          <span class="cm">// bool: true</span>
+    <span class="kw">let</span> <span class="va">both</span>  = <span class="kw">true</span> &amp;&amp; <span class="kw">false</span>;  <span class="cm">// bool: false</span>
+    <span class="kw">let</span> <span class="va">neg</span>   = -<span class="nm">42</span>;            <span class="cm">// i32: -42  (단항 연산자)</span>
+    <span class="kw">let</span> <span class="va">not</span>   = !<span class="kw">true</span>;          <span class="cm">// bool: false</span>
+
+    <span class="cm">// ─ 함수 호출 / 메서드 호출도 expression ─────────────</span>
+    <span class="kw">let</span> <span class="va">s</span>  = <span class="ty">String</span>::<span class="fn_">from</span>(<span class="st">"rust"</span>); <span class="cm">// String 타입 값</span>
+    <span class="kw">let</span> <span class="va">n</span>  = <span class="va">s</span>.<span class="fn_">len</span>();               <span class="cm">// usize 타입 값</span>
+    <span class="kw">let</span> <span class="va">up</span> = <span class="va">s</span>.<span class="fn_">to_uppercase</span>();      <span class="cm">// String 타입 값</span>
+
+    <span class="cm">// ─ 구조체 생성도 expression ──────────────────────────</span>
+    <span class="kw">struct</span> <span class="ty">Point</span> { <span class="va">x</span>: <span class="ty">i32</span>, <span class="va">y</span>: <span class="ty">i32</span> }
+    <span class="kw">let</span> <span class="va">p</span> = <span class="ty">Point</span> { <span class="va">x</span>: <span class="nm">1</span>, <span class="va">y</span>: <span class="nm">2</span> };   <span class="cm">// Point 타입 값</span>
+
+    <span class="cm">// ─ 클로저도 expression ───────────────────────────────</span>
+    <span class="kw">let</span> <span class="va">add</span> = |<span class="va">a</span>: <span class="ty">i32</span>, <span class="va">b</span>: <span class="ty">i32</span>| <span class="va">a</span> + <span class="va">b</span>;  <span class="cm">// 클로저 타입 값</span>
+    <span class="kw">let</span> <span class="va">r</span> = <span class="fn_">add</span>(<span class="nm">3</span>, <span class="nm">4</span>);                    <span class="cm">// i32: 7</span>
+
+    <span class="cm">// ─ 범위(Range)도 expression ──────────────────────────</span>
+    <span class="kw">let</span> <span class="va">r1</span> = <span class="nm">1</span>..<span class="nm">5</span>;      <span class="cm">// Range&lt;i32&gt;</span>
+    <span class="kw">let</span> <span class="va">r2</span> = <span class="nm">1</span>..=<span class="nm">5</span>;    <span class="cm">// RangeInclusive&lt;i32&gt;</span>
+}</pre></div>
+
+<div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust — if / match / loop 모두 expression</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="va">x</span> = <span class="nm">7</span>;
+
+    <span class="cm">// ─ if 는 expression ──────────────────────────────────</span>
+    <span class="kw">let</span> <span class="va">label</span> = <span class="kw">if</span> <span class="va">x</span> &gt; <span class="nm">0</span> { <span class="st">"양수"</span> } <span class="kw">else</span> { <span class="st">"비양수"</span> };
+    <span class="cm">// label: &amp;str = "양수"</span>
+
+    <span class="cm">// ─ match 는 expression ───────────────────────────────</span>
+    <span class="kw">let</span> <span class="va">kind</span> = <span class="kw">match</span> <span class="va">x</span> % <span class="nm">2</span> {
+        <span class="nm">0</span> =&gt; <span class="st">"짝수"</span>,
+        _ =&gt; <span class="st">"홀수"</span>,
+    };
+    <span class="cm">// kind: &amp;str = "홀수"</span>
+
+    <span class="cm">// ─ loop 도 expression (break 로 값을 반환) ────────────</span>
+    <span class="kw">let</span> <span class="va">found</span> = <span class="kw">loop</span> {
+        <span class="kw">if</span> <span class="va">x</span> &gt; <span class="nm">5</span> { <span class="kw2">break</span> <span class="st">"큰 수"</span>; }  <span class="cm">// break 가 값을 들고 나옴</span>
+        <span class="kw2">break</span> <span class="st">"작은 수"</span>;
+    };
+    <span class="cm">// found: &amp;str = "큰 수"</span>
+
+    <span class="cm">// ─ 블록 { } 도 expression ───────────────────────────</span>
+    <span class="kw">let</span> <span class="va">computed</span> = {
+        <span class="kw">let</span> <span class="va">a</span> = <span class="va">x</span> * <span class="nm">2</span>;
+        <span class="kw">let</span> <span class="va">b</span> = <span class="va">a</span> + <span class="nm">1</span>;
+        <span class="va">b</span>       <span class="cm">// tail expression — 블록의 값 = 15</span>
+    };
+    <span class="cm">// computed: i32 = 15</span>
+
+    <span class="mc">println!</span>(<span class="st">"{} / {} / {} / {}"</span>, <span class="va">label</span>, <span class="va">kind</span>, <span class="va">found</span>, <span class="va">computed</span>);
+    <span class="cm">// 양수 / 홀수 / 큰 수 / 15</span>
+}</pre></div>
+
+</section><section class="section" id="s3">
+<div class="sec-header"><div class="sec-num">3</div><h2>Statement — 세 가지 종류</h2></div>
+
+<p>공식 문서 (Reference § Statements): <strong>"A statement is a component of a block."</strong>
+Statement 는 오직 블록 안에서만 존재합니다. 공식 문서 기준 정확히 세 종류입니다.</p>
+
+<div class="figure"><svg width="100%" height="660" viewBox="0 0 800 660" xmlns="http://www.w3.org/2000/svg" style="background:transparent;font-family:sans-serif;">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- Root -->
+  <rect x="270" y="20" width="260" height="50" rx="10" fill="#f1efe8" stroke="#5f5e5a" stroke-width="1"/>
+  <text x="400" y="40" text-anchor="middle" font-size="15" font-weight="700" fill="#2c2c2a">Rust 코드 단위</text>
+  <text x="400" y="58" text-anchor="middle" font-size="11" fill="#5f5e5a">Reference § 6 — Statements and expressions</text>
+
+  <!-- Root arrows -->
+  <line x1="320" y1="70" x2="190" y2="115" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="480" y1="70" x2="610" y2="115" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <!-- LEFT: Statement -->
+  <rect x="60" y="115" width="260" height="54" rx="8" fill="#faece7" stroke="#993c1d" stroke-width="1"/>
+  <text x="190" y="137" text-anchor="middle" font-size="14" font-weight="700" fill="#4a1b0c">Statement (문장)</text>
+  <text x="190" y="157" text-anchor="middle" font-size="11" fill="#993c1d">값을 반환하지 않음 → ()</text>
+
+  <line x1="190" y1="169" x2="190" y2="200" stroke="#993c1d" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="60" y="200" width="260" height="44" rx="6" fill="#f5c4b3" stroke="#993c1d" stroke-width="0.8"/>
+  <text x="190" y="217" text-anchor="middle" font-size="13" font-weight="600" fill="#4a1b0c">① let statement</text>
+  <text x="190" y="235" text-anchor="middle" font-size="11" fill="#712b13">let x = expr;</text>
+
+  <line x1="190" y1="244" x2="190" y2="274" stroke="#993c1d" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="60" y="274" width="260" height="44" rx="6" fill="#f5c4b3" stroke="#993c1d" stroke-width="0.8"/>
+  <text x="190" y="291" text-anchor="middle" font-size="13" font-weight="600" fill="#4a1b0c">② item declaration</text>
+  <text x="190" y="309" text-anchor="middle" font-size="11" fill="#712b13">fn, struct, impl, use ...</text>
+
+  <line x1="190" y1="318" x2="190" y2="348" stroke="#993c1d" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="60" y="348" width="260" height="44" rx="6" fill="#f5c4b3" stroke="#993c1d" stroke-width="0.8"/>
+  <text x="190" y="365" text-anchor="middle" font-size="13" font-weight="600" fill="#4a1b0c">③ expression statement</text>
+  <text x="190" y="383" text-anchor="middle" font-size="11" fill="#712b13">expr ;  ← 세미콜론으로 값 버림</text>
+
+  <!-- RIGHT: Expression -->
+  <rect x="480" y="115" width="260" height="54" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1"/>
+  <text x="610" y="137" text-anchor="middle" font-size="14" font-weight="700" fill="#04342c">Expression (표현식)</text>
+  <text x="610" y="157" text-anchor="middle" font-size="11" fill="#0f6e56">반드시 어떤 타입 T 의 값을 가짐</text>
+
+  <line x1="610" y1="169" x2="610" y2="200" stroke="#0f6e56" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="480" y="200" width="260" height="44" rx="6" fill="#9fe1cb" stroke="#0f6e56" stroke-width="0.8"/>
+  <text x="610" y="217" text-anchor="middle" font-size="13" font-weight="600" fill="#04342c">리터럴 · 연산자 · 경로</text>
+  <text x="610" y="235" text-anchor="middle" font-size="11" fill="#085041">42, true, "hi", x + 1</text>
+
+  <line x1="610" y1="244" x2="610" y2="274" stroke="#0f6e56" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="480" y="274" width="260" height="44" rx="6" fill="#9fe1cb" stroke="#0f6e56" stroke-width="0.8"/>
+  <text x="610" y="291" text-anchor="middle" font-size="13" font-weight="600" fill="#04342c">블록 { }</text>
+  <text x="610" y="309" text-anchor="middle" font-size="11" fill="#085041">마지막 expr 이 블록의 값</text>
+
+  <line x1="610" y1="318" x2="610" y2="348" stroke="#0f6e56" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="480" y="348" width="260" height="44" rx="6" fill="#9fe1cb" stroke="#0f6e56" stroke-width="0.8"/>
+  <text x="610" y="365" text-anchor="middle" font-size="13" font-weight="600" fill="#04342c">흐름 제어</text>
+  <text x="610" y="383" text-anchor="middle" font-size="11" fill="#085041">if · match · loop · return</text>
+
+  <!-- Divider -->
+  <line x1="400" y1="115" x2="400" y2="405" stroke="#d3d1c7" stroke-width="1" stroke-dasharray="6 4"/>
+
+  <!-- Bottom: semicolon rules -->
+  <rect x="40" y="420" width="340" height="66" rx="8" fill="#faeeda" stroke="#ba7517" stroke-width="1"/>
+  <text x="210" y="441" text-anchor="middle" font-size="13" font-weight="700" fill="#412402">expr ;</text>
+  <text x="210" y="461" text-anchor="middle" font-size="11" fill="#633806">expression → expression statement</text>
+  <text x="210" y="477" text-anchor="middle" font-size="11" fill="#633806">값이 버려지고 () 타입이 됨</text>
+
+  <rect x="420" y="420" width="340" height="66" rx="8" fill="#eeedfe" stroke="#534ab7" stroke-width="1"/>
+  <text x="590" y="441" text-anchor="middle" font-size="13" font-weight="700" fill="#26215c">let x = expr ;</text>
+  <text x="590" y="461" text-anchor="middle" font-size="11" fill="#3c3489">값은 x 에 바인딩됨</text>
+  <text x="590" y="477" text-anchor="middle" font-size="11" fill="#3c3489">let 선언 자체는 () 타입</text>
+
+  <!-- never type -->
+  <rect x="40" y="508" width="720" height="60" rx="8" fill="#f1efe8" stroke="#888780" stroke-width="1"/>
+  <text x="400" y="528" text-anchor="middle" font-size="13" font-weight="700" fill="#2c2c2a">특수: ! (never type)</text>
+  <text x="400" y="548" text-anchor="middle" font-size="11" fill="#444441">return, break, panic!(), continue → 절대 값을 반환하지 않음</text>
+  <text x="400" y="564" text-anchor="middle" font-size="11" fill="#444441">! 는 모든 타입의 subtype — match arm 에서 다른 타입과 공존 가능</text>
+
+  <!-- Source note -->
+  <text x="400" y="636" text-anchor="middle" font-size="10" fill="#888780">Rust Reference § 6 — Statements and expressions</text>
+</svg>
+<div class="fig-cap">그림 — Statement 세 종류 (분류 트리 참고)</div></div>
+
+<div class="sub"><h3>① let statement</h3><div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust — let statement 완전 예제</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="cm">// 공식 문서 문법: let PatternNoTopAlt [: Type] [= Expression] ;</span>
+
+    <span class="cm">// ─ 기본 ────────────────────────────────────────────</span>
+    <span class="kw">let</span> <span class="va">x</span> = <span class="nm">5</span>;                  <span class="cm">// 타입 추론: i32</span>
+    <span class="kw">let</span> <span class="va">y</span>: <span class="ty">f64</span> = <span class="nm">3.14</span>;          <span class="cm">// 타입 명시</span>
+    <span class="kw">let</span> <span class="va">z</span>: <span class="ty">i32</span>;                  <span class="cm">// 초기화 없음 — 사용 전에 반드시 할당</span>
+    <span class="va">z</span> = <span class="nm">10</span>;                      <span class="cm">// 이후 초기화 OK</span>
+
+    <span class="cm">// ─ irrefutable pattern 바인딩 ────────────────────</span>
+    <span class="cm">// let 은 반드시 irrefutable(항상 매칭) 패턴만 허용</span>
+    <span class="kw">let</span> (<span class="va">a</span>, <span class="va">b</span>) = (<span class="nm">1</span>, <span class="nm">2</span>);         <span class="cm">// 튜플 분해</span>
+    <span class="kw">let</span> [<span class="va">first</span>, <span class="va">second</span>] = [<span class="nm">10</span>, <span class="nm">20</span>]; <span class="cm">// 배열 분해</span>
+    <span class="kw">struct</span> <span class="ty">Point</span> { <span class="va">x</span>: <span class="ty">i32</span>, <span class="va">y</span>: <span class="ty">i32</span> }
+    <span class="kw">let</span> <span class="ty">Point</span> { <span class="va">x</span>: <span class="va">px</span>, <span class="va">y</span>: <span class="va">py</span> } = <span class="ty">Point</span> { <span class="va">x</span>: <span class="nm">3</span>, <span class="va">y</span>: <span class="nm">7</span> };
+    <span class="cm">// px = 3, py = 7</span>
+
+    <span class="cm">// ─ let mut ───────────────────────────────────────</span>
+    <span class="kw">let</span> <span class="kw">mut</span> <span class="va">count</span> = <span class="nm">0</span>;
+    <span class="va">count</span> += <span class="nm">1</span>;   <span class="cm">// count = 1</span>
+
+    <span class="cm">// ─ shadowing (재선언) ─────────────────────────────</span>
+    <span class="kw">let</span> <span class="va">val</span> = <span class="nm">5</span>;
+    <span class="kw">let</span> <span class="va">val</span> = <span class="va">val</span> * <span class="nm">2</span>;  <span class="cm">// 새 변수 val = 10 (이전 val 은 가려짐)</span>
+    <span class="kw">let</span> <span class="va">val</span> = <span class="st">"ten"</span>;    <span class="cm">// 타입도 바뀔 수 있음! mut 으로는 불가능</span>
+
+    <span class="cm">// ─ let 은 값을 반환하지 않는다 ───────────────────</span>
+    <span class="cm">// let w = (let v = 5);  // error[E0658]: let chains are unstable</span>
+    <span class="mc">println!</span>(<span class="st">"{} {} {} {}"</span>, <span class="va">a</span>, <span class="va">b</span>, <span class="va">first</span>, <span class="va">px</span>);
+}</pre></div></div>
+
+<div class="sub"><h3>② item declaration statement</h3><p>함수(<code>fn</code>), 구조체(<code>struct</code>), 열거형(<code>enum</code>), 타입 별칭(<code>type</code>), <code>use</code> 선언 등이 해당합니다.
+이것들은 블록 안에서도 선언 가능합니다. 값이 없으므로 statement 입니다.</p>
+<div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust — item declaration in block</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="cm">// 함수 안에서 fn, struct, enum 선언 가능</span>
+    <span class="kw">fn</span> <span class="fn_">double</span>(<span class="va">n</span>: <span class="ty">i32</span>) -&gt; <span class="ty">i32</span> { <span class="va">n</span> * <span class="nm">2</span> }
+
+    <span class="kw">struct</span> <span class="ty">Pair</span>(<span class="ty">i32</span>, <span class="ty">i32</span>);
+
+    <span class="kw">enum</span> <span class="ty">Dir</span> { <span class="ty">North</span>, <span class="ty">South</span>, <span class="ty">East</span>, <span class="ty">West</span> }
+
+    <span class="kw">let</span> <span class="va">r</span> = <span class="fn_">double</span>(<span class="nm">5</span>);          <span class="cm">// 10</span>
+    <span class="kw">let</span> <span class="va">p</span> = <span class="ty">Pair</span>(<span class="nm">1</span>, <span class="nm">2</span>);
+    <span class="kw">let</span> <span class="va">d</span> = <span class="ty">Dir</span>::<span class="ty">North</span>;
+
+    <span class="cm">// item declaration 은 값이 없다 — 다음은 에러</span>
+    <span class="cm">// let x = fn double(...) { ... };  // error</span>
+}</pre></div></div>
+
+<div class="sub"><h3>③ expression statement</h3><p>공식 문서: <strong>"An expression statement is one that evaluates an expression and ignores its value."</strong>
+Expression 뒤에 <code>;</code> 를 붙이면 expression statement 가 됩니다.
+값을 평가하지만 결과를 버립니다.</p>
+<div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust — expression statement 예제</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="cm">// 이것들은 모두 expression statement</span>
+    <span class="cm">// 값을 만들지만 ; 가 그 값을 버립니다</span>
+
+    <span class="nm">1</span> + <span class="nm">1</span>;                    <span class="cm">// i32 값 2 생성 후 버림</span>
+    <span class="st">"hello"</span>.<span class="fn_">to_uppercase</span>();  <span class="cm">// String 생성 후 즉시 drop</span>
+    <span class="ty">Vec</span>::&lt;<span class="ty">i32</span>&gt;::<span class="fn_">new</span>();       <span class="cm">// Vec 생성 후 즉시 drop</span>
+    <span class="mc">println!</span>(<span class="st">"hi"</span>);           <span class="cm">// () 반환 — 부작용(출력)만 남음</span>
+
+    <span class="cm">// match 도 expression — ; 붙이면 expression statement</span>
+    <span class="kw">let</span> <span class="va">i</span> = <span class="nm">1</span>;
+    <span class="kw">match</span> <span class="va">i</span> {
+        <span class="nm">1</span> =&gt; <span class="nm">100</span>,
+        _ =&gt; <span class="nm">200</span>,
+    };   <span class="cm">// i32 값 100 이 만들어졌다가 버려짐</span>
+
+    <span class="cm">// if expression 도 expression statement 가 될 수 있음</span>
+    <span class="kw">if</span> <span class="va">i</span> &gt; <span class="nm">0</span> { <span class="mc">println!</span>(<span class="st">"pos"</span>); };  <span class="cm">// () 를 만들고 버림</span>
+
+    <span class="cm">// 블록도 expression statement 가 될 수 있음</span>
+    { <span class="kw">let</span> <span class="va">tmp</span> = <span class="nm">42</span>; <span class="va">tmp</span> };  <span class="cm">// i32 값 42 를 만들고 버림</span>
+}</pre></div></div>
+
+<div class="callout warn"><div class="callout-title">unused value 경고</div><p>expression statement 로 값을 버릴 때 컴파일러가 <code>warning: unused value that must be used</code> 경고를 낼 수 있습니다. <code>Result</code>, <code>Option</code> 등 <code>#[must_use]</code> 가 붙은 타입은 반드시 처리해야 합니다. 명시적으로 버리려면 <code>let _ = expr;</code> 또는 <code>drop(expr);</code> 을 사용하세요.</p></div>
+
+</section><section class="section" id="s4">
+<div class="sec-header"><div class="sec-num">4</div><h2>세미콜론(;)의 두 가지 역할</h2></div>
+
+<p>세미콜론은 위치에 따라 <strong>완전히 다른 역할</strong>을 합니다. 이것을 혼동하는 것이 Rust 입문에서 가장 흔한 실수입니다.</p>
+
+<div class="figure"><svg width="100%" height="460" viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg" style="background:transparent;font-family:sans-serif;">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="400" y="28" text-anchor="middle" font-size="16" font-weight="700" fill="#2c2c2a">세미콜론(;)의 두 가지 역할</text>
+
+  <!-- Role A -->
+  <text x="190" y="58" text-anchor="middle" font-size="13" font-weight="700" fill="#2c2c2a">역할 A — expression statement</text>
+  <rect x="40" y="68" width="300" height="44" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1"/>
+  <text x="190" y="94" text-anchor="middle" font-size="12" font-weight="600" fill="#04342c">match i { 1 =&gt; 10, _ =&gt; 100 }</text>
+  <text x="190" y="108" text-anchor="middle" font-size="10" fill="#0f6e56">expression — i32 타입, 값 있음</text>
+
+  <text x="190" y="132" text-anchor="middle" font-size="12" font-weight="700" fill="#ba7517">; 추가</text>
+  <line x1="190" y1="118" x2="190" y2="142" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <rect x="40" y="142" width="300" height="44" rx="8" fill="#faeeda" stroke="#ba7517" stroke-width="1"/>
+  <text x="190" y="161" text-anchor="middle" font-size="12" font-weight="600" fill="#412402">match i { 1 =&gt; 10, _ =&gt; 100 };</text>
+  <text x="190" y="177" text-anchor="middle" font-size="10" fill="#633806">expression statement — 값이 버려짐</text>
+
+  <text x="190" y="206" text-anchor="middle" font-size="11" fill="#444441">이 줄 전체 타입 = ()</text>
+
+  <rect x="40" y="220" width="300" height="52" rx="6" fill="none" stroke="#d3d1c7" stroke-width="1" stroke-dasharray="4 3"/>
+  <text x="190" y="240" text-anchor="middle" font-size="11" fill="#5f5e5a">; 의 역할:</text>
+  <text x="190" y="258" text-anchor="middle" font-size="11" fill="#5f5e5a">expression 의 값을 버리고 () 로 만듦</text>
+
+  <!-- Role B -->
+  <text x="610" y="58" text-anchor="middle" font-size="13" font-weight="700" fill="#2c2c2a">역할 B — let statement 종결자</text>
+  <rect x="460" y="68" width="300" height="44" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1"/>
+  <text x="610" y="94" text-anchor="middle" font-size="12" font-weight="600" fill="#04342c">match i { 1 =&gt; 10, _ =&gt; 100 }</text>
+  <text x="610" y="108" text-anchor="middle" font-size="10" fill="#0f6e56">expression — i32 타입, 값 있음</text>
+
+  <text x="610" y="132" text-anchor="middle" font-size="12" font-weight="700" fill="#534ab7">let result = ... ; 에 넣기</text>
+  <line x1="610" y1="118" x2="610" y2="142" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <rect x="460" y="142" width="300" height="44" rx="8" fill="#eeedfe" stroke="#534ab7" stroke-width="1"/>
+  <text x="610" y="161" text-anchor="middle" font-size="12" font-weight="600" fill="#26215c">let result = match i { ... };</text>
+  <text x="610" y="177" text-anchor="middle" font-size="10" fill="#3c3489">let statement — result 에 값 바인딩</text>
+
+  <text x="610" y="206" text-anchor="middle" font-size="11" fill="#444441">match 는 여전히 expression!</text>
+
+  <rect x="460" y="220" width="300" height="52" rx="6" fill="none" stroke="#d3d1c7" stroke-width="1" stroke-dasharray="4 3"/>
+  <text x="610" y="240" text-anchor="middle" font-size="11" fill="#5f5e5a">; 의 역할:</text>
+  <text x="610" y="258" text-anchor="middle" font-size="11" fill="#5f5e5a">let 선언 문법의 종결자. 값을 버리지 않음!</text>
+
+  <!-- Divider -->
+  <line x1="400" y1="40" x2="400" y2="290" stroke="#d3d1c7" stroke-width="1" stroke-dasharray="6 4"/>
+
+  <!-- Key difference -->
+  <rect x="40" y="298" width="720" height="110" rx="10" fill="#f1efe8" stroke="#888780" stroke-width="1"/>
+  <text x="400" y="322" text-anchor="middle" font-size="14" font-weight="700" fill="#2c2c2a">결정적 차이</text>
+  <text x="400" y="348" text-anchor="middle" font-size="12" fill="#444441">역할 A: ; 가 expression 을 statement 로 전환 — 값을 소멸시킴</text>
+  <text x="400" y="370" text-anchor="middle" font-size="12" fill="#444441">역할 B: ; 는 let 문법의 일부 — expression 은 그대로 expression</text>
+  <text x="400" y="394" text-anchor="middle" font-size="12" font-style="italic" fill="#534ab7">match 자체의 성질은 두 경우 모두 변하지 않습니다</text>
+
+  <text x="400" y="438" text-anchor="middle" font-size="10" fill="#888780">Rust Reference § Statements and expressions</text>
+</svg>
+<div class="fig-cap">그림 3 — 세미콜론의 두 가지 역할</div></div>
+
+<div class="sub"><h3>역할 A — expression statement 종결자 (값을 버림)</h3><p>공식 문서 (Reference § Expression statements): expression 뒤의 <code>;</code> 는 그 expression 의 값을 버리고 <code>()</code> 타입으로 만듭니다.</p>
+<div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust — 역할 A 상세</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="cm">// expr;  →  expression statement  →  () 타입</span>
+
+    <span class="nm">42</span>;               <span class="cm">// i32 값 42 를 만들었다가 버림 → ()</span>
+    <span class="st">"hello"</span>;          <span class="cm">// &amp;str 값을 만들었다가 버림 → ()</span>
+
+    <span class="kw">let</span> <span class="va">i</span> = <span class="nm">3</span>;
+    <span class="kw">match</span> <span class="va">i</span> { <span class="nm">1</span> =&gt; <span class="nm">10</span>, _ =&gt; <span class="nm">99</span> };
+    <span class="cm">//                               ↑ i32 값 99 가 버려짐 → ()</span>
+
+    <span class="kw">if</span> <span class="va">i</span> &gt; <span class="nm">0</span> { <span class="st">"pos"</span> } <span class="kw">else</span> { <span class="st">"neg"</span> };
+    <span class="cm">//                                        ↑ &amp;str 값 "pos" 가 버려짐 → ()</span>
+}</pre></div></div>
+
+<div class="sub"><h3>역할 B — let statement 의 문법적 종결자 (값을 버리지 않음)</h3><p><code>let x = expr;</code> 에서의 <code>;</code> 는 let 선언 문법의 필수 요소입니다.
+expression 의 값을 버리는 것이 아니라 let 선언 전체를 끝내는 구두점입니다.
+expression 의 값은 <code>x</code> 에 바인딩됩니다.</p>
+<div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust — 역할 B 상세</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="cm">// let x = expr;  →  let statement  →  값은 x 에 바인딩</span>
+    <span class="cm">//                ↑ 이 ; 는 let 문법 종결자 — 값을 버리지 않음!</span>
+
+    <span class="kw">let</span> <span class="va">i</span> = <span class="nm">3</span>;
+    <span class="kw">let</span> <span class="va">result</span> = <span class="kw">match</span> <span class="va">i</span> { <span class="nm">1</span> =&gt; <span class="nm">10</span>, _ =&gt; <span class="nm">99</span> };
+    <span class="cm">//            ↑ match 는 여전히 i32 expression</span>
+    <span class="cm">//                                              ↑ let 종결자</span>
+    <span class="cm">// result: i32 = 99</span>
+
+    <span class="kw">let</span> <span class="va">flag</span> = <span class="kw">if</span> <span class="va">i</span> &gt; <span class="nm">0</span> { <span class="kw">true</span> } <span class="kw">else</span> { <span class="kw">false</span> };
+    <span class="cm">// flag: bool = true</span>
+
+    <span class="kw">let</span> <span class="va">computed</span> = {
+        <span class="kw">let</span> <span class="va">a</span> = <span class="va">i</span> * <span class="nm">10</span>;
+        <span class="va">a</span> + <span class="nm">5</span>           <span class="cm">// tail expression → 블록의 값 35</span>
+    };                  <span class="cm">// let 종결자</span>
+    <span class="cm">// computed: i32 = 35</span>
+
+    <span class="mc">println!</span>(<span class="st">"{} {} {}"</span>, <span class="va">result</span>, <span class="va">flag</span>, <span class="va">computed</span>);
+}</pre></div></div>
+
+<div class="sub"><h3>for / while 루프에서 match 사용 — 자주 하는 실수</h3><div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust — for body 는 반드시 () 타입</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="cm">// for body 는 () 타입만 허용</span>
+
+    <span class="cm">// ✗ 에러: match 가 i32 를 반환하는데 사용하지 않음</span>
+    <span class="cm">// for i in 1..5 {</span>
+    <span class="cm">//     match i { 1 =&gt; 10, _ =&gt; 20 }  ← i32 반환</span>
+    <span class="cm">// }  error[E0308]: mismatched types, expected `()`, found `i32`</span>
+
+    <span class="cm">// ✓ 해결 1: ; 로 값을 버림</span>
+    <span class="kw">for</span> <span class="va">i</span> <span class="kw">in</span> <span class="nm">1</span>..<span class="nm">5</span> {
+        <span class="kw">match</span> <span class="va">i</span> { <span class="nm">1</span> =&gt; <span class="nm">10</span>, _ =&gt; <span class="nm">20</span> };   <span class="cm">// ; 로 i32 버림 → ()</span>
+    }
+
+    <span class="cm">// ✓ 해결 2: arm 이 () 를 반환하도록</span>
+    <span class="kw">for</span> <span class="va">i</span> <span class="kw">in</span> <span class="nm">1</span>..<span class="nm">5</span> {
+        <span class="kw">match</span> <span class="va">i</span> {
+            <span class="nm">1</span> =&gt; <span class="mc">println!</span>(<span class="st">"one"</span>),   <span class="cm">// println! → ()</span>
+            _ =&gt; <span class="mc">println!</span>(<span class="st">"other"</span>),
+        }   <span class="cm">// match 전체 → () → for body OK</span>
+    }
+
+    <span class="cm">// ✓ 해결 3: 값을 실제로 사용</span>
+    <span class="kw">for</span> <span class="va">i</span> <span class="kw">in</span> <span class="nm">1</span>..<span class="nm">5</span> {
+        <span class="kw">let</span> <span class="va">v</span> = <span class="kw">match</span> <span class="va">i</span> { <span class="nm">1</span> =&gt; <span class="nm">10</span>, _ =&gt; <span class="nm">20</span> };
+        <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="va">v</span>);
+    }
+}</pre></div></div>
+
+<div class="figure"><svg width="100%" height="420" viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="background:transparent;font-family:sans-serif;">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <text x="400" y="28" text-anchor="middle" font-size="16" font-weight="700" fill="#2c2c2a">let statement 메커니즘</text>
+
+  <!-- Source code -->
+  <rect x="40" y="44" width="720" height="50" rx="8" fill="#f1efe8" stroke="#888780" stroke-width="1"/>
+  <text x="400" y="64" text-anchor="middle" font-size="14" font-weight="600" fill="#2c2c2a">let result = match i { 1 =&gt; 10, _ =&gt; 100 };</text>
+  <text x="400" y="84" text-anchor="middle" font-size="11" fill="#5f5e5a">i = 1 이라고 가정</text>
+
+  <!-- Span: let statement -->
+  <line x1="50" y1="100" x2="50" y2="120" stroke="#888" stroke-width="0.8"/>
+  <line x1="750" y1="100" x2="750" y2="120" stroke="#888" stroke-width="0.8"/>
+  <line x1="50" y1="110" x2="750" y2="110" stroke="#888" stroke-width="0.8"/>
+  <text x="400" y="132" text-anchor="middle" font-size="11" fill="#5f5e5a">전체: let statement → () 타입, 값 없음</text>
+
+  <!-- Span: expression -->
+  <line x1="230" y1="94" x2="230" y2="152" stroke="#0f6e56" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <line x1="740" y1="94" x2="740" y2="152" stroke="#0f6e56" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <line x1="230" y1="142" x2="740" y2="142" stroke="#0f6e56" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <text x="485" y="162" text-anchor="middle" font-size="11" fill="#0f6e56">expression 부분 → i32 타입, 값 10</text>
+
+  <!-- Three parts -->
+  <rect x="40" y="178" width="160" height="56" rx="8" fill="#eeedfe" stroke="#534ab7" stroke-width="1"/>
+  <text x="120" y="200" text-anchor="middle" font-size="13" font-weight="700" fill="#26215c">let result</text>
+  <text x="120" y="222" text-anchor="middle" font-size="11" fill="#3c3489">바인딩 선언</text>
+
+  <text x="218" y="210" text-anchor="middle" font-size="18" font-weight="700" fill="#444441">=</text>
+
+  <rect x="236" y="178" width="460" height="56" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1"/>
+  <text x="466" y="200" text-anchor="middle" font-size="13" font-weight="700" fill="#04342c">match i { 1 =&gt; 10, _ =&gt; 100 }</text>
+  <text x="466" y="222" text-anchor="middle" font-size="11" fill="#0f6e56">expression — i32 값으로 평가됨</text>
+
+  <text x="726" y="210" text-anchor="middle" font-size="18" font-weight="700" fill="#444441">;</text>
+
+  <!-- Arrows down -->
+  <line x1="120" y1="234" x2="120" y2="270" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="466" y1="234" x2="466" y2="270" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <!-- Result boxes -->
+  <rect x="40" y="270" width="160" height="56" rx="8" fill="#eeedfe" stroke="#534ab7" stroke-width="1"/>
+  <text x="120" y="292" text-anchor="middle" font-size="12" font-weight="700" fill="#26215c">스택 슬롯 확보</text>
+  <text x="120" y="312" text-anchor="middle" font-size="11" fill="#3c3489">i32 크기 (4 bytes)</text>
+
+  <rect x="236" y="270" width="460" height="56" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1"/>
+  <text x="466" y="292" text-anchor="middle" font-size="13" font-weight="700" fill="#04342c">i == 1 → 값 10 생성 (i32)</text>
+  <text x="466" y="312" text-anchor="middle" font-size="11" fill="#0f6e56">매칭된 arm이 평가되어 구체적 값이 됨</text>
+
+  <!-- Final binding arrow -->
+  <line x1="466" y1="326" x2="466" y2="354" stroke="#888" stroke-width="1"/>
+  <line x1="466" y1="354" x2="200" y2="354" stroke="#888" stroke-width="1"/>
+  <line x1="200" y1="354" x2="200" y2="370" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <rect x="40" y="370" width="340" height="34" rx="6" fill="#faeeda" stroke="#ba7517" stroke-width="1"/>
+  <text x="210" y="391" text-anchor="middle" font-size="12" font-weight="600" fill="#412402">result 슬롯에 값 10 복사(Copy) 완료</text>
+
+  <rect x="420" y="370" width="320" height="34" rx="6" fill="#f1efe8" stroke="#888780" stroke-width="1"/>
+  <text x="580" y="391" text-anchor="middle" font-size="11" fill="#444441">let 문 자체는 () — 아무 값도 남기지 않음</text>
+</svg>
+<div class="fig-cap">그림 4 — let statement 단계별 메커니즘</div></div>
+
+</section><section class="section" id="s5">
+<div class="sec-header"><div class="sec-num">5</div><h2>Block expression — tail expression 과 블록의 값</h2></div>
+
+<p>공식 문서 (Reference § Block expressions): <strong>"The value of a block expression is the value of the final operand, or <code>()</code> if the final operand is a statement."</strong></p>
+
+<p>블록의 맨 마지막 expression 을 공식 문서는 <strong>tail expression (꼬리 표현식)</strong> 이라 부릅니다.
+이 tail expression 의 값이 블록 전체의 값이 됩니다.</p>
+
+<div class="figure"><svg width="100%" height="500" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg" style="background:transparent;font-family:sans-serif;">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <text x="400" y="28" text-anchor="middle" font-size="16" font-weight="700" fill="#2c2c2a">Block Expression 값 결정 규칙</text>
+
+  <!-- Case 1 -->
+  <rect x="30" y="46" width="230" height="140" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1"/>
+  <text x="145" y="68" text-anchor="middle" font-size="13" font-weight="700" fill="#085041">블록 A</text>
+  <rect x="46" y="80" width="198" height="28" rx="4" fill="#f1efe8" stroke="#888780" stroke-width="0.5"/>
+  <text x="145" y="98" text-anchor="middle" font-size="11" fill="#444441">let x = 3;  → stmt</text>
+  <rect x="46" y="114" width="198" height="28" rx="4" fill="#f1efe8" stroke="#888780" stroke-width="0.5"/>
+  <text x="145" y="132" text-anchor="middle" font-size="11" fill="#444441">let y = 4;  → stmt</text>
+  <rect x="46" y="148" width="198" height="28" rx="4" fill="#9fe1cb" stroke="#0f6e56" stroke-width="0.5"/>
+  <text x="145" y="166" text-anchor="middle" font-size="11" fill="#04342c">x + y  →  expr (마지막, ; 없음)</text>
+
+  <line x1="145" y1="186" x2="145" y2="210" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="70" y="210" width="150" height="32" rx="6" fill="#eaf3de" stroke="#3b6d11" stroke-width="1"/>
+  <text x="145" y="230" text-anchor="middle" font-size="12" font-weight="700" fill="#173404">블록 값 = 7 (i32)</text>
+
+  <!-- Case 2 -->
+  <rect x="285" y="46" width="230" height="140" rx="8" fill="#faece7" stroke="#993c1d" stroke-width="1"/>
+  <text x="400" y="68" text-anchor="middle" font-size="13" font-weight="700" fill="#4a1b0c">블록 B</text>
+  <rect x="301" y="80" width="198" height="28" rx="4" fill="#f1efe8" stroke="#888780" stroke-width="0.5"/>
+  <text x="400" y="98" text-anchor="middle" font-size="11" fill="#444441">let x = 3;  → stmt</text>
+  <rect x="301" y="114" width="198" height="28" rx="4" fill="#f1efe8" stroke="#888780" stroke-width="0.5"/>
+  <text x="400" y="132" text-anchor="middle" font-size="11" fill="#444441">let y = 4;  → stmt</text>
+  <rect x="301" y="148" width="198" height="28" rx="4" fill="#f5c4b3" stroke="#993c1d" stroke-width="0.5"/>
+  <text x="400" y="166" text-anchor="middle" font-size="11" fill="#4a1b0c">x + y;  →  expr stmt (; 있음, 버려짐)</text>
+
+  <line x1="400" y1="186" x2="400" y2="210" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="320" y="210" width="160" height="32" rx="6" fill="#faece7" stroke="#993c1d" stroke-width="1"/>
+  <text x="400" y="230" text-anchor="middle" font-size="12" font-weight="700" fill="#4a1b0c">블록 값 = () (unit)</text>
+
+  <!-- Case 3 -->
+  <rect x="540" y="46" width="230" height="140" rx="8" fill="#eeedfe" stroke="#534ab7" stroke-width="1"/>
+  <text x="655" y="68" text-anchor="middle" font-size="13" font-weight="700" fill="#26215c">블록 C</text>
+  <rect x="556" y="80" width="198" height="28" rx="4" fill="#f1efe8" stroke="#888780" stroke-width="0.5"/>
+  <text x="655" y="98" text-anchor="middle" font-size="11" fill="#444441">println!("hi");  → stmt</text>
+  <rect x="556" y="114" width="198" height="44" rx="4" fill="#cecbf6" stroke="#534ab7" stroke-width="0.5"/>
+  <text x="655" y="132" text-anchor="middle" font-size="11" fill="#26215c">42  →  expr (마지막)</text>
+  <text x="655" y="150" text-anchor="middle" font-size="10" fill="#3c3489">(부작용은 있어도 값은 42)</text>
+
+  <line x1="655" y1="186" x2="655" y2="210" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="580" y="210" width="150" height="32" rx="6" fill="#eaf3de" stroke="#3b6d11" stroke-width="1"/>
+  <text x="655" y="230" text-anchor="middle" font-size="12" font-weight="700" fill="#173404">블록 값 = 42 (i32)</text>
+
+  <!-- Rule box -->
+  <rect x="30" y="270" width="740" height="86" rx="10" fill="none" stroke="#d3d1c7" stroke-width="1" stroke-dasharray="5 3"/>
+  <text x="400" y="294" text-anchor="middle" font-size="13" font-weight="700" fill="#2c2c2a">공식 문서 규칙 (Reference § Block expressions)</text>
+  <text x="400" y="318" text-anchor="middle" font-size="12" fill="#444441">블록의 마지막이 expression (;없음)  →  그 expression 의 타입과 값이 블록의 것</text>
+  <text x="400" y="340" text-anchor="middle" font-size="12" fill="#444441">블록의 마지막이 statement (;있음) 또는 빈 블록  →  블록의 타입은 (), 값은 ()</text>
+
+  <!-- Function return note -->
+  <rect x="30" y="378" width="740" height="100" rx="10" fill="none" stroke="#d3d1c7" stroke-width="1" stroke-dasharray="5 3"/>
+  <text x="400" y="402" text-anchor="middle" font-size="13" font-weight="700" fill="#2c2c2a">함수도 블록 규칙이 그대로 적용됩니다</text>
+  <text x="400" y="426" text-anchor="middle" font-size="11" fill="#444441">fn add(a: i32, b: i32) -&gt; i32 { a + b }   ← a+b 가 반환값, return 불필요</text>
+  <text x="400" y="448" text-anchor="middle" font-size="11" fill="#444441">fn greet() { println!("hi"); }            ← 마지막이 stmt, 반환 타입 () 생략</text>
+  <text x="400" y="468" text-anchor="middle" font-size="11" fill="#444441">fn early(x: i32) -&gt; i32 { if x &lt; 0 { return 0; } x * 2 }</text>
+</svg>
+<div class="fig-cap">그림 5 — Block expression 값 결정 규칙</div></div>
+
+<div class="sub"><h3>블록 값 결정 규칙 — 4가지 경우</h3><div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust — 블록 값 결정 완전 예제</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="cm">// ─ 케이스 1: tail expression 있음 → 그 값이 블록의 값 ─</span>
+    <span class="kw">let</span> <span class="va">a</span> = {
+        <span class="kw">let</span> <span class="va">x</span> = <span class="nm">3</span>;    <span class="cm">// statement</span>
+        <span class="kw">let</span> <span class="va">y</span> = <span class="nm">4</span>;    <span class="cm">// statement</span>
+        <span class="va">x</span> + <span class="va">y</span>          <span class="cm">// tail expression (세미콜론 없음!) → 값 7</span>
+    };               <span class="cm">// a: i32 = 7</span>
+
+    <span class="cm">// ─ 케이스 2: 마지막에 ; 있음 → 블록 값 = () ──────────</span>
+    <span class="kw">let</span> <span class="va">b</span> = {
+        <span class="kw">let</span> <span class="va">x</span> = <span class="nm">3</span>;
+        <span class="kw">let</span> <span class="va">y</span> = <span class="nm">4</span>;
+        <span class="va">x</span> + <span class="va">y</span>;         <span class="cm">// expression statement — 값 버려짐</span>
+                        <span class="cm">// 블록 마지막이 statement → 블록 값 = ()</span>
+    };               <span class="cm">// b: () = ()</span>
+
+    <span class="cm">// ─ 케이스 3: 빈 블록 → () ────────────────────────────</span>
+    <span class="kw">let</span> <span class="va">c</span> = {};      <span class="cm">// c: () = ()</span>
+
+    <span class="cm">// ─ 케이스 4: 부작용 + tail expression ────────────────</span>
+    <span class="kw">let</span> <span class="va">d</span> = {
+        <span class="mc">println!</span>(<span class="st">"부작용 발생"</span>); <span class="cm">// expression statement (부작용)</span>
+        <span class="nm">42</span>                       <span class="cm">// tail expression → 값 42</span>
+    };               <span class="cm">// d: i32 = 42</span>
+
+    <span class="cm">// ─ 케이스 5: 중첩 블록 ───────────────────────────────</span>
+    <span class="kw">let</span> <span class="va">e</span> = {
+        <span class="kw">let</span> <span class="va">inner</span> = {
+            <span class="kw">let</span> <span class="va">t</span> = <span class="nm">10</span>;
+            <span class="va">t</span> * <span class="nm">3</span>     <span class="cm">// inner 블록의 tail expression → 30</span>
+        };
+        <span class="va">inner</span> + <span class="nm">5</span>   <span class="cm">// 바깥 블록의 tail expression → 35</span>
+    };               <span class="cm">// e: i32 = 35</span>
+
+    <span class="mc">println!</span>(<span class="st">"a={} b={:?} c={:?} d={} e={}"</span>,
+             <span class="va">a</span>, <span class="va">b</span>, <span class="va">c</span>, <span class="va">d</span>, <span class="va">e</span>);
+    <span class="cm">// a=7 b=() c=() d=42 e=35</span>
+}</pre></div></div>
+
+<div class="sub"><h3>함수 반환값 — 블록 규칙의 직접 적용</h3><div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust — 세미콜론 하나가 반환값을 결정</span>
+</div><pre><span class="cm">// ✓ 올바른 함수 — tail expression 이 반환값</span>
+<span class="kw">fn</span> <span class="fn_">add</span>(<span class="va">a</span>: <span class="ty">i32</span>, <span class="va">b</span>: <span class="ty">i32</span>) -&gt; <span class="ty">i32</span> {
+    <span class="va">a</span> + <span class="va">b</span>   <span class="cm">// 세미콜론 없음 → tail expression → 반환값</span>
+}
+
+<span class="cm">// ✗ 세미콜론 하나가 에러를 만듦</span>
+<span class="kw">fn</span> <span class="fn_">broken</span>() -&gt; <span class="ty">i32</span> {
+    <span class="nm">5</span> + <span class="nm">1</span>;  <span class="cm">// expression statement → 블록 값 = ()</span>
+            <span class="cm">// error[E0308]: expected `i32`, found `()`</span>
+}
+
+<span class="cm">// ✓ return 키워드로 조기 반환</span>
+<span class="kw">fn</span> <span class="fn_">safe_div</span>(<span class="va">a</span>: <span class="ty">i32</span>, <span class="va">b</span>: <span class="ty">i32</span>) -&gt; <span class="ty">Option</span>&lt;<span class="ty">i32</span>&gt; {
+    <span class="kw">if</span> <span class="va">b</span> == <span class="nm">0</span> {
+        <span class="kw2">return</span> <span class="ty">None</span>;   <span class="cm">// 조기 반환</span>
+    }
+    <span class="ty">Some</span>(<span class="va">a</span> / <span class="va">b</span>)       <span class="cm">// tail expression → 반환값</span>
+}
+
+<span class="cm">// ✓ 복잡한 계산도 블록으로 정리</span>
+<span class="kw">fn</span> <span class="fn_">classify</span>(<span class="va">n</span>: <span class="ty">i32</span>) -&gt; <span class="ty">&amp;'static str</span> {
+    <span class="kw">if</span> <span class="va">n</span> &lt; <span class="nm">0</span>      { <span class="st">"음수"</span> }
+    <span class="kw">else</span> <span class="kw">if</span> <span class="va">n</span> == <span class="nm">0</span> { <span class="st">"영"</span>   }
+    <span class="kw">else</span>           { <span class="st">"양수"</span> }
+    <span class="cm">// if expression 이 tail expression — return 불필요</span>
+}
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="fn_">add</span>(<span class="nm">3</span>, <span class="nm">4</span>));          <span class="cm">// 7</span>
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="fn_">safe_div</span>(<span class="nm">10</span>, <span class="nm">2</span>).<span class="fn_">unwrap</span>()); <span class="cm">// 5</span>
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="fn_">classify</span>(-<span class="nm">3</span>));        <span class="cm">// 음수</span>
+}</pre></div></div>
+
+</section><section class="section" id="s6">
+<div class="sec-header"><div class="sec-num">6</div><h2>match expression — 공식 문서 기준 완전 해부</h2></div>
+
+<p>공식 문서 (Reference § Match expressions): <strong>"A match expression branches on a pattern."</strong>
+match 는 scrutinee expression 을 각 arm 의 pattern 과 비교하고, 매칭된 arm 의 expression 값이 match 전체의 값이 됩니다.</p>
+
+<div class="sub"><h3>match 의 구조 — 공식 문서 용어</h3><p>공식 문서 기준 match 의 구성요소입니다.</p>
+<div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust — match 구조 해부</span>
+</div><pre><span class="cm">// match &lt;scrutinee&gt; { arms }</span>
+<span class="cm">//        ↑ scrutinee: 비교할 값을 생산하는 expression</span>
+<span class="cm">//                      반드시 Sized 타입이어야 함</span>
+<span class="cm">//                    { arms }: 하나 이상의 arm</span>
+<span class="cm">// arm: pattern [if guard] =&gt; expression</span>
+<span class="cm">//      ↑ pattern    ↑ match guard    ↑ arm body (expression)</span>
+
+<span class="kw">let</span> <span class="va">score</span> = <span class="nm">85</span>;
+
+<span class="kw">let</span> <span class="va">grade</span> = <span class="kw">match</span> <span class="va">score</span> {   <span class="cm">// scrutinee: score (i32 expression)</span>
+    <span class="nm">90</span>..=<span class="nm">100</span> =&gt; <span class="st">"A"</span>,          <span class="cm">// arm 1: 범위 패턴</span>
+    <span class="nm">80</span>..=<span class="nm">89</span>  =&gt; <span class="st">"B"</span>,          <span class="cm">// arm 2</span>
+    <span class="nm">70</span>..=<span class="nm">79</span>  =&gt; <span class="st">"C"</span>,          <span class="cm">// arm 3</span>
+    <span class="va">n</span> <span class="kw">if</span> <span class="va">n</span> &gt;= <span class="nm">60</span> =&gt; <span class="st">"D"</span>,     <span class="cm">// arm 4: 변수 바인딩 + guard</span>
+    _ =&gt; <span class="st">"F"</span>,                 <span class="cm">// arm 5: wildcard (catch-all)</span>
+};
+<span class="cm">// grade: &amp;str = "B"</span></pre></div></div>
+
+<div class="sub"><h3>match 타입 통일 규칙</h3><p>공식 문서: 모든 arm 의 body expression 타입이 동일해야 합니다. 컴파일러가 첫 번째 arm 의 타입을 기준으로 나머지를 검사합니다.</p>
+<div class="figure"><svg width="100%" height="460" viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg" style="background:transparent;font-family:sans-serif;">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <text x="400" y="28" text-anchor="middle" font-size="16" font-weight="700" fill="#2c2c2a">match 타입 통일 규칙</text>
+  <text x="400" y="46" text-anchor="middle" font-size="11" fill="#5f5e5a">모든 arm 의 타입이 같아야 합니다 (Reference § Match expressions)</text>
+
+  <!-- Case 1: OK i32 -->
+  <text x="190" y="72" text-anchor="middle" font-size="13" font-weight="700" fill="#173404">OK — 모든 arm 이 i32</text>
+  <rect x="30" y="82" width="320" height="44" rx="8" fill="#f1efe8" stroke="#888780" stroke-width="1"/>
+  <text x="190" y="108" text-anchor="middle" font-size="12" font-weight="600" fill="#2c2c2a">match i { 1 =&gt; 10, _ =&gt; 100 }</text>
+
+  <rect x="30" y="142" width="148" height="44" rx="6" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1"/>
+  <text x="104" y="159" text-anchor="middle" font-size="12" font-weight="700" fill="#04342c">1 =&gt; 10</text>
+  <text x="104" y="177" text-anchor="middle" font-size="11" fill="#0f6e56">타입: i32</text>
+
+  <rect x="202" y="142" width="148" height="44" rx="6" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1"/>
+  <text x="276" y="159" text-anchor="middle" font-size="12" font-weight="700" fill="#04342c">_ =&gt; 100</text>
+  <text x="276" y="177" text-anchor="middle" font-size="11" fill="#0f6e56">타입: i32</text>
+
+  <line x1="104" y1="186" x2="104" y2="208" stroke="#888" stroke-width="1"/>
+  <line x1="276" y1="186" x2="276" y2="208" stroke="#888" stroke-width="1"/>
+  <line x1="104" y1="208" x2="276" y2="208" stroke="#888" stroke-width="1"/>
+  <line x1="190" y1="208" x2="190" y2="228" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="100" y="228" width="180" height="32" rx="6" fill="#eaf3de" stroke="#3b6d11" stroke-width="1"/>
+  <text x="190" y="248" text-anchor="middle" font-size="12" font-weight="700" fill="#173404">match 타입: i32</text>
+
+  <!-- Case 2: OK () -->
+  <text x="610" y="72" text-anchor="middle" font-size="13" font-weight="700" fill="#173404">OK — 모든 arm 이 ()</text>
+  <rect x="450" y="82" width="320" height="44" rx="8" fill="#f1efe8" stroke="#888780" stroke-width="1"/>
+  <text x="610" y="100" text-anchor="middle" font-size="12" font-weight="600" fill="#2c2c2a">match i {</text>
+  <text x="610" y="118" text-anchor="middle" font-size="12" font-weight="600" fill="#2c2c2a">1 =&gt; println!(..), _ =&gt; println!(..) }</text>
+
+  <rect x="450" y="142" width="148" height="44" rx="6" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1"/>
+  <text x="524" y="159" text-anchor="middle" font-size="11" font-weight="700" fill="#04342c">1 =&gt; println!()</text>
+  <text x="524" y="177" text-anchor="middle" font-size="11" fill="#0f6e56">타입: ()</text>
+
+  <rect x="622" y="142" width="148" height="44" rx="6" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1"/>
+  <text x="696" y="159" text-anchor="middle" font-size="11" font-weight="700" fill="#04342c">_ =&gt; println!()</text>
+  <text x="696" y="177" text-anchor="middle" font-size="11" fill="#0f6e56">타입: ()</text>
+
+  <line x1="524" y1="186" x2="524" y2="208" stroke="#888" stroke-width="1"/>
+  <line x1="696" y1="186" x2="696" y2="208" stroke="#888" stroke-width="1"/>
+  <line x1="524" y1="208" x2="696" y2="208" stroke="#888" stroke-width="1"/>
+  <line x1="610" y1="208" x2="610" y2="228" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="520" y="228" width="180" height="32" rx="6" fill="#eaf3de" stroke="#3b6d11" stroke-width="1"/>
+  <text x="610" y="248" text-anchor="middle" font-size="12" font-weight="700" fill="#173404">match 타입: ()</text>
+
+  <!-- Divider -->
+  <line x1="400" y1="68" x2="400" y2="278" stroke="#d3d1c7" stroke-width="1" stroke-dasharray="6 4"/>
+
+  <!-- Case 3: Error -->
+  <text x="400" y="296" text-anchor="middle" font-size="13" font-weight="700" fill="#a32d2d">에러 — arm 타입이 다름</text>
+  <rect x="100" y="310" width="600" height="44" rx="8" fill="#f1efe8" stroke="#888780" stroke-width="1"/>
+  <text x="400" y="336" text-anchor="middle" font-size="12" font-weight="600" fill="#2c2c2a">match i { 1 =&gt; 10, _ =&gt; println!("x") }</text>
+
+  <rect x="100" y="370" width="210" height="44" rx="6" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1"/>
+  <text x="205" y="387" text-anchor="middle" font-size="12" font-weight="700" fill="#04342c">1 =&gt; 10</text>
+  <text x="205" y="405" text-anchor="middle" font-size="11" fill="#0f6e56">타입: i32</text>
+
+  <rect x="490" y="370" width="210" height="44" rx="6" fill="#faece7" stroke="#993c1d" stroke-width="1"/>
+  <text x="595" y="387" text-anchor="middle" font-size="11" font-weight="700" fill="#4a1b0c">_ =&gt; println!("x")</text>
+  <text x="595" y="405" text-anchor="middle" font-size="11" fill="#993c1d">타입: () ← i32 와 다름!</text>
+
+  <line x1="205" y1="414" x2="205" y2="432" stroke="#888" stroke-width="1"/>
+  <line x1="595" y1="414" x2="595" y2="432" stroke="#888" stroke-width="1"/>
+  <line x1="205" y1="432" x2="595" y2="432" stroke="#888" stroke-width="1"/>
+  <line x1="400" y1="432" x2="400" y2="442" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="220" y="442" width="360" height="14" rx="4" fill="#fcebeb" stroke="#a32d2d" stroke-width="1"/>
+  <text x="400" y="453" text-anchor="middle" font-size="11" font-weight="600" fill="#501313">error[E0308]: match arms have incompatible types</text>
+</svg>
+<div class="fig-cap">그림 6 — match 타입 통일 규칙</div></div>
+<div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust — 타입 통일 예제</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="va">i</span> = <span class="nm">2</span>;
+
+    <span class="cm">// ✓ 모든 arm 이 &amp;str</span>
+    <span class="kw">let</span> <span class="va">s</span> = <span class="kw">match</span> <span class="va">i</span> {
+        <span class="nm">1</span> =&gt; <span class="st">"one"</span>,
+        <span class="nm">2</span> =&gt; <span class="st">"two"</span>,
+        _ =&gt; <span class="st">"other"</span>,
+    };  <span class="cm">// match 타입: &amp;str</span>
+
+    <span class="cm">// ✓ 모든 arm 이 () — println! 은 () 반환</span>
+    <span class="kw">match</span> <span class="va">i</span> {
+        <span class="nm">1</span> =&gt; <span class="mc">println!</span>(<span class="st">"one"</span>),
+        _ =&gt; <span class="mc">println!</span>(<span class="st">"other"</span>),
+    };  <span class="cm">// match 타입: ()</span>
+
+    <span class="cm">// ✓ ! (never type) 은 모든 타입과 호환</span>
+    <span class="kw">let</span> <span class="va">v</span> = <span class="kw">match</span> <span class="va">i</span> {
+        <span class="nm">0</span> =&gt; <span class="nm">0</span>,
+        <span class="va">n</span> <span class="kw">if</span> <span class="va">n</span> &lt; <span class="nm">0</span> =&gt; <span class="mc">panic!</span>(<span class="st">"음수 불가"</span>),  <span class="cm">// ! 타입 → i32 와 호환</span>
+        _ =&gt; <span class="va">i</span> * <span class="nm">2</span>,
+    };  <span class="cm">// match 타입: i32</span>
+
+    <span class="cm">// ✗ 타입 불일치 — 컴파일 에러</span>
+    <span class="cm">// let bad = match i {</span>
+    <span class="cm">//     1 =&gt; 10,           // i32</span>
+    <span class="cm">//     _ =&gt; "hello",      // &amp;str ← 타입 불일치!</span>
+    <span class="cm">// };  error[E0308]: match arms have incompatible types</span>
+}</pre></div></div>
+
+<div class="figure"><svg width="100%" height="520" viewBox="0 0 800 520" xmlns="http://www.w3.org/2000/svg" style="background:transparent;font-family:sans-serif;">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <text x="400" y="26" text-anchor="middle" font-size="16" font-weight="700" fill="#2c2c2a">match expression 평가 흐름</text>
+
+  <!-- Source code -->
+  <rect x="40" y="40" width="720" height="50" rx="8" fill="#f1efe8" stroke="#888780" stroke-width="1"/>
+  <text x="400" y="60" text-anchor="middle" font-size="13" font-weight="600" fill="#2c2c2a">let result = match i { 1 =&gt; 10, 2 =&gt; 20, _ =&gt; 0 };</text>
+  <text x="400" y="80" text-anchor="middle" font-size="11" fill="#5f5e5a">i = 2 라고 가정</text>
+
+  <!-- Step 1 -->
+  <line x1="400" y1="90" x2="400" y2="114" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="210" y="114" width="380" height="50" rx="8" fill="#b5d4f4" stroke="#185fa5" stroke-width="1"/>
+  <text x="400" y="135" text-anchor="middle" font-size="13" font-weight="700" fill="#042c53">① scrutinee 평가</text>
+  <text x="400" y="154" text-anchor="middle" font-size="11" fill="#0c447c">match i  →  i 의 값 2 를 읽음</text>
+
+  <!-- Step 2 -->
+  <line x1="400" y1="164" x2="400" y2="188" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+  <text x="400" y="200" text-anchor="middle" font-size="11" fill="#444441">② 위에서부터 순서대로 패턴 비교</text>
+
+  <rect x="30" y="210" width="215" height="50" rx="8" fill="#f1efe8" stroke="#888780" stroke-width="1"/>
+  <text x="137" y="230" text-anchor="middle" font-size="12" font-weight="700" fill="#2c2c2a">패턴 1: 1</text>
+  <text x="137" y="250" text-anchor="middle" font-size="11" fill="#5f5e5a">2 == 1 ? → 불일치</text>
+
+  <rect x="292" y="210" width="215" height="50" rx="8" fill="#9fe1cb" stroke="#0f6e56" stroke-width="1.5"/>
+  <text x="399" y="230" text-anchor="middle" font-size="12" font-weight="700" fill="#04342c">패턴 2: 2</text>
+  <text x="399" y="250" text-anchor="middle" font-size="11" fill="#0f6e56">2 == 2 ? → 일치!</text>
+
+  <rect x="554" y="210" width="215" height="50" rx="8" fill="#f1efe8" stroke="#888780" stroke-width="1"/>
+  <text x="661" y="230" text-anchor="middle" font-size="12" font-weight="700" fill="#5f5e5a">패턴 3: _</text>
+  <text x="661" y="250" text-anchor="middle" font-size="11" fill="#888780">실행되지 않음</text>
+
+  <!-- Step 3 -->
+  <line x1="400" y1="260" x2="400" y2="286" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="210" y="286" width="380" height="50" rx="8" fill="#9fe1cb" stroke="#0f6e56" stroke-width="1.5"/>
+  <text x="400" y="307" text-anchor="middle" font-size="13" font-weight="700" fill="#04342c">③ 일치한 arm 의 body expression 평가</text>
+  <text x="400" y="326" text-anchor="middle" font-size="11" fill="#0f6e56">2 =&gt; 20  →  i32 값 20 생성</text>
+
+  <!-- Step 4 -->
+  <line x1="400" y1="336" x2="400" y2="360" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="210" y="360" width="380" height="50" rx="8" fill="#eeedfe" stroke="#534ab7" stroke-width="1.5"/>
+  <text x="400" y="381" text-anchor="middle" font-size="13" font-weight="700" fill="#26215c">④ match 전체 값 = 20 (i32)</text>
+  <text x="400" y="400" text-anchor="middle" font-size="11" fill="#3c3489">match expression 이 i32 값 20 으로 평가됨</text>
+
+  <!-- Step 5 -->
+  <line x1="400" y1="410" x2="400" y2="434" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="210" y="434" width="380" height="50" rx="8" fill="#eaf3de" stroke="#3b6d11" stroke-width="1.5"/>
+  <text x="400" y="455" text-anchor="middle" font-size="13" font-weight="700" fill="#173404">⑤ let statement 완료</text>
+  <text x="400" y="474" text-anchor="middle" font-size="11" fill="#27500a">result 바인딩에 20 저장.  result: i32 = 20</text>
+
+  <text x="400" y="508" text-anchor="middle" font-size="10" fill="#888780">Rust Reference § Match expressions</text>
+</svg>
+<div class="fig-cap">그림 7 — match 평가 흐름</div></div>
+
+<div class="sub"><h3>match exhaustiveness — 완전망라</h3><p>Rust 컴파일러는 match 가 가능한 모든 경우를 처리하는지 검사합니다. 이것이 exhaustiveness 검사입니다.
+모든 경우를 다루지 않으면 컴파일 에러가 발생합니다.</p>
+<div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust — exhaustiveness 예제</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="va">b</span>: <span class="ty">bool</span> = <span class="kw">true</span>;
+
+    <span class="cm">// ✓ bool 은 true / false 두 경우 → 모두 처리</span>
+    <span class="kw">match</span> <span class="va">b</span> {
+        <span class="kw">true</span>  =&gt; <span class="mc">println!</span>(<span class="st">"참"</span>),
+        <span class="kw">false</span> =&gt; <span class="mc">println!</span>(<span class="st">"거짓"</span>),
+    }
+
+    <span class="cm">// ✗ 에러: false 케이스가 없음</span>
+    <span class="cm">// match b {</span>
+    <span class="cm">//     true =&gt; println!("참"),</span>
+    <span class="cm">// }  error[E0004]: non-exhaustive patterns: `false` not covered</span>
+
+    <span class="cm">// ✓ _ wildcard 로 나머지 처리</span>
+    <span class="kw">let</span> <span class="va">n</span> = <span class="nm">42</span>;
+    <span class="kw">match</span> <span class="va">n</span> {
+        <span class="nm">1</span> =&gt; <span class="mc">println!</span>(<span class="st">"one"</span>),
+        <span class="nm">2</span> =&gt; <span class="mc">println!</span>(<span class="st">"two"</span>),
+        _ =&gt; <span class="mc">println!</span>(<span class="st">"other"</span>),  <span class="cm">// 나머지 모든 i32 처리</span>
+    }
+
+    <span class="cm">// ✓ enum 은 모든 variant 처리해야 함</span>
+    <span class="kw">enum</span> <span class="ty">Dir</span> { <span class="ty">N</span>, <span class="ty">S</span>, <span class="ty">E</span>, <span class="ty">W</span> }
+    <span class="kw">let</span> <span class="va">d</span> = <span class="ty">Dir</span>::<span class="ty">N</span>;
+    <span class="kw">match</span> <span class="va">d</span> {
+        <span class="ty">Dir</span>::<span class="ty">N</span> =&gt; <span class="mc">println!</span>(<span class="st">"북"</span>),
+        <span class="ty">Dir</span>::<span class="ty">S</span> =&gt; <span class="mc">println!</span>(<span class="st">"남"</span>),
+        <span class="ty">Dir</span>::<span class="ty">E</span> =&gt; <span class="mc">println!</span>(<span class="st">"동"</span>),
+        <span class="ty">Dir</span>::<span class="ty">W</span> =&gt; <span class="mc">println!</span>(<span class="st">"서"</span>),
+        <span class="cm">// _ 불필요: 모든 variant 처리했기 때문</span>
+    }
+}</pre></div></div>
+
+<div class="sub"><h3>match guard — arm 에 조건 추가</h3><div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust — guard 완전 예제</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="cm">// guard: pattern 이 매칭된 후 추가로 bool 조건 검사</span>
+    <span class="cm">// 문법: pattern if condition =&gt; body</span>
+
+    <span class="kw">let</span> <span class="va">pair</span> = (<span class="nm">3</span>, -<span class="nm">2</span>);
+
+    <span class="kw">match</span> <span class="va">pair</span> {
+        (<span class="va">x</span>, <span class="va">y</span>) <span class="kw">if</span> <span class="va">x</span> == <span class="va">y</span>   =&gt; <span class="mc">println!</span>(<span class="st">"같음"</span>),
+        (<span class="va">x</span>, <span class="va">y</span>) <span class="kw">if</span> <span class="va">x</span> + <span class="va">y</span> == <span class="nm">0</span> =&gt; <span class="mc">println!</span>(<span class="st">"합이 0"</span>),
+        (<span class="va">x</span>, _) <span class="kw">if</span> <span class="va">x</span> &gt; <span class="nm">0</span>   =&gt; <span class="mc">println!</span>(<span class="st">"x 양수"</span>),
+        _                    =&gt; <span class="mc">println!</span>(<span class="st">"기타"</span>),
+    }
+    <span class="cm">// 출력: "합이 0"  (x=3, y=-2, 3+(-2)=1 ≠ 0 → 다음 arm)</span>
+    <span class="cm">// 실제: 3 + (-2) = 1 ≠ 0, 그래서 x 양수 arm 매칭</span>
+
+    <span class="kw">let</span> <span class="va">n</span> = <span class="nm">15</span>;
+    <span class="kw">let</span> <span class="va">msg</span> = <span class="kw">match</span> <span class="va">n</span> {
+        <span class="va">x</span> <span class="kw">if</span> <span class="va">x</span> &lt; <span class="nm">0</span>   =&gt; <span class="st">"음수"</span>,
+        <span class="va">x</span> <span class="kw">if</span> <span class="va">x</span> == <span class="nm">0</span>  =&gt; <span class="st">"영"</span>,
+        <span class="va">x</span> <span class="kw">if</span> <span class="va">x</span> &lt; <span class="nm">10</span>  =&gt; <span class="st">"작은 양수"</span>,
+        <span class="va">x</span> <span class="kw">if</span> <span class="va">x</span> &lt; <span class="nm">100</span> =&gt; <span class="st">"중간 양수"</span>,
+        _              =&gt; <span class="st">"큰 양수"</span>,
+    };
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="va">msg</span>);  <span class="cm">// 중간 양수</span>
+}</pre></div></div>
+
+<div class="sub"><h3>match 와 소유권 — move vs borrow</h3><div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust — 소유권 이동 주의</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="va">s</span> = <span class="ty">String</span>::<span class="fn_">from</span>(<span class="st">"hello"</span>);
+
+    <span class="cm">// ✗ match 로 s 를 소비(move)하면 이후 s 사용 불가</span>
+    <span class="cm">// match s {</span>
+    <span class="cm">//     ref x =&gt; println!("{x}"),</span>
+    <span class="cm">// }</span>
+    <span class="cm">// println!("{s}");  // error: value borrowed after move</span>
+
+    <span class="cm">// ✓ 참조로 match → 소유권 이동 없음</span>
+    <span class="kw">match</span> &amp;<span class="va">s</span> {
+        <span class="va">x</span> <span class="kw">if</span> <span class="va">x</span>.<span class="fn_">len</span>() &gt; <span class="nm">3</span> =&gt; <span class="mc">println!</span>(<span class="st">"긴 문자열: {}"</span>, <span class="va">x</span>),
+        <span class="va">x</span>               =&gt; <span class="mc">println!</span>(<span class="st">"짧은 문자열: {}"</span>, <span class="va">x</span>),
+    }
+    <span class="mc">println!</span>(<span class="st">"s 는 여전히 유효: {}"</span>, <span class="va">s</span>);  <span class="cm">// ✓</span>
+
+    <span class="cm">// ✓ Copy 타입은 move 가 일어나지 않음</span>
+    <span class="kw">let</span> <span class="va">n</span> = <span class="nm">42</span>;
+    <span class="kw">match</span> <span class="va">n</span> {             <span class="cm">// i32 는 Copy → n 복사됨</span>
+        <span class="nm">0</span> =&gt; <span class="mc">println!</span>(<span class="st">"영"</span>),
+        _ =&gt; <span class="mc">println!</span>(<span class="st">"비영"</span>),
+    }
+    <span class="mc">println!</span>(<span class="st">"n = {}"</span>, <span class="va">n</span>);  <span class="cm">// ✓ n 여전히 유효</span>
+}</pre></div></div>
+
+</section><section class="section" id="s7">
+<div class="sec-header"><div class="sec-num">7</div><h2>match 패턴 종류 총망라</h2></div>
+
+<div class="figure"><svg width="100%" height="460" viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg" style="background:transparent;font-family:sans-serif;">
+
+  <text x="400" y="28" text-anchor="middle" font-size="16" font-weight="700" fill="#2c2c2a">match 패턴 종류</text>
+
+  <!-- Row 1 -->
+  <rect x="20" y="46" width="230" height="60" rx="8" fill="#eeedfe" stroke="#534ab7" stroke-width="1"/>
+  <text x="135" y="68" text-anchor="middle" font-size="13" font-weight="700" fill="#26215c">리터럴 매칭</text>
+  <text x="135" y="90" text-anchor="middle" font-size="11" fill="#3c3489">1 =&gt; ..., 'a' =&gt; ...</text>
+
+  <rect x="285" y="46" width="230" height="60" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1"/>
+  <text x="400" y="68" text-anchor="middle" font-size="13" font-weight="700" fill="#04342c">범위 매칭</text>
+  <text x="400" y="90" text-anchor="middle" font-size="11" fill="#0f6e56">1..=5 =&gt; ..., 'a'..='z'</text>
+
+  <rect x="550" y="46" width="230" height="60" rx="8" fill="#e6f1fb" stroke="#185fa5" stroke-width="1"/>
+  <text x="665" y="68" text-anchor="middle" font-size="13" font-weight="700" fill="#042c53">OR 패턴</text>
+  <text x="665" y="90" text-anchor="middle" font-size="11" fill="#0c447c">1 | 2 | 3 =&gt; ...</text>
+
+  <!-- Row 2 -->
+  <rect x="20" y="126" width="230" height="60" rx="8" fill="#faeeda" stroke="#ba7517" stroke-width="1"/>
+  <text x="135" y="148" text-anchor="middle" font-size="13" font-weight="700" fill="#412402">와일드카드</text>
+  <text x="135" y="170" text-anchor="middle" font-size="11" fill="#633806">_ =&gt; ... (catch-all)</text>
+
+  <rect x="285" y="126" width="230" height="60" rx="8" fill="#faece7" stroke="#993c1d" stroke-width="1"/>
+  <text x="400" y="148" text-anchor="middle" font-size="13" font-weight="700" fill="#4a1b0c">변수 바인딩</text>
+  <text x="400" y="170" text-anchor="middle" font-size="11" fill="#712b13">x =&gt; ... (값 캡처)</text>
+
+  <rect x="550" y="126" width="230" height="60" rx="8" fill="#eaf3de" stroke="#3b6d11" stroke-width="1"/>
+  <text x="665" y="148" text-anchor="middle" font-size="13" font-weight="700" fill="#173404">가드 (guard)</text>
+  <text x="665" y="170" text-anchor="middle" font-size="11" fill="#27500a">x if x &gt; 5 =&gt; ...</text>
+
+  <!-- Row 3 -->
+  <rect x="20" y="206" width="230" height="60" rx="8" fill="#eeedfe" stroke="#534ab7" stroke-width="1"/>
+  <text x="135" y="228" text-anchor="middle" font-size="13" font-weight="700" fill="#26215c">튜플 분해</text>
+  <text x="135" y="250" text-anchor="middle" font-size="11" fill="#3c3489">(x, y) =&gt; ...</text>
+
+  <rect x="285" y="206" width="230" height="60" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1"/>
+  <text x="400" y="228" text-anchor="middle" font-size="13" font-weight="700" fill="#04342c">구조체 분해</text>
+  <text x="400" y="250" text-anchor="middle" font-size="11" fill="#0f6e56">Point { x, y } =&gt; ...</text>
+
+  <rect x="550" y="206" width="230" height="60" rx="8" fill="#e6f1fb" stroke="#185fa5" stroke-width="1"/>
+  <text x="665" y="228" text-anchor="middle" font-size="13" font-weight="700" fill="#042c53">enum 분해</text>
+  <text x="665" y="250" text-anchor="middle" font-size="11" fill="#0c447c">Some(v), None, Ok(v)</text>
+
+  <!-- Row 4 -->
+  <rect x="20" y="286" width="230" height="60" rx="8" fill="#faeeda" stroke="#ba7517" stroke-width="1"/>
+  <text x="135" y="308" text-anchor="middle" font-size="13" font-weight="700" fill="#412402">@ 바인딩</text>
+  <text x="135" y="330" text-anchor="middle" font-size="11" fill="#633806">n @ 1..=5 =&gt; ...</text>
+
+  <rect x="285" y="286" width="230" height="60" rx="8" fill="#faece7" stroke="#993c1d" stroke-width="1"/>
+  <text x="400" y="308" text-anchor="middle" font-size="13" font-weight="700" fill="#4a1b0c">슬라이스 분해</text>
+  <text x="400" y="330" text-anchor="middle" font-size="11" fill="#712b13">[first, ..] =&gt; ...</text>
+
+  <rect x="550" y="286" width="230" height="60" rx="8" fill="#eaf3de" stroke="#3b6d11" stroke-width="1"/>
+  <text x="665" y="308" text-anchor="middle" font-size="13" font-weight="700" fill="#173404">중첩 패턴</text>
+  <text x="665" y="330" text-anchor="middle" font-size="11" fill="#27500a">Some(Some(x)) =&gt; ...</text>
+
+  <!-- Bottom note -->
+  <rect x="20" y="368" width="760" height="52" rx="8" fill="none" stroke="#d3d1c7" stroke-width="1" stroke-dasharray="5 3"/>
+  <text x="400" y="390" text-anchor="middle" font-size="13" font-weight="700" fill="#2c2c2a">모든 match 는 exhaustive (완전망라) 해야 합니다</text>
+  <text x="400" y="410" text-anchor="middle" font-size="11" fill="#5f5e5a">가능한 모든 경우를 처리하지 않으면 컴파일 에러! — _ 로 나머지를 잡아야 합니다</text>
+
+  <text x="400" y="448" text-anchor="middle" font-size="10" fill="#888780">Rust Reference § Match expressions</text>
+</svg>
+<div class="fig-cap">그림 8 — match 패턴 종류 개요</div></div>
+
+<div class="sub"><h3>리터럴 · OR · 범위 패턴</h3><div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="va">c</span> = <span class="st">'g'</span>;
+
+    <span class="cm">// ─ 리터럴 패턴 ──────────────────────────────────────</span>
+    <span class="kw">match</span> <span class="va">c</span> {
+        <span class="st">'a'</span> =&gt; <span class="mc">println!</span>(<span class="st">"a"</span>),
+        <span class="st">'b'</span> =&gt; <span class="mc">println!</span>(<span class="st">"b"</span>),
+        _   =&gt; <span class="mc">println!</span>(<span class="st">"기타"</span>),
+    }
+
+    <span class="cm">// ─ OR 패턴 ( | ) ────────────────────────────────────</span>
+    <span class="kw">let</span> <span class="va">n</span> = <span class="nm">3</span>;
+    <span class="kw">match</span> <span class="va">n</span> {
+        <span class="nm">1</span> | <span class="nm">2</span>     =&gt; <span class="mc">println!</span>(<span class="st">"1 또는 2"</span>),
+        <span class="nm">3</span> | <span class="nm">4</span> | <span class="nm">5</span> =&gt; <span class="mc">println!</span>(<span class="st">"3, 4, 또는 5"</span>),
+        _          =&gt; <span class="mc">println!</span>(<span class="st">"기타"</span>),
+    }
+
+    <span class="cm">// ─ 범위 패턴 ( ..= ) ────────────────────────────────</span>
+    <span class="kw">match</span> <span class="va">n</span> {
+        <span class="nm">1</span>..=<span class="nm">5</span>   =&gt; <span class="mc">println!</span>(<span class="st">"1~5"</span>),
+        <span class="nm">6</span>..=<span class="nm">10</span>  =&gt; <span class="mc">println!</span>(<span class="st">"6~10"</span>),
+        _        =&gt; <span class="mc">println!</span>(<span class="st">"범위 밖"</span>),
+    }
+
+    <span class="cm">// ─ 문자 범위 ────────────────────────────────────────</span>
+    <span class="kw">match</span> <span class="va">c</span> {
+        <span class="st">'a'</span>..=<span class="st">'f'</span> =&gt; <span class="mc">println!</span>(<span class="st">"a~f"</span>),
+        <span class="st">'g'</span>..=<span class="st">'z'</span> =&gt; <span class="mc">println!</span>(<span class="st">"g~z"</span>),    <span class="cm">// 매칭됨</span>
+        _          =&gt; <span class="mc">println!</span>(<span class="st">"기타"</span>),
+    }
+}</pre></div></div>
+
+<div class="sub"><h3>변수 바인딩 · @ 바인딩 · 와일드카드</h3><div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="va">n</span> = <span class="nm">15</span>;
+
+    <span class="cm">// ─ 변수 바인딩 ──────────────────────────────────────</span>
+    <span class="kw">match</span> <span class="va">n</span> {
+        <span class="nm">0</span>       =&gt; <span class="mc">println!</span>(<span class="st">"영"</span>),
+        <span class="va">x</span>       =&gt; <span class="mc">println!</span>(<span class="st">"값: {}"</span>, <span class="va">x</span>),  <span class="cm">// x 에 n 값 바인딩</span>
+    }
+
+    <span class="cm">// ─ @ 바인딩: 범위 체크 + 값 캡처 동시에 ────────────</span>
+    <span class="kw">match</span> <span class="va">n</span> {
+        <span class="va">x</span> @ <span class="nm">1</span>..=<span class="nm">9</span>   =&gt; <span class="mc">println!</span>(<span class="st">"한 자리: {}"</span>, <span class="va">x</span>),
+        <span class="va">x</span> @ <span class="nm">10</span>..=<span class="nm">99</span> =&gt; <span class="mc">println!</span>(<span class="st">"두 자리: {}"</span>, <span class="va">x</span>),  <span class="cm">// 매칭: x=15</span>
+        <span class="va">x</span>            =&gt; <span class="mc">println!</span>(<span class="st">"세 자리+: {}"</span>, <span class="va">x</span>),
+    }
+
+    <span class="cm">// ─ 와일드카드 _ ─────────────────────────────────────</span>
+    <span class="cm">// _ 는 값을 캡처하지 않는 "무시" 패턴</span>
+    <span class="kw">let</span> <span class="va">triple</span> = (<span class="nm">1</span>, -<span class="nm">2</span>, <span class="nm">3</span>);
+    <span class="kw">match</span> <span class="va">triple</span> {
+        (<span class="nm">0</span>, <span class="va">y</span>, <span class="va">z</span>) =&gt; <span class="mc">println!</span>(<span class="st">"첫째 0: {} {}"</span>, <span class="va">y</span>, <span class="va">z</span>),
+        (<span class="va">x</span>, <span class="nm">0</span>, <span class="va">z</span>) =&gt; <span class="mc">println!</span>(<span class="st">"둘째 0: {} {}"</span>, <span class="va">x</span>, <span class="va">z</span>),
+        (<span class="va">x</span>, <span class="va">y</span>, _) =&gt; <span class="mc">println!</span>(<span class="st">"셋째 무시: {} {}"</span>, <span class="va">x</span>, <span class="va">y</span>), <span class="cm">// 매칭</span>
+    }
+
+    <span class="cm">// ─ .. : 나머지 전체 무시 ────────────────────────────</span>
+    <span class="kw">struct</span> <span class="ty">Point3</span> { <span class="va">x</span>: <span class="ty">i32</span>, <span class="va">y</span>: <span class="ty">i32</span>, <span class="va">z</span>: <span class="ty">i32</span> }
+    <span class="kw">let</span> <span class="va">p</span> = <span class="ty">Point3</span> { <span class="va">x</span>: <span class="nm">1</span>, <span class="va">y</span>: <span class="nm">2</span>, <span class="va">z</span>: <span class="nm">3</span> };
+    <span class="kw">match</span> <span class="va">p</span> {
+        <span class="ty">Point3</span> { <span class="va">x</span>, .. } =&gt; <span class="mc">println!</span>(<span class="st">"x = {}"</span>, <span class="va">x</span>),  <span class="cm">// y, z 무시</span>
+    }
+}</pre></div></div>
+
+<div class="sub"><h3>구조체 / 튜플 / enum 분해</h3><div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="cm">// ─ 구조체 분해 ──────────────────────────────────────</span>
+    <span class="kw">struct</span> <span class="ty">Point</span> { <span class="va">x</span>: <span class="ty">i32</span>, <span class="va">y</span>: <span class="ty">i32</span> }
+    <span class="kw">let</span> <span class="va">p</span> = <span class="ty">Point</span> { <span class="va">x</span>: <span class="nm">3</span>, <span class="va">y</span>: <span class="nm">0</span> };
+
+    <span class="kw">match</span> <span class="va">p</span> {
+        <span class="ty">Point</span> { <span class="va">x</span>: <span class="nm">0</span>, <span class="va">y</span>: <span class="nm">0</span> } =&gt; <span class="mc">println!</span>(<span class="st">"원점"</span>),
+        <span class="ty">Point</span> { <span class="va">x</span>, <span class="va">y</span>: <span class="nm">0</span> }   =&gt; <span class="mc">println!</span>(<span class="st">"x축: {}"</span>, <span class="va">x</span>),  <span class="cm">// 매칭</span>
+        <span class="ty">Point</span> { <span class="va">x</span>: <span class="nm">0</span>, <span class="va">y</span> }   =&gt; <span class="mc">println!</span>(<span class="st">"y축: {}"</span>, <span class="va">y</span>),
+        <span class="ty">Point</span> { <span class="va">x</span>, <span class="va">y</span> }       =&gt; <span class="mc">println!</span>(<span class="st">"일반: {} {}"</span>, <span class="va">x</span>, <span class="va">y</span>),
+    }
+
+    <span class="cm">// ─ 중첩 enum 분해 ───────────────────────────────────</span>
+    <span class="kw">enum</span> <span class="ty">Shape</span> {
+        <span class="ty">Circle</span>(<span class="ty">f64</span>),
+        <span class="ty">Rect</span> { <span class="va">w</span>: <span class="ty">f64</span>, <span class="va">h</span>: <span class="ty">f64</span> },
+        <span class="ty">Triangle</span>(<span class="ty">f64</span>, <span class="ty">f64</span>, <span class="ty">f64</span>),
+    }
+
+    <span class="kw">let</span> <span class="va">shapes</span> = <span class="kw">vec</span>![
+        <span class="ty">Shape</span>::<span class="ty">Circle</span>(<span class="nm">5.0</span>),
+        <span class="ty">Shape</span>::<span class="ty">Rect</span> { <span class="va">w</span>: <span class="nm">4.0</span>, <span class="va">h</span>: <span class="nm">3.0</span> },
+        <span class="ty">Shape</span>::<span class="ty">Triangle</span>(<span class="nm">3.0</span>, <span class="nm">4.0</span>, <span class="nm">5.0</span>),
+    ];
+
+    <span class="kw">for</span> <span class="va">shape</span> <span class="kw">in</span> &amp;<span class="va">shapes</span> {
+        <span class="kw">let</span> <span class="va">area</span> = <span class="kw">match</span> <span class="va">shape</span> {
+            <span class="ty">Shape</span>::<span class="ty">Circle</span>(<span class="va">r</span>)         =&gt; std::f64::consts::PI * <span class="va">r</span> * <span class="va">r</span>,
+            <span class="ty">Shape</span>::<span class="ty">Rect</span> { <span class="va">w</span>, <span class="va">h</span> }   =&gt; <span class="va">w</span> * <span class="va">h</span>,
+            <span class="ty">Shape</span>::<span class="ty">Triangle</span>(<span class="va">a</span>, <span class="va">b</span>, <span class="va">c</span>) =&gt; {
+                <span class="kw">let</span> <span class="va">s</span> = (<span class="va">a</span> + <span class="va">b</span> + <span class="va">c</span>) / <span class="nm">2.0</span>;
+                (<span class="va">s</span> * (<span class="va">s</span>-<span class="va">a</span>) * (<span class="va">s</span>-<span class="va">b</span>) * (<span class="va">s</span>-<span class="va">c</span>)).<span class="fn_">sqrt</span>()
+            },
+        };
+        <span class="mc">println!</span>(<span class="st">"넓이: {:.2}"</span>, <span class="va">area</span>);
+    }
+}</pre></div></div>
+
+<div class="sub"><h3>슬라이스 패턴</h3><div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="va">v</span> = <span class="kw">vec</span>![<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>, <span class="nm">4</span>];
+
+    <span class="kw">match</span> <span class="va">v</span>.<span class="fn_">as_slice</span>() {
+        []              =&gt; <span class="mc">println!</span>(<span class="st">"빈 슬라이스"</span>),
+        [<span class="va">x</span>]             =&gt; <span class="mc">println!</span>(<span class="st">"원소 하나: {}"</span>, <span class="va">x</span>),
+        [<span class="va">x</span>, <span class="va">y</span>]          =&gt; <span class="mc">println!</span>(<span class="st">"두 원소: {} {}"</span>, <span class="va">x</span>, <span class="va">y</span>),
+        [<span class="va">first</span>, .., <span class="va">last</span>] =&gt; <span class="mc">println!</span>(<span class="st">"첫={} 끝={}"</span>, <span class="va">first</span>, <span class="va">last</span>), <span class="cm">// 매칭</span>
+    }
+
+    <span class="kw">let</span> <span class="va">arr</span>: [<span class="ty">i32</span>; <span class="nm">3</span>] = [<span class="nm">10</span>, <span class="nm">20</span>, <span class="nm">30</span>];
+    <span class="kw">match</span> <span class="va">arr</span> {
+        [<span class="nm">0</span>, ..]          =&gt; <span class="mc">println!</span>(<span class="st">"0 으로 시작"</span>),
+        [_, <span class="nm">0</span>, _]        =&gt; <span class="mc">println!</span>(<span class="st">"중간이 0"</span>),
+        [<span class="va">a</span>, <span class="va">b</span>, <span class="va">c</span>]        =&gt; <span class="mc">println!</span>(<span class="st">"{} {} {}"</span>, <span class="va">a</span>, <span class="va">b</span>, <span class="va">c</span>), <span class="cm">// 매칭</span>
+    }
+}</pre></div></div>
+
+</section><section class="section" id="s8">
+<div class="sec-header"><div class="sec-num">8</div><h2>! (never type)</h2></div>
+
+<p>공식 문서 (Reference § Never type): <strong>"<code>!</code> is a type with no values. It represents the result of computations that never complete, such as <code>loop { }</code>, <code>break</code>, <code>continue</code>, <code>return</code>, or <code>panic!()</code>."</strong></p>
+
+<p><code>!</code> 는 모든 타입의 subtype 입니다. 따라서 match arm 에서 다른 타입과 자유롭게 혼용할 수 있습니다.</p>
+
+<div class="sub"><h3>never type 이 생기는 상황</h3><div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="cm">// ─ return 은 ! 타입 ──────────────────────────────────</span>
+    <span class="kw">fn</span> <span class="fn_">early</span>(<span class="va">x</span>: <span class="ty">i32</span>) -&gt; <span class="ty">i32</span> {
+        <span class="kw">if</span> <span class="va">x</span> &lt; <span class="nm">0</span> { <span class="kw2">return</span> <span class="nm">0</span>; }  <span class="cm">// return 0; → ! 타입</span>
+        <span class="va">x</span> * <span class="nm">2</span>
+    }
+
+    <span class="cm">// ─ panic! 은 ! 타입 → match 에서 다른 타입과 공존 ───</span>
+    <span class="kw">let</span> <span class="va">n</span> = <span class="nm">5</span>;
+    <span class="kw">let</span> <span class="va">v</span>: <span class="ty">i32</span> = <span class="kw">match</span> <span class="va">n</span> {
+        <span class="nm">0</span> =&gt; <span class="nm">0</span>,
+        <span class="va">x</span> <span class="kw">if</span> <span class="va">x</span> &lt; <span class="nm">0</span> =&gt; <span class="mc">panic!</span>(<span class="st">"음수 불가"</span>),  <span class="cm">// ! → i32 로 강제 변환</span>
+        _ =&gt; <span class="va">n</span> * <span class="nm">2</span>,
+    };
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="va">v</span>);  <span class="cm">// 10</span>
+
+    <span class="cm">// ─ loop { } 는 ! 타입 (break 없을 때) ───────────────</span>
+    <span class="cm">// break val; 이 있으면 그 val 의 타입이 loop 의 타입</span>
+    <span class="kw">let</span> <span class="kw">mut</span> <span class="va">count</span> = <span class="nm">0</span>;
+    <span class="kw">let</span> <span class="va">result</span>: <span class="ty">i32</span> = <span class="kw">loop</span> {
+        <span class="va">count</span> += <span class="nm">1</span>;
+        <span class="kw">if</span> <span class="va">count</span> == <span class="nm">5</span> {
+            <span class="kw2">break</span> <span class="va">count</span> * <span class="nm">2</span>;  <span class="cm">// break 가 값을 들고 나옴 → loop 타입 = i32</span>
+        }
+    };
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="va">result</span>);  <span class="cm">// 10</span>
+
+    <span class="cm">// ─ continue / break 도 ! 타입 ────────────────────────</span>
+    <span class="kw">for</span> <span class="va">i</span> <span class="kw">in</span> <span class="nm">0</span>..<span class="nm">5</span> {
+        <span class="kw">let</span> <span class="va">x</span>: <span class="ty">i32</span> = <span class="kw">match</span> <span class="va">i</span> % <span class="nm">2</span> {
+            <span class="nm">0</span> =&gt; <span class="kw2">continue</span>,  <span class="cm">// ! → i32 와 호환, 짝수는 건너뜀</span>
+            _ =&gt; <span class="va">i</span> * <span class="nm">10</span>,
+        };
+        <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="va">x</span>);  <span class="cm">// 10, 30</span>
+    }
+
+    <span class="cm">// ─ diverging function ────────────────────────────────</span>
+    <span class="kw">fn</span> <span class="fn_">forever</span>() -&gt; ! {
+        <span class="kw">loop</span> {}   <span class="cm">// 절대 반환하지 않음 → 반환 타입 !</span>
+    }
+    <span class="cm">// forever(); // 이 줄 이후는 dead code</span>
+}</pre></div></div>
+
+</section><section class="section" id="s9">
+<div class="sec-header"><div class="sec-num">9</div><h2>if let / while let / let-else</h2></div>
+
+<p>공식 문서 (Reference § If let expressions, While let loop expressions): <code>if let</code> 과 <code>while let</code> 은 하나의 패턴만 처리할 때 match 보다 간결합니다.</p>
+
+<div class="sub"><h3>if let — 하나의 패턴만 처리</h3><div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="cm">// ─ if let 기본 ──────────────────────────────────────</span>
+    <span class="kw">let</span> <span class="va">opt</span>: <span class="ty">Option</span>&lt;<span class="ty">i32</span>&gt; = <span class="ty">Some</span>(<span class="nm">42</span>);
+
+    <span class="cm">// match 로 쓸 때</span>
+    <span class="kw">match</span> <span class="va">opt</span> {
+        <span class="ty">Some</span>(<span class="va">v</span>) =&gt; <span class="mc">println!</span>(<span class="st">"값: {}"</span>, <span class="va">v</span>),
+        <span class="ty">None</span>    =&gt; {}
+    }
+
+    <span class="cm">// if let 으로 동일하게</span>
+    <span class="kw">if</span> <span class="kw">let</span> <span class="ty">Some</span>(<span class="va">v</span>) = <span class="va">opt</span> {
+        <span class="mc">println!</span>(<span class="st">"값: {}"</span>, <span class="va">v</span>);
+    }
+
+    <span class="cm">// ─ if let + else ─────────────────────────────────────</span>
+    <span class="kw">let</span> <span class="va">cfg</span>: <span class="ty">Option</span>&lt;&amp;<span class="ty">str</span>&gt; = <span class="ty">None</span>;
+    <span class="kw">if</span> <span class="kw">let</span> <span class="ty">Some</span>(<span class="va">val</span>) = <span class="va">cfg</span> {
+        <span class="mc">println!</span>(<span class="st">"설정값: {}"</span>, <span class="va">val</span>);
+    } <span class="kw">else</span> {
+        <span class="mc">println!</span>(<span class="st">"기본값 사용"</span>);
+    }
+
+    <span class="cm">// ─ if let + else if let 체인 ──────────────────────────</span>
+    <span class="kw">let</span> <span class="va">result</span>: <span class="ty">Result</span>&lt;<span class="ty">i32</span>, &amp;<span class="ty">str</span>&gt; = <span class="ty">Ok</span>(<span class="nm">10</span>);
+    <span class="kw">if</span> <span class="kw">let</span> <span class="ty">Ok</span>(<span class="va">v</span>) = <span class="va">result</span> {
+        <span class="mc">println!</span>(<span class="st">"성공: {}"</span>, <span class="va">v</span>);
+    } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="ty">Err</span>(<span class="va">e</span>) = <span class="va">result</span> {
+        <span class="mc">println!</span>(<span class="st">"실패: {}"</span>, <span class="va">e</span>);
+    }
+
+    <span class="cm">// ─ enum 에 if let ─────────────────────────────────────</span>
+    <span class="kw">enum</span> <span class="ty">Msg</span> { <span class="ty">Move</span>(<span class="ty">i32</span>, <span class="ty">i32</span>), <span class="ty">Stop</span> }
+    <span class="kw">let</span> <span class="va">msg</span> = <span class="ty">Msg</span>::<span class="ty">Move</span>(<span class="nm">5</span>, <span class="nm">10</span>);
+
+    <span class="kw">if</span> <span class="kw">let</span> <span class="ty">Msg</span>::<span class="ty">Move</span>(<span class="va">x</span>, <span class="va">y</span>) = <span class="va">msg</span> {
+        <span class="mc">println!</span>(<span class="st">"이동: {} {}"</span>, <span class="va">x</span>, <span class="va">y</span>);
+    }
+}</pre></div></div>
+
+<div class="sub"><h3>while let — 조건이 매칭되는 동안 반복</h3><div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="cm">// ─ 스택에서 꺼내기 ──────────────────────────────────</span>
+    <span class="kw">let</span> <span class="kw">mut</span> <span class="va">stack</span> = <span class="kw">vec</span>![<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>];
+
+    <span class="kw">while</span> <span class="kw">let</span> <span class="ty">Some</span>(<span class="va">top</span>) = <span class="va">stack</span>.<span class="fn_">pop</span>() {
+        <span class="mc">println!</span>(<span class="st">"꺼냄: {}"</span>, <span class="va">top</span>);
+    }
+    <span class="cm">// 출력: 3, 2, 1  (stack.pop() 이 None 이 되면 루프 종료)</span>
+
+    <span class="cm">// ─ 이터레이터와 함께 ──────────────────────────────────</span>
+    <span class="kw">let</span> <span class="kw">mut</span> <span class="va">iter</span> = <span class="kw">vec</span>![<span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"c"</span>].<span class="fn_">into_iter</span>();
+    <span class="kw">while</span> <span class="kw">let</span> <span class="ty">Some</span>(<span class="va">item</span>) = <span class="va">iter</span>.<span class="fn_">next</span>() {
+        <span class="mc">print!</span>(<span class="st">"{}"</span>, <span class="va">item</span>);
+    }
+    <span class="mc">println!</span>();  <span class="cm">// abc</span>
+}</pre></div></div>
+
+<div class="sub"><h3>let-else — Rust 1.65+ 에서 추가</h3><p>공식 문서 (Reference § Let statements): let-else 는 패턴이 매칭되지 않으면 diverge (<code>return</code>, <code>break</code>, <code>panic!</code> 등)해야 합니다.</p>
+<div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust — let-else (Rust 1.65+)</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">process</span>(<span class="va">input</span>: <span class="ty">Option</span>&lt;<span class="ty">i32</span>&gt;) -&gt; <span class="ty">i32</span> {
+    <span class="cm">// let-else: 패턴 매칭 안되면 else 블록 실행 (반드시 diverge)</span>
+    <span class="kw">let</span> <span class="ty">Some</span>(<span class="va">value</span>) = <span class="va">input</span> <span class="kw">else</span> {
+        <span class="kw2">return</span> <span class="nm">0</span>;  <span class="cm">// 반드시 diverge (return / break / panic 등)</span>
+    };
+    <span class="cm">// 이 아래에서 value 는 i32 로 바인딩된 상태</span>
+    <span class="va">value</span> * <span class="nm">2</span>
+}
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="fn_">process</span>(<span class="ty">Some</span>(<span class="nm">5</span>)));  <span class="cm">// 10</span>
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="fn_">process</span>(<span class="ty">None</span>));      <span class="cm">// 0</span>
+}</pre></div></div>
+
+</section><section class="section" id="s10">
+<div class="sec-header"><div class="sec-num">10</div><h2>Option&lt;T&gt; &amp; Result&lt;T,E&gt; — match 실전 활용</h2></div>
+
+<div class="sub"><h3>Option<T> 완전 활용</h3><div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="va">values</span> = <span class="kw">vec</span>![<span class="ty">Some</span>(<span class="nm">1</span>), <span class="ty">None</span>, <span class="ty">Some</span>(<span class="nm">3</span>), <span class="ty">None</span>, <span class="ty">Some</span>(<span class="nm">5</span>)];
+
+    <span class="kw">for</span> <span class="va">v</span> <span class="kw">in</span> &amp;<span class="va">values</span> {
+        <span class="kw">match</span> <span class="va">v</span> {
+            <span class="ty">Some</span>(<span class="va">n</span>) <span class="kw">if</span> *<span class="va">n</span> &gt; <span class="nm">2</span> =&gt; <span class="mc">println!</span>(<span class="st">"큰 값: {}"</span>, <span class="va">n</span>),
+            <span class="ty">Some</span>(<span class="va">n</span>)            =&gt; <span class="mc">println!</span>(<span class="st">"작은 값: {}"</span>, <span class="va">n</span>),
+            <span class="ty">None</span>               =&gt; <span class="mc">println!</span>(<span class="st">"없음"</span>),
+        }
+    }
+
+    <span class="cm">// Option 메서드와 match 비교</span>
+    <span class="kw">let</span> <span class="va">x</span>: <span class="ty">Option</span>&lt;<span class="ty">i32</span>&gt; = <span class="ty">Some</span>(<span class="nm">10</span>);
+
+    <span class="cm">// match 사용</span>
+    <span class="kw">let</span> <span class="va">doubled</span> = <span class="kw">match</span> <span class="va">x</span> {
+        <span class="ty">Some</span>(<span class="va">n</span>) =&gt; <span class="ty">Some</span>(<span class="va">n</span> * <span class="nm">2</span>),
+        <span class="ty">None</span>    =&gt; <span class="ty">None</span>,
+    };
+    <span class="cm">// map 으로 동일하게</span>
+    <span class="kw">let</span> <span class="va">doubled2</span> = <span class="va">x</span>.<span class="fn_">map</span>(|<span class="va">n</span>| <span class="va">n</span> * <span class="nm">2</span>);
+
+    <span class="cm">// unwrap_or 대신 match</span>
+    <span class="kw">let</span> <span class="va">val</span> = <span class="kw">match</span> <span class="va">x</span> {
+        <span class="ty">Some</span>(<span class="va">n</span>) =&gt; <span class="va">n</span>,
+        <span class="ty">None</span>    =&gt; <span class="nm">0</span>,  <span class="cm">// 기본값</span>
+    };
+    <span class="mc">println!</span>(<span class="st">"{:?} {:?} {}"</span>, <span class="va">doubled</span>, <span class="va">doubled2</span>, <span class="va">val</span>);
+}</pre></div></div>
+
+<div class="sub"><h3>Result<T, E> 완전 활용</h3><div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust</span>
+</div><pre><span class="kw">use</span> std::num::ParseIntError;
+
+<span class="kw">fn</span> <span class="fn_">parse_and_double</span>(<span class="va">s</span>: &amp;<span class="ty">str</span>) -&gt; <span class="ty">Result</span>&lt;<span class="ty">i32</span>, <span class="ty">ParseIntError</span>&gt; {
+    <span class="kw">let</span> <span class="va">n</span>: <span class="ty">i32</span> = <span class="va">s</span>.<span class="fn_">trim</span>().<span class="fn_">parse</span>()?;  <span class="cm">// ? 는 Err 이면 즉시 반환</span>
+    <span class="ty">Ok</span>(<span class="va">n</span> * <span class="nm">2</span>)
+}
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="va">inputs</span> = <span class="kw">vec</span>![<span class="st">"42"</span>, <span class="st">"abc"</span>, <span class="st">"  7 "</span>];
+
+    <span class="kw">for</span> <span class="va">s</span> <span class="kw">in</span> <span class="va">inputs</span> {
+        <span class="kw">match</span> <span class="fn_">parse_and_double</span>(<span class="va">s</span>) {
+            <span class="ty">Ok</span>(<span class="va">v</span>)  =&gt; <span class="mc">println!</span>(<span class="st">"성공: {}"</span>, <span class="va">v</span>),
+            <span class="ty">Err</span>(<span class="va">e</span>) =&gt; <span class="mc">println!</span>(<span class="st">"실패 '{}': {}"</span>, <span class="va">s</span>, <span class="va">e</span>),
+        }
+    }
+    <span class="cm">// 성공: 84</span>
+    <span class="cm">// 실패 'abc': invalid digit found in string</span>
+    <span class="cm">// 성공: 14</span>
+}</pre></div></div>
+
+<div class="sub"><h3>enum Message 완전 예제</h3><div class="figure"><svg width="100%" height="440" viewBox="0 0 800 440" xmlns="http://www.w3.org/2000/svg" style="background:transparent;font-family:sans-serif;">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <text x="400" y="28" text-anchor="middle" font-size="16" font-weight="700" fill="#2c2c2a">enum Message — variant 구조</text>
+
+  <!-- Root -->
+  <rect x="270" y="44" width="260" height="46" rx="8" fill="#f1efe8" stroke="#5f5e5a" stroke-width="1"/>
+  <text x="400" y="62" text-anchor="middle" font-size="14" font-weight="700" fill="#2c2c2a">enum Message</text>
+  <text x="400" y="80" text-anchor="middle" font-size="11" fill="#5f5e5a">4가지 variant — 각각 다른 구조</text>
+
+  <!-- Arrows -->
+  <line x1="320" y1="90" x2="100" y2="130" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="370" y1="90" x2="290" y2="130" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="430" y1="90" x2="510" y2="130" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="480" y1="90" x2="680" y2="130" stroke="#888" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <!-- Quit -->
+  <rect x="20" y="130" width="160" height="96" rx="8" fill="#f1efe8" stroke="#888780" stroke-width="1"/>
+  <text x="100" y="152" text-anchor="middle" font-size="14" font-weight="700" fill="#2c2c2a">Quit</text>
+  <text x="100" y="174" text-anchor="middle" font-size="11" fill="#5f5e5a">Unit variant</text>
+  <text x="100" y="194" text-anchor="middle" font-size="11" fill="#5f5e5a">데이터 없음</text>
+  <text x="100" y="214" text-anchor="middle" font-size="11" fill="#888780">크기: 0 bytes</text>
+
+  <!-- Move -->
+  <rect x="210" y="130" width="160" height="96" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1"/>
+  <text x="290" y="152" text-anchor="middle" font-size="14" font-weight="700" fill="#04342c">Move</text>
+  <text x="290" y="174" text-anchor="middle" font-size="11" fill="#0f6e56">Struct variant</text>
+  <text x="290" y="194" text-anchor="middle" font-size="11" fill="#085041">x: i32</text>
+  <text x="290" y="214" text-anchor="middle" font-size="11" fill="#085041">y: i32</text>
+
+  <!-- Write -->
+  <rect x="430" y="130" width="160" height="96" rx="8" fill="#eeedfe" stroke="#534ab7" stroke-width="1"/>
+  <text x="510" y="152" text-anchor="middle" font-size="14" font-weight="700" fill="#26215c">Write</text>
+  <text x="510" y="174" text-anchor="middle" font-size="11" fill="#534ab7">Tuple variant</text>
+  <text x="510" y="194" text-anchor="middle" font-size="11" fill="#3c3489">String</text>
+  <text x="510" y="214" text-anchor="middle" font-size="11" fill="#3c3489">(익명 필드 1개)</text>
+
+  <!-- ChangeColor -->
+  <rect x="620" y="130" width="160" height="96" rx="8" fill="#faeeda" stroke="#ba7517" stroke-width="1"/>
+  <text x="700" y="152" text-anchor="middle" font-size="13" font-weight="700" fill="#412402">ChangeColor</text>
+  <text x="700" y="174" text-anchor="middle" font-size="11" fill="#ba7517">Tuple variant</text>
+  <text x="700" y="194" text-anchor="middle" font-size="11" fill="#633806">u8, u8, u8</text>
+  <text x="700" y="214" text-anchor="middle" font-size="11" fill="#633806">(익명 필드 3개)</text>
+
+  <!-- Construction syntax table -->
+  <rect x="20" y="252" width="760" height="162" rx="10" fill="none" stroke="#d3d1c7" stroke-width="1" stroke-dasharray="5 3"/>
+  <text x="400" y="276" text-anchor="middle" font-size="13" font-weight="700" fill="#2c2c2a">생성 문법 비교</text>
+
+  <text x="30" y="306" font-size="12" fill="#5f5e5a">Message::Quit</text>
+  <text x="400" y="306" text-anchor="middle" font-size="11" fill="#888780">← 괄호·중괄호 없음. 그냥 경로만</text>
+
+  <line x1="20" y1="316" x2="780" y2="316" stroke="#d3d1c7" stroke-width="0.5"/>
+  <text x="30" y="336" font-size="12" fill="#04342c">Message::Move { x: 10, y: 20 }</text>
+  <text x="400" y="336" text-anchor="middle" font-size="11" fill="#888780">← 구조체 리터럴처럼 중괄호 + 필드명</text>
+
+  <line x1="20" y1="346" x2="780" y2="346" stroke="#d3d1c7" stroke-width="0.5"/>
+  <text x="30" y="366" font-size="12" fill="#26215c">Message::Write(String::from("hello"))</text>
+  <text x="400" y="366" text-anchor="middle" font-size="11" fill="#888780">← 튜플처럼 소괄호 + 위치 기반</text>
+
+  <line x1="20" y1="376" x2="780" y2="376" stroke="#d3d1c7" stroke-width="0.5"/>
+  <text x="30" y="396" font-size="12" fill="#412402">Message::ChangeColor(255, 128, 0)</text>
+  <text x="400" y="396" text-anchor="middle" font-size="11" fill="#888780">← 튜플처럼 소괄호 + 위치 기반</text>
+
+  <text x="400" y="428" text-anchor="middle" font-size="10" fill="#888780">Rust Reference § Enumeration variant expressions</text>
+</svg>
+<div class="fig-cap">그림 9 — enum Message 구조도</div></div>
+<div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust</span>
+</div><pre><span class="at">#[derive(Debug)]</span>
+<span class="kw">enum</span> <span class="ty">Message</span> {
+    <span class="ty">Quit</span>,
+    <span class="ty">Move</span> { <span class="va">x</span>: <span class="ty">i32</span>, <span class="va">y</span>: <span class="ty">i32</span> },
+    <span class="ty">Write</span>(<span class="ty">String</span>),
+    <span class="ty">ChangeColor</span>(<span class="ty">u8</span>, <span class="ty">u8</span>, <span class="ty">u8</span>),
+}
+
+<span class="kw">fn</span> <span class="fn_">handle</span>(<span class="va">msg</span>: <span class="ty">Message</span>) {
+    <span class="kw">match</span> <span class="va">msg</span> {
+        <span class="ty">Message</span>::<span class="ty">Quit</span>                   =&gt; <span class="mc">println!</span>(<span class="st">"종료"</span>),
+        <span class="ty">Message</span>::<span class="ty">Move</span> { <span class="va">x</span>, <span class="va">y</span> }         =&gt; <span class="mc">println!</span>(<span class="st">"이동 {} {}"</span>, <span class="va">x</span>, <span class="va">y</span>),
+        <span class="ty">Message</span>::<span class="ty">Write</span>(<span class="kw">ref</span> <span class="va">s</span>)           =&gt; <span class="mc">println!</span>(<span class="st">"텍스트: {}"</span>, <span class="va">s</span>),
+        <span class="ty">Message</span>::<span class="ty">ChangeColor</span>(<span class="va">r</span>, <span class="va">g</span>, <span class="va">b</span>) =&gt; <span class="mc">println!</span>(<span class="st">"색상 {} {} {}"</span>, <span class="va">r</span>, <span class="va">g</span>, <span class="va">b</span>),
+    }
+}
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="cm">// 생성</span>
+    <span class="kw">let</span> <span class="va">msgs</span> = <span class="kw">vec</span>![
+        <span class="ty">Message</span>::<span class="ty">Quit</span>,
+        <span class="ty">Message</span>::<span class="ty">Move</span> { <span class="va">x</span>: <span class="nm">10</span>, <span class="va">y</span>: <span class="nm">20</span> },
+        <span class="ty">Message</span>::<span class="ty">Write</span>(<span class="ty">String</span>::<span class="fn_">from</span>(<span class="st">"hello"</span>)),
+        <span class="ty">Message</span>::<span class="ty">ChangeColor</span>(<span class="nm">255</span>, <span class="nm">128</span>, <span class="nm">0</span>),
+    ];
+
+    <span class="kw">for</span> <span class="va">msg</span> <span class="kw">in</span> <span class="va">msgs</span> {
+        <span class="fn_">handle</span>(<span class="va">msg</span>);
+    }
+}</pre></div></div>
+
+</section><section class="section" id="s11">
+<div class="sec-header"><div class="sec-num">11</div><h2>전체 요약 — 집약 예제</h2></div>
+
+<div class="figure"><svg width="100%" height="380" viewBox="0 0 800 380" xmlns="http://www.w3.org/2000/svg" style="background:transparent;font-family:sans-serif;">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <text x="400" y="28" text-anchor="middle" font-size="16" font-weight="700" fill="#2c2c2a">Expression vs Statement — 전체 흐름 요약</text>
+
+  <!-- Expression box large -->
+  <rect x="20" y="48" width="360" height="290" rx="12" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1.5"/>
+  <text x="200" y="74" text-anchor="middle" font-size="14" font-weight="700" fill="#04342c">Expression (표현식)</text>
+  <text x="200" y="94" text-anchor="middle" font-size="11" fill="#0f6e56">반드시 어떤 타입 T 의 값을 가집니다</text>
+
+  <rect x="40" y="108" width="320" height="30" rx="5" fill="#9fe1cb" stroke="#0f6e56" stroke-width="0.5"/>
+  <text x="200" y="128" text-anchor="middle" font-size="11" fill="#04342c">리터럴     42, true, "hi", ()</text>
+
+  <rect x="40" y="146" width="320" height="30" rx="5" fill="#9fe1cb" stroke="#0f6e56" stroke-width="0.5"/>
+  <text x="200" y="166" text-anchor="middle" font-size="11" fill="#04342c">연산       x + 1, x &gt; 0, foo()</text>
+
+  <rect x="40" y="184" width="320" height="30" rx="5" fill="#9fe1cb" stroke="#0f6e56" stroke-width="0.5"/>
+  <text x="200" y="204" text-anchor="middle" font-size="11" fill="#04342c">블록       { stmt...; expr }  → 마지막 expr 의 값</text>
+
+  <rect x="40" y="222" width="320" height="30" rx="5" fill="#9fe1cb" stroke="#0f6e56" stroke-width="0.5"/>
+  <text x="200" y="242" text-anchor="middle" font-size="11" fill="#04342c">if         if c { e1 } else { e2 }  → e1 또는 e2</text>
+
+  <rect x="40" y="260" width="320" height="30" rx="5" fill="#9fe1cb" stroke="#0f6e56" stroke-width="0.5"/>
+  <text x="200" y="280" text-anchor="middle" font-size="11" fill="#04342c">match      match v { p =&gt; e, ... }  → 매칭된 e</text>
+
+  <rect x="40" y="298" width="320" height="30" rx="5" fill="#9fe1cb" stroke="#0f6e56" stroke-width="0.5"/>
+  <text x="200" y="318" text-anchor="middle" font-size="11" fill="#04342c">loop       loop { break val; }  → val</text>
+
+  <!-- Statement box large -->
+  <rect x="420" y="48" width="360" height="290" rx="12" fill="#faece7" stroke="#993c1d" stroke-width="1.5"/>
+  <text x="600" y="74" text-anchor="middle" font-size="14" font-weight="700" fill="#4a1b0c">Statement (문장)</text>
+  <text x="600" y="94" text-anchor="middle" font-size="11" fill="#993c1d">값을 목적으로 하지 않습니다. 타입은 ()</text>
+
+  <rect x="440" y="108" width="320" height="52" rx="5" fill="#f5c4b3" stroke="#993c1d" stroke-width="0.5"/>
+  <text x="600" y="128" text-anchor="middle" font-size="12" font-weight="700" fill="#4a1b0c">let stmt</text>
+  <text x="600" y="148" text-anchor="middle" font-size="11" fill="#712b13">let x = expr;  →  x 에 바인딩, ; 는 선언 종결자</text>
+
+  <rect x="440" y="168" width="320" height="52" rx="5" fill="#f5c4b3" stroke="#993c1d" stroke-width="0.5"/>
+  <text x="600" y="188" text-anchor="middle" font-size="12" font-weight="700" fill="#4a1b0c">item decl</text>
+  <text x="600" y="208" text-anchor="middle" font-size="11" fill="#712b13">fn, struct, impl, use ...</text>
+
+  <rect x="440" y="228" width="320" height="72" rx="5" fill="#f5c4b3" stroke="#993c1d" stroke-width="0.5"/>
+  <text x="600" y="248" text-anchor="middle" font-size="12" font-weight="700" fill="#4a1b0c">expr stmt</text>
+  <text x="600" y="268" text-anchor="middle" font-size="11" fill="#712b13">expr;  →  값이 버려지고 () 가 됨</text>
+  <text x="600" y="288" text-anchor="middle" font-size="11" fill="#712b13">; 가 expression 을 statement 로 전환</text>
+
+  <!-- Bottom rule -->
+  <rect x="20" y="352" width="760" height="22" rx="5" fill="#faeeda" stroke="#ba7517" stroke-width="1"/>
+  <text x="400" y="367" text-anchor="middle" font-size="12" font-weight="700" fill="#412402">핵심: ; 없음 = expression (값 있음)   /   expr; = statement (값 버려짐)   /   let x = expr; = 바인딩</text>
+</svg>
+<div class="fig-cap">그림 10 — Expression vs Statement 전체 요약</div></div>
+
+<div class="sub"><h3>집약 예제 — 모든 개념 한 번에</h3><div class="code-wrap"><div class="code-bar">
+<div class="dot" style="background:#ff5f57"></div>
+<div class="dot" style="background:#ffbd2e"></div>
+<div class="dot" style="background:#28ca41"></div>
+<span class="code-label">rust</span>
+</div><pre><span class="kw">fn</span> <span class="fn_">evaluate</span>(<span class="va">input</span>: <span class="ty">i32</span>) -&gt; <span class="ty">String</span> {
+    <span class="cm">// ① match 는 expression → let 에 바인딩</span>
+    <span class="kw">let</span> <span class="va">category</span> = <span class="kw">match</span> <span class="va">input</span> {
+        <span class="ty">i32</span>::MIN..=-<span class="nm">1</span> =&gt; <span class="st">"negative"</span>,
+        <span class="nm">0</span>              =&gt; <span class="st">"zero"</span>,
+        <span class="nm">1</span>..=<span class="nm">9</span>          =&gt; <span class="st">"single"</span>,
+        <span class="nm">10</span>..=<span class="nm">99</span>        =&gt; <span class="st">"double"</span>,
+        _              =&gt; <span class="st">"large"</span>,
+    };
+
+    <span class="cm">// ② if expression → let 에 바인딩</span>
+    <span class="kw">let</span> <span class="va">parity</span> = <span class="kw">if</span> <span class="va">input</span> % <span class="nm">2</span> == <span class="nm">0</span> { <span class="st">"even"</span> } <span class="kw">else</span> { <span class="st">"odd"</span> };
+
+    <span class="cm">// ③ 블록 expression → let 에 바인딩</span>
+    <span class="kw">let</span> <span class="va">adjusted</span> = {
+        <span class="kw">let</span> <span class="va">base</span>  = <span class="va">input</span>.<span class="fn_">abs</span>();
+        <span class="kw">let</span> <span class="va">bonus</span> = <span class="nm">10</span>;
+        <span class="va">base</span> + <span class="va">bonus</span>   <span class="cm">// tail expression</span>
+    };
+
+    <span class="cm">// ④ Option 으로 안전하게 처리</span>
+    <span class="kw">let</span> <span class="va">opt_msg</span> = <span class="kw">if</span> <span class="va">input</span> == <span class="nm">0</span> { <span class="ty">Some</span>(<span class="st">"영입니다"</span>) } <span class="kw">else</span> { <span class="ty">None</span> };
+    <span class="kw">let</span> <span class="va">extra</span> = <span class="kw">match</span> <span class="va">opt_msg</span> {
+        <span class="ty">Some</span>(<span class="va">s</span>) =&gt; <span class="kw">format!</span>(<span class="st">" ({})"</span>, <span class="va">s</span>),
+        <span class="ty">None</span>    =&gt; <span class="ty">String</span>::<span class="fn_">new</span>(),
+    };
+
+    <span class="cm">// ⑤ 함수 마지막 expression = 반환값 (return 불필요)</span>
+    <span class="kw">format!</span>(<span class="st">"{}{} / {} / adjusted={}"</span>,
+        <span class="va">category</span>, <span class="va">extra</span>, <span class="va">parity</span>, <span class="va">adjusted</span>)
+}
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="fn_">evaluate</span>(<span class="nm">0</span>));    <span class="cm">// zero (영입니다) / even / adjusted=10</span>
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="fn_">evaluate</span>(-<span class="nm">7</span>));   <span class="cm">// negative / odd / adjusted=17</span>
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="fn_">evaluate</span>(<span class="nm">42</span>));   <span class="cm">// double / even / adjusted=52</span>
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="fn_">evaluate</span>(<span class="nm">100</span>));  <span class="cm">// large / even / adjusted=110</span>
+}</pre></div></div>
+
+<hr class="divider">
+
+<div class="callout info">
+  <div class="callout-title">핵심 규칙 3개 — 공식 문서 기준</div>
+  <p>1. &nbsp;<code>expr</code> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; → 블록/함수의 tail expression. 그 블록/함수의 값이 됩니다.</p>
+  <p>2. &nbsp;<code>expr ;</code> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; → expression statement: 값 버려지고 ().</p>
+  <p>3. &nbsp;<code>let x = expr ;</code> &nbsp;&nbsp; → let statement: 값은 x 에 바인딩. ; 는 선언 종결자 (값을 버리는 역할 아님).</p>
+</div>
+
+</section>
+
+</div>
+
+<footer>
+  <p>
+    <a href="https://doc.rust-lang.org/reference/" target="_blank">Rust Reference</a> &middot;
+    <a href="https://doc.rust-lang.org/book/" target="_blank">The Rust Programming Language</a>
+  </p>
+</footer>
+
+<script>
+(function(){
+  const btn = document.getElementById('theme-btn');
+  const body = document.body;
+  const saved = localStorage.getItem('theme') || 'dark';
+  body.className = saved;
+  updateBtn(saved);
+
+  btn.addEventListener('click', function(){
+    const next = body.classList.contains('dark') ? 'light' : 'dark';
+    body.className = next;
+    localStorage.setItem('theme', next);
+    updateBtn(next);
+  });
+
+  function updateBtn(t){
+    btn.textContent = t === 'dark' ? '☀ Light' : '🌙 Dark';
+  }
+})();
+</script>
+</body>
+</html>

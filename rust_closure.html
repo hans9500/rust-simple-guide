@@ -1,0 +1,1971 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rust 클로져 개념과 예제</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap');
+
+/* ═══════════════════════════════════════════
+   THEME TOKENS
+═══════════════════════════════════════════ */
+:root {
+  --fn-c: #4ec9b0;
+  --fnmut-c: #fbbf24;
+  --fnonce-c: #f87171;
+  --kw: #569cd6;
+  --ty: #4ec9b0;
+  --fn-name: #dcdcaa;
+  --str: #ce9178;
+  --num: #b5cea8;
+  --cmt: #6a9955;
+  --mac: #dcdcaa;
+  --op: #d4d4d4;
+  --lf: #9cdcfe;
+}
+[data-theme="dark"] {
+  --bg:       #1e1e1e;
+  --bg2:      #252526;
+  --bg3:      #2d2d30;
+  --bg4:      #333337;
+  --border:   #3e3e42;
+  --border2:  #555558;
+  --text:     #d4d4d4;
+  --text2:    #9d9d9d;
+  --text3:    #6a6a6a;
+  --code-bg:  #1e1e1e;
+  --code-ln:  #3a3a3a;
+  --tag-bg:   #2a2d2e;
+  --tag-bd:   #444444;
+  --link:     #4fc1ff;
+  --accent:   #007acc;
+  --hdr-bg:   #1a1a2e;
+  --hdr-grad: linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
+  --card-bg:  #252526;
+  --card-bd:  #3e3e42;
+  --tbl-hd:   #2d2d30;
+  --tbl-row:  #252526;
+  --tbl-alt:  #2a2a2e;
+  --info-bg:  #2d2d30;
+  --warn-bg:  #332b00;
+  --warn-bd:  #7a5c00;
+  --err-bg:   #3a1515;
+  --err-bd:   #7a2a2a;
+  --ok-bg:    #1a3a1a;
+  --ok-bd:    #2a6a2a;
+  --tip-bg:   #1a2a3a;
+  --tip-bd:   #2a4a6a;
+}
+[data-theme="light"] {
+  --bg:       #ffffff;
+  --bg2:      #f3f3f3;
+  --bg3:      #ebebeb;
+  --bg4:      #e0e0e0;
+  --border:   #d0d0d0;
+  --border2:  #b0b0b0;
+  --text:     #1e1e1e;
+  --text2:    #555555;
+  --text3:    #888888;
+  --code-bg:  #f8f8f8;
+  --code-ln:  #e8e8e8;
+  --tag-bg:   #f0f0f0;
+  --tag-bd:   #d0d0d0;
+  --link:     #0066cc;
+  --accent:   #007acc;
+  --hdr-bg:   #f0f4ff;
+  --hdr-grad: linear-gradient(135deg,#e8f0fe 0%,#f0e8ff 50%,#e8f4ff 100%);
+  --card-bg:  #ffffff;
+  --card-bd:  #d0d0d0;
+  --tbl-hd:   #f0f0f0;
+  --tbl-row:  #ffffff;
+  --tbl-alt:  #f9f9f9;
+  --info-bg:  #f0f0f0;
+  --warn-bg:  #fff8e1;
+  --warn-bd:  #f0c000;
+  --err-bg:   #fff0f0;
+  --err-bd:   #ffaaaa;
+  --ok-bg:    #f0fff0;
+  --ok-bd:    #88cc88;
+  --tip-bg:   #f0f8ff;
+  --tip-bd:   #88aacc;
+  --kw:       #0000ff;
+  --ty:       #267f99;
+  --fn-name:  #795e26;
+  --str:      #a31515;
+  --num:      #098658;
+  --cmt:      #008000;
+  --mac:      #795e26;
+  --op:       #1e1e1e;
+  --lf:       #0070c1;
+}
+
+/* ═══════════════════════════════════════════
+   BASE
+═══════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.75;
+  font-size: 15px;
+  transition: background .25s, color .25s;
+}
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+::-webkit-scrollbar { width: 7px; height: 7px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+/* ═══════════════════════════════════════════
+   THEME TOGGLE
+═══════════════════════════════════════════ */
+.theme-btn {
+  position: fixed; top: 18px; right: 20px; z-index: 999;
+  display: flex; align-items: center; gap: 7px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 20px; padding: 6px 14px;
+  font-size: 12px; color: var(--text2); cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif;
+  transition: background .2s, border-color .2s;
+}
+.theme-btn:hover { background: var(--bg4); border-color: var(--border2); }
+.theme-icon { font-size: 14px; }
+
+/* ═══════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════ */
+.site-header {
+  background: var(--hdr-grad);
+  border-bottom: 1px solid var(--border);
+  padding: 64px 40px 52px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+[data-theme="dark"] .site-header::before {
+  content: '';
+  position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
+  width: 700px; height: 400px;
+  background: radial-gradient(ellipse, rgba(0,122,204,0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+.lang-badge {
+  display: inline-block;
+  background: rgba(86,156,214,0.15);
+  border: 1px solid rgba(86,156,214,0.45);
+  color: #569cd6;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 3px;
+  padding: 5px 16px; border-radius: 20px; margin-bottom: 20px;
+}
+[data-theme="light"] .lang-badge {
+  background: rgba(0,102,204,0.08); border-color: rgba(0,102,204,0.35); color: #0066cc;
+}
+.site-header h1 {
+  font-size: clamp(26px, 5vw, 44px);
+  font-weight: 700; letter-spacing: -0.5px;
+  color: var(--text); margin-bottom: 14px;
+}
+.site-header h1 .hl { color: #569cd6; }
+.site-header .sub {
+  font-size: 15px; color: var(--text2); max-width: 600px; margin: 0 auto 22px;
+}
+.src-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--ok-bg); border: 1px solid var(--ok-bd);
+  color: #4ec9b0; font-size: 12px; padding: 4px 12px; border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+}
+[data-theme="light"] .src-badge { color: #267f99; }
+
+/* ═══════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════ */
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+
+/* ═══════════════════════════════════════════
+   TOC
+═══════════════════════════════════════════ */
+.toc {
+  background: var(--card-bg); border: 1px solid var(--card-bd);
+  border-radius: 10px; padding: 24px 28px; margin: 40px 0 52px;
+}
+.toc-title {
+  font-size: 11px; letter-spacing: 2px; color: var(--text3);
+  font-weight: 500; margin-bottom: 14px; text-transform: uppercase;
+}
+.toc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 32px; }
+.toc-grid a {
+  font-size: 14px; color: var(--text2); padding: 2px 0;
+  display: block; border-bottom: 1px solid transparent;
+  transition: color .15s;
+}
+.toc-grid a:hover { color: var(--link); text-decoration: none; }
+.toc-num { font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text3); margin-right: 6px; }
+@media (max-width: 600px) { .toc-grid { grid-template-columns: 1fr; } }
+
+/* ═══════════════════════════════════════════
+   SECTION
+═══════════════════════════════════════════ */
+.sec { margin-bottom: 72px; }
+.sec-hdr {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 20px; padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.sec-num {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text3); background: var(--bg3);
+  border: 1px solid var(--border); padding: 2px 9px; border-radius: 4px;
+}
+.sec-hdr h2 { font-size: 22px; font-weight: 700; color: var(--text); }
+.sec-hdr h3 { font-size: 18px; font-weight: 600; color: var(--text); }
+.lead { font-size: 15px; color: var(--text2); margin-bottom: 22px; max-width: 820px; line-height: 1.8; }
+
+/* ═══════════════════════════════════════════
+   CALLOUT BOXES
+═══════════════════════════════════════════ */
+.callout {
+  border-radius: 8px; padding: 14px 18px; margin: 18px 0;
+  border-left: 3px solid; font-size: 14px; line-height: 1.7;
+}
+.callout-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.callout.info  { background: var(--tip-bg); border-color: var(--tip-bd); color: var(--text2); }
+.callout.warn  { background: var(--warn-bg); border-color: var(--warn-bd); color: var(--text2); }
+.callout.err   { background: var(--err-bg); border-color: var(--err-bd); color: var(--text2); }
+.callout.ok    { background: var(--ok-bg); border-color: var(--ok-bd); color: var(--text2); }
+.callout.info  .callout-title { color: #4fc1ff; }
+[data-theme="light"] .callout.info .callout-title { color: #0066cc; }
+.callout.warn  .callout-title { color: var(--fnmut-c); }
+.callout.err   .callout-title { color: var(--fnonce-c); }
+.callout.ok    .callout-title { color: var(--fn-c); }
+
+/* ═══════════════════════════════════════════
+   INFO CARDS GRID
+═══════════════════════════════════════════ */
+.igrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 12px; margin: 20px 0; }
+.icard {
+  background: var(--card-bg); border: 1px solid var(--card-bd);
+  border-radius: 8px; padding: 16px 18px;
+}
+.icard-lbl { font-size: 10px; letter-spacing: 1.5px; font-weight: 600;
+  text-transform: uppercase; margin-bottom: 6px; }
+.icard-val { font-size: 14px; color: var(--text); font-weight: 500; }
+.icard-sub { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+/* ═══════════════════════════════════════════
+   SVG DIAGRAM CARD
+═══════════════════════════════════════════ */
+.diag-card {
+  background: var(--card-bg); border: 1px solid var(--card-bd);
+  border-radius: 10px; padding: 24px; margin: 22px 0; overflow-x: auto;
+}
+.diag-card svg { display: block; max-width: 100%; height: auto; }
+.diag-cap {
+  font-size: 12px; color: var(--text3); text-align: center;
+  margin-top: 10px; font-family: 'JetBrains Mono', monospace;
+}
+
+/* ═══════════════════════════════════════════
+   TRAIT HEADERS
+═══════════════════════════════════════════ */
+.th {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+  padding: 14px 18px; border-radius: 8px; margin: 32px 0 14px;
+  border: 1px solid;
+}
+.th-name { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700; }
+.th-desc { font-size: 13px; flex: 1; min-width: 200px; }
+.th-tag {
+  margin-left: auto; font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; padding: 3px 10px; border-radius: 20px; font-weight: 600;
+  white-space: nowrap;
+}
+.th-fn   { background: rgba(78,201,176,0.07); border-color: rgba(78,201,176,0.3); }
+.th-fn   .th-name { color: var(--fn-c); }
+.th-fn   .th-desc { color: #a8e6d8; }
+.th-fn   .th-tag  { background: rgba(78,201,176,0.15); color: var(--fn-c); }
+[data-theme="light"] .th-fn   .th-desc { color: #267f99; }
+.th-fnmut { background: rgba(251,191,36,0.07); border-color: rgba(251,191,36,0.3); }
+.th-fnmut .th-name { color: var(--fnmut-c); }
+.th-fnmut .th-desc { color: #fde68a; }
+.th-fnmut .th-tag  { background: rgba(251,191,36,0.15); color: var(--fnmut-c); }
+[data-theme="light"] .th-fnmut .th-desc { color: #8a6a00; }
+.th-fnonce { background: rgba(248,113,113,0.07); border-color: rgba(248,113,113,0.3); }
+.th-fnonce .th-name { color: var(--fnonce-c); }
+.th-fnonce .th-desc { color: #fca5a5; }
+.th-fnonce .th-tag  { background: rgba(248,113,113,0.15); color: var(--fnonce-c); }
+[data-theme="light"] .th-fnonce .th-desc { color: #c0392b; }
+
+/* ═══════════════════════════════════════════
+   CODE BLOCK  (VS Code Dark Modern style)
+═══════════════════════════════════════════ */
+.cb { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin: 12px 0 22px; }
+.cb-hdr {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; background: var(--bg3); border-bottom: 1px solid var(--border);
+}
+.cb-dots { display: flex; gap: 5px; }
+.cb-dot { width: 10px; height: 10px; border-radius: 50%; }
+.cb-title { font-size: 12px; color: var(--text2); font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+.cb-badge {
+  margin-left: auto; font-size: 10px; padding: 2px 9px;
+  border-radius: 20px; font-family: 'JetBrains Mono', monospace; font-weight: 700;
+}
+.cb-fn    { background: rgba(78,201,176,0.15); color: var(--fn-c); }
+.cb-fnmut { background: rgba(251,191,36,0.15); color: var(--fnmut-c); }
+.cb-fnonce{ background: rgba(248,113,113,0.15); color: var(--fnonce-c); }
+.cb-basic { background: rgba(86,156,214,0.15); color: #569cd6; }
+.cb-err   { background: rgba(248,113,113,0.12); color: var(--fnonce-c); }
+
+.cb pre {
+  margin: 0; padding: 18px 20px;
+  font-family: 'JetBrains Mono', monospace; font-size: 13px;
+  line-height: 1.8; overflow-x: auto; white-space: pre;
+  background: var(--code-bg); color: var(--op);
+  tab-size: 4;
+}
+/* syntax tokens — dark modern */
+.kw  { color: var(--kw); font-weight: 500; }
+.ty  { color: var(--ty); }
+.fn  { color: var(--fn-name); }
+.st  { color: var(--str); }
+.nm  { color: var(--num); }
+.cm  { color: var(--cmt); font-style: italic; }
+.lf  { color: var(--lf); }
+.op2 { color: var(--op); }
+.mac { color: var(--mac); }
+.ok-c  { color: #4ec9b0; font-weight: 500; }
+.err-c { color: #f87171; font-weight: 500; }
+
+/* ═══════════════════════════════════════════
+   INLINE CODE
+═══════════════════════════════════════════ */
+code {
+  font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
+  background: var(--bg3); border: 1px solid var(--border);
+  padding: 1px 6px; border-radius: 4px; color: var(--ty);
+}
+
+/* ═══════════════════════════════════════════
+   TABLE
+═══════════════════════════════════════════ */
+.tbl-wrap { overflow-x: auto; margin: 20px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th {
+  background: var(--tbl-hd); padding: 11px 14px;
+  text-align: left; font-weight: 600; font-size: 12px;
+  color: var(--text2); border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: var(--tbl-alt); }
+tr:hover td { background: var(--bg3); }
+.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+/* ═══════════════════════════════════════════
+   DIVIDER
+═══════════════════════════════════════════ */
+.divider { height: 1px; background: var(--border); margin: 56px 0; }
+
+/* ═══════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════ */
+footer {
+  border-top: 1px solid var(--border); padding: 28px 40px;
+  text-align: center; color: var(--text3); font-size: 13px;
+}
+
+/* ═══════════════════════════════════════════
+   LABEL CHIPS
+═══════════════════════════════════════════ */
+.chip {
+  display: inline-block; font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; padding: 2px 8px; border-radius: 4px;
+  font-weight: 600; border: 1px solid;
+}
+.chip-fn    { background: rgba(78,201,176,0.12); border-color: rgba(78,201,176,0.4); color: var(--fn-c); }
+.chip-fnmut { background: rgba(251,191,36,0.12); border-color: rgba(251,191,36,0.4); color: var(--fnmut-c); }
+.chip-fnonce{ background: rgba(248,113,113,0.12); border-color: rgba(248,113,113,0.4); color: var(--fnonce-c); }
+
+/* two-col layout for concept pairs */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+@media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- Theme Toggle -->
+<button class="theme-btn" onclick="toggleTheme()" id="themeBtn">
+  <span class="theme-icon" id="themeIcon">☀️</span>
+  <span id="themeLabel">Light</span>
+</button>
+
+<!-- ════════════════ HEADER ════════════════ -->
+<header class="site-header">
+  <div class="lang-badge">RUST · CLOSURES · 완전 정복</div>
+  <h1>Rust <span class="hl">클로져</span> 개념과 예제</h1>
+  <p class="sub">Fn / FnMut / FnOnce — 내부 구조부터 트레이트 계층, 실전 패턴까지<br>공식 문서(The Rust Book, std::ops) 기반으로 검증된 내용</p>
+  <div class="src-badge">✓ The Rust Book ch.13 · std::ops::Fn/FnMut/FnOnce 기반</div>
+</header>
+
+<div class="wrap">
+
+<!-- ════════════════ TOC ════════════════ -->
+<nav class="toc">
+  <div class="toc-title">목차</div>
+  <div class="toc-grid">
+    <a href="#s1"><span class="toc-num">§01</span>클로져란 무엇인가 — 기본 개념</a>
+    <a href="#s2"><span class="toc-num">§02</span>캡처 방식 — 컴파일러 추론 규칙</a>
+    <a href="#s3"><span class="toc-num">§03</span>클로져 내부 구조 — 익명 구조체</a>
+    <a href="#s4"><span class="toc-num">§04</span>트레이트 시그니처 — 공식 정의</a>
+    <a href="#s5"><span class="toc-num">§05</span>트레이트 계층도 (SVG)</a>
+    <a href="#s6"><span class="toc-num">§06</span>Fn — 예제 5개</a>
+    <a href="#s7"><span class="toc-num">§07</span>FnMut — 예제 5개</a>
+    <a href="#s8"><span class="toc-num">§08</span>FnOnce — 예제 5개</a>
+    <a href="#s9"><span class="toc-num">§09</span>sort_by_key 에러 케이스 (The Book)</a>
+    <a href="#s10"><span class="toc-num">§10</span>move 키워드와 Copy 타입</a>
+    <a href="#s11"><span class="toc-num">§11</span>Box&lt;dyn Fn&gt; vs impl Fn</a>
+    <a href="#s12"><span class="toc-num">§12</span>핵심 요약 비교표</a>
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════════
+  §01  클로져란 무엇인가
+════════════════════════════════════════ -->
+<section class="sec" id="s1">
+  <div class="sec-hdr">
+    <span class="sec-num">§ 01</span>
+    <h2>클로져란 무엇인가 — 기본 개념</h2>
+  </div>
+
+  <p class="lead">
+    클로져(Closure)는 <strong>주변 환경(스코프)의 변수를 캡처(capture)할 수 있는 익명 함수</strong>입니다.
+    The Rust Book은 클로져를 <em>"anonymous functions you can save in a variable or pass as arguments to other functions"</em>로 정의합니다.
+    일반 <code>fn</code>과 달리 자신이 정의된 스코프의 변수를 기억합니다.
+  </p>
+
+  <div class="igrid">
+    <div class="icard">
+      <div class="icard-lbl" style="color:#569cd6">문법</div>
+      <div class="icard-val" style="font-family:'JetBrains Mono',monospace;font-size:13px;">|params| { body }</div>
+      <div class="icard-sub">매개변수·반환 타입 모두 생략 가능 (컴파일러 추론)</div>
+    </div>
+    <div class="icard">
+      <div class="icard-lbl" style="color:#4ec9b0">vs 일반 함수</div>
+      <div class="icard-val">환경 변수 캡처 가능</div>
+      <div class="icard-sub"><code>fn</code>은 외부 변수를 직접 캡처할 수 없음</div>
+    </div>
+    <div class="icard">
+      <div class="icard-lbl" style="color:#fbbf24">캡처 방식</div>
+      <div class="icard-val">컴파일러가 자동 추론</div>
+      <div class="icard-sub">Copy / &amp;T / &amp;mut T / 소유권 이전 순</div>
+    </div>
+    <div class="icard">
+      <div class="icard-lbl" style="color:#f87171">move 키워드</div>
+      <div class="icard-val">소유권 강제 이전</div>
+      <div class="icard-sub">스레드 전달 시 필수 (<code>Send + 'static</code>)</div>
+    </div>
+  </div>
+
+  <div class="cb">
+    <div class="cb-hdr">
+      <div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div>
+      <span class="cb-title">closure_basics.rs</span>
+      <span class="cb-badge cb-basic">기본</span>
+    </div>
+    <pre class="code"><span class="cm">// 클로져의 가장 기본적인 형태와 일반 함수 비교</span>
+
+<span class="cm">// ① 일반 함수 — 외부 변수를 직접 참조할 수 없음</span>
+<span class="kw">fn</span> <span class="fn">add_fn</span>(x: <span class="ty">i32</span>, y: <span class="ty">i32</span>) -&gt; <span class="ty">i32</span> { x + y }
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="cm">// ② 클로져 기본 — 타입 완전 생략 (컴파일러가 사용처에서 추론)</span>
+    <span class="kw">let</span> add = |x, y| x + y;
+    <span class="mac">println!</span>(<span class="st">"add(3,4) = {}"</span>, add(<span class="nm">3</span>, <span class="nm">4</span>)); <span class="cm">// 7</span>
+
+    <span class="cm">// ③ 클로져 — 타입 명시 (선택사항)</span>
+    <span class="kw">let</span> add_typed = |x: <span class="ty">i32</span>, y: <span class="ty">i32</span>| -&gt; <span class="ty">i32</span> { x + y };
+
+    <span class="cm">// ④ 환경 캡처 — 클로져만의 특권</span>
+    <span class="kw">let</span> offset = <span class="nm">100</span>; <span class="cm">// 외부 변수</span>
+    <span class="kw">let</span> add_offset = |x| x + offset; <span class="cm">// offset을 캡처!</span>
+    <span class="mac">println!</span>(<span class="st">"add_offset(5) = {}"</span>, add_offset(<span class="nm">5</span>)); <span class="cm">// 105</span>
+    <span class="mac">println!</span>(<span class="st">"offset 여전히 유효: {}"</span>, offset);         <span class="cm">// 100 (불변 참조 캡처)</span>
+
+    <span class="cm">// ⑤ 클로져를 변수에 저장하고 나중에 호출</span>
+    <span class="kw">let</span> expensive = |n: <span class="ty">u64</span>| -&gt; <span class="ty">u64</span> {
+        <span class="cm">// 실제 코드에서는 오래 걸리는 연산이 들어갈 수 있음</span>
+        n * n
+    };
+    <span class="kw">let</span> result = expensive(<span class="nm">10</span>);
+    <span class="mac">println!</span>(<span class="st">"expensive(10) = {}"</span>, result); <span class="cm">// 100</span>
+
+    <span class="cm">// ⑥ 클로져를 다른 함수의 인자로 전달</span>
+    <span class="kw">let</span> nums = vec![<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>, <span class="nm">4</span>, <span class="nm">5</span>];
+    <span class="kw">let</span> evens: <span class="ty">Vec</span>&lt;&amp;<span class="ty">i32</span>&gt; = nums.iter().filter(|&&amp;x| x % <span class="nm">2</span> == <span class="nm">0</span>).collect();
+    <span class="mac">println!</span>(<span class="st">"짝수: {:?}"</span>, evens); <span class="cm">// [2, 4]</span>
+}</pre>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-title">📌 The Rust Book (ch.13) 정의</div>
+    클로져는 변수에 저장하거나 다른 함수의 인자로 전달할 수 있는 익명 함수입니다.
+    함수와 달리 클로져는 자신이 정의된 스코프의 값들을 캡처할 수 있습니다.
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════
+  §02  캡처 방식
+════════════════════════════════════════ -->
+<section class="sec" id="s2">
+  <div class="sec-hdr">
+    <span class="sec-num">§ 02</span>
+    <h2>캡처 방식 — 컴파일러 추론 규칙</h2>
+  </div>
+
+  <p class="lead">
+    컴파일러는 클로져 본문에서 변수가 어떻게 사용되는지 분석하여 가장 제한적인(least restrictive) 캡처 방식을 자동으로 선택합니다.
+    <strong>읽기만 하면 불변 참조, 수정하면 가변 참조, 소유권을 이동시키면 소유권 캡처</strong> 순서로 결정됩니다.
+    <code>move</code> 키워드를 사용하면 이 추론을 무시하고 모든 변수를 소유권 이전으로 강제합니다.
+  </p>
+
+  <div class="callout warn">
+    <div class="callout-title">⚠️ 중요: 캡처 방식 결정 우선순위</div>
+    컴파일러는 <strong>① 불변 참조(&amp;T) → ② 가변 참조(&amp;mut T) → ③ 소유권 이전(move)</strong> 순서로
+    가능한 가장 약한 방식을 선택합니다. <code>move</code>를 명시하면 Copy 타입은 복사, 나머지는 소유권 이전이 됩니다.
+  </div>
+
+  <div class="cb">
+    <div class="cb-hdr">
+      <div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div>
+      <span class="cb-title">capture_modes.rs</span>
+      <span class="cb-badge cb-basic">캡처 방식</span>
+    </div>
+    <pre class="code"><span class="cm">// 세 가지 캡처 방식을 모두 보여주는 예제</span>
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="cm">// ━━━━ ① 불변 참조(&amp;T) 캡처 ━━━━</span>
+    <span class="cm">// 클로져 내부에서 변수를 읽기만 할 때</span>
+    <span class="kw">let</span> text = <span class="ty">String</span>::from(<span class="st">"Hello"</span>);
+    <span class="kw">let</span> print_text = || <span class="mac">println!</span>(<span class="st">"{}"</span>, text); <span class="cm">// &amp;text 로 캡처 → Fn</span>
+
+    print_text(); <span class="cm">// Hello</span>
+    print_text(); <span class="cm">// Hello (Fn이므로 여러 번 호출 가능)</span>
+    <span class="mac">println!</span>(<span class="st">"text 여전히 유효: {}"</span>, text); <span class="ok-c">// ✅ 불변 참조이므로 원본 접근 OK</span>
+
+    <span class="cm">// ━━━━ ② 가변 참조(&amp;mut T) 캡처 ━━━━</span>
+    <span class="cm">// 클로져 내부에서 변수를 수정할 때</span>
+    <span class="kw">let mut</span> count = <span class="nm">0</span>;
+    <span class="kw">let mut</span> inc = || {
+        count += <span class="nm">1</span>; <span class="cm">// count를 수정 → &amp;mut count 로 캡처 → FnMut</span>
+        count
+    };
+
+    <span class="mac">println!</span>(<span class="st">"inc() = {}"</span>, inc()); <span class="cm">// 1</span>
+    <span class="mac">println!</span>(<span class="st">"inc() = {}"</span>, inc()); <span class="cm">// 2</span>
+    <span class="cm">// println!("{}", count); // ❌ 클로져가 살아있는 동안 가변 빌림 중</span>
+    drop(inc); <span class="cm">// 클로져 드롭 → 빌림 해제</span>
+    <span class="mac">println!</span>(<span class="st">"count = {}"</span>, count); <span class="ok-c">// ✅ 2</span>
+
+    <span class="cm">// ━━━━ ③ 소유권 이전(move) 캡처 ━━━━</span>
+    <span class="cm">// 클로져 내부에서 소유권을 소비하는 연산을 할 때,</span>
+    <span class="cm">// 또는 move 키워드를 명시할 때</span>
+    <span class="kw">let</span> name = <span class="ty">String</span>::from(<span class="st">"Rust"</span>);
+    <span class="kw">let</span> consume = <span class="kw">move</span> || {
+        <span class="cm">// move로 name의 소유권이 클로져 안으로 이동</span>
+        <span class="kw">let</span> upper = name.to_uppercase(); <span class="cm">// name 소유</span>
+        <span class="mac">println!</span>(<span class="st">"upper: {}"</span>, upper);
+    };
+    consume();
+    <span class="cm">// println!("{}", name); // ❌ 소유권이 클로져로 이동됨</span>
+
+    <span class="cm">// ━━━━ ④ Copy 타입은 move해도 원본 유효 ━━━━</span>
+    <span class="kw">let</span> x: <span class="ty">i32</span> = <span class="nm">42</span>; <span class="cm">// i32는 Copy 트레이트 구현</span>
+    <span class="kw">let</span> cl = <span class="kw">move</span> || <span class="mac">println!</span>(<span class="st">"x = {}"</span>, x); <span class="cm">// x의 복사본을 캡처</span>
+    cl();
+    <span class="mac">println!</span>(<span class="st">"x 여전히 유효: {}"</span>, x); <span class="ok-c">// ✅ Copy이므로 원본 유효</span>
+}</pre>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>캡처 방식</th><th>클로져 내부 동작</th><th>자동 구현 트레이트</th><th>원본 접근</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="mono">&amp;T (불변 참조)</td><td>읽기만 함</td><td><span class="chip chip-fn">Fn</span> <span class="chip chip-fnmut">FnMut</span> <span class="chip chip-fnonce">FnOnce</span></td><td>✅ 가능</td></tr>
+        <tr><td class="mono">&amp;mut T (가변 참조)</td><td>수정함</td><td><span class="chip chip-fnmut">FnMut</span> <span class="chip chip-fnonce">FnOnce</span></td><td>❌ 빌림 중</td></tr>
+        <tr><td class="mono">소유권 이전</td><td>drop/into_* 등 소비</td><td><span class="chip chip-fnonce">FnOnce</span></td><td>❌ 이동됨</td></tr>
+        <tr><td class="mono">move + Copy 타입</td><td>값 복사 후 사용</td><td><span class="chip chip-fn">Fn</span> (상황에 따라)</td><td>✅ 복사본 남음</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════
+  §03  내부 구조
+════════════════════════════════════════ -->
+<section class="sec" id="s3">
+  <div class="sec-hdr">
+    <span class="sec-num">§ 03</span>
+    <h2>클로져 내부 구조 — 컴파일러가 생성하는 익명 구조체</h2>
+  </div>
+
+  <p class="lead">
+    Rust의 클로져는 컴파일 시점에 <strong>캡처한 변수들을 필드로 갖는 익명 구조체(anonymous struct)</strong>로 변환됩니다.
+    그리고 그 구조체에 캡처 방식에 따라 <code>Fn</code>, <code>FnMut</code>, <code>FnOnce</code> 중 적절한 트레이트가 자동 구현됩니다.
+    이 개념을 이해하면 왜 특정 규칙이 존재하는지 명확히 알 수 있습니다.
+  </p>
+
+  <div class="cb">
+    <div class="cb-hdr">
+      <div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div>
+      <span class="cb-title">closure_desugared.rs</span>
+      <span class="cb-badge cb-basic">내부 구조</span>
+    </div>
+    <pre class="code"><span class="cm">// 클로져가 내부적으로 어떻게 변환되는지 보여주는 예시
+// (실제 Rust 코드는 아니지만, 컴파일러가 하는 일을 설명)</span>
+
+<span class="cm">// ━━ 우리가 작성하는 코드 ━━</span>
+<span class="kw">let</span> x = <span class="nm">5</span>;
+<span class="kw">let</span> y = <span class="nm">10</span>;
+<span class="kw">let</span> add_xy = |n| n + x + y; <span class="cm">// x, y를 불변 참조로 캡처</span>
+
+<span class="cm">// ━━ 컴파일러가 내부적으로 생성하는 구조체 (개념 설명용) ━━
+// struct ClosureAddXY&lt;'a&gt; {
+//     x: &amp;'a i32,   // 불변 참조로 캡처
+//     y: &amp;'a i32,
+// }
+// impl&lt;'a&gt; Fn(i32) -&gt; i32 for ClosureAddXY&lt;'a&gt; {
+//     fn call(&amp;self, n: i32) -&gt; i32 {
+//         n + *self.x + *self.y
+//     }
+// }</span>
+
+<span class="cm">// ━━ 가변 캡처 예시 ━━</span>
+<span class="kw">let mut</span> total = <span class="nm">0</span>;
+<span class="kw">let mut</span> accumulate = |n| { total += n; }; <span class="cm">// total을 &amp;mut 로 캡처</span>
+<span class="cm">// 컴파일러가 생성하는 구조체:
+// struct ClosureAccumulate&lt;'a&gt; {
+//     total: &amp;'a mut i32,  // 가변 참조로 캡처
+// }
+// impl&lt;'a&gt; FnMut(i32) for ClosureAccumulate&lt;'a&gt; {
+//     fn call_mut(&amp;mut self, n: i32) {
+//         *self.total += n;
+//     }
+// }</span>
+
+<span class="cm">// ━━ 실제로 활용되는 패턴: struct에 클로져 저장 ━━</span>
+<span class="kw">struct</span> <span class="ty">Cacher</span>&lt;<span class="ty">T</span>&gt;
+<span class="kw">where</span>
+    <span class="ty">T</span>: <span class="ty">Fn</span>(<span class="ty">u32</span>) -&gt; <span class="ty">u32</span>, <span class="cm">// T는 Fn 트레이트를 구현해야 함</span>
+{
+    calculation: <span class="ty">T</span>,                  <span class="cm">// 클로져를 제네릭 필드로 저장</span>
+    value: <span class="ty">Option</span>&lt;<span class="ty">u32</span>&gt;,            <span class="cm">// 계산 결과를 캐시</span>
+}
+
+<span class="kw">impl</span>&lt;<span class="ty">T</span>&gt; <span class="ty">Cacher</span>&lt;<span class="ty">T</span>&gt;
+<span class="kw">where</span>
+    <span class="ty">T</span>: <span class="ty">Fn</span>(<span class="ty">u32</span>) -&gt; <span class="ty">u32</span>,
+{
+    <span class="kw">fn</span> <span class="fn">new</span>(calculation: <span class="ty">T</span>) -&gt; <span class="ty">Cacher</span>&lt;<span class="ty">T</span>&gt; {
+        <span class="ty">Cacher</span> { calculation, value: <span class="ty">None</span> }
+    }
+
+    <span class="cm">// 처음 호출 시 계산, 이후 캐시된 값 반환 (Lazy evaluation)</span>
+    <span class="kw">fn</span> <span class="fn">value</span>(&amp;<span class="kw">mut</span> <span class="kw">self</span>, arg: <span class="ty">u32</span>) -&gt; <span class="ty">u32</span> {
+        <span class="kw">match</span> <span class="kw">self</span>.value {
+            <span class="ty">Some</span>(v) =&gt; v,
+            <span class="ty">None</span> =&gt; {
+                <span class="kw">let</span> v = (<span class="kw">self</span>.calculation)(arg); <span class="cm">// 클로져 호출</span>
+                <span class="kw">self</span>.value = <span class="ty">Some</span>(v);
+                v
+            }
+        }
+    }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let mut</span> expensive_result = <span class="ty">Cacher</span>::new(|num| {
+        <span class="mac">println!</span>(<span class="st">"계산 중... (오래 걸리는 작업)"</span>);
+        num * num + num
+    });
+
+    <span class="mac">println!</span>(<span class="st">"결과1: {}"</span>, expensive_result.value(<span class="nm">5</span>)); <span class="cm">// 계산 실행됨 → 30</span>
+    <span class="mac">println!</span>(<span class="st">"결과2: {}"</span>, expensive_result.value(<span class="nm">5</span>)); <span class="cm">// 캐시 반환 → 30 (재계산 없음)</span>
+}</pre>
+  </div>
+
+  <div class="callout ok">
+    <div class="callout-title">✅ 핵심 포인트</div>
+    클로져는 실제로는 <strong>캡처한 변수들을 필드로 가진 익명 struct</strong>입니다.
+    <code>Fn</code>/<code>FnMut</code>/<code>FnOnce</code> 트레이트는 이 struct에 구현됩니다.
+    따라서 클로져를 struct 필드, Vec, HashMap에 저장하거나 함수의 반환값으로 사용할 수 있습니다.
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════
+  §04  트레이트 시그니처
+════════════════════════════════════════ -->
+<section class="sec" id="s4">
+  <div class="sec-hdr">
+    <span class="sec-num">§ 04</span>
+    <h2>트레이트 시그니처 — std::ops 공식 정의</h2>
+  </div>
+
+  <p class="lead">
+    세 트레이트의 핵심 차이는 <code>self</code> 매개변수의 형태에 있습니다.
+    <code>call</code>은 <code>&amp;self</code>, <code>call_mut</code>은 <code>&amp;mut self</code>, <code>call_once</code>는 <code>self</code>를 받습니다.
+    이 차이가 반복 호출 가능 여부와 원본 변수 수정 가능 여부를 결정합니다.
+  </p>
+
+  <div class="cb">
+    <div class="cb-hdr">
+      <div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div>
+      <span class="cb-title">trait_signatures.rs  (출처: std::ops, Rust 1.x)</span>
+      <span class="cb-badge cb-basic">공식 정의</span>
+    </div>
+    <pre class="code"><span class="cm">// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 출처: https://doc.rust-lang.org/std/ops/trait.FnOnce.html
+//       https://doc.rust-lang.org/std/ops/trait.FnMut.html
+//       https://doc.rust-lang.org/std/ops/trait.Fn.html
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+
+<span class="cm">// ① FnOnce — 최상위 트레이트 (모든 클로져가 구현)</span>
+<span class="kw">pub trait</span> <span class="ty">FnOnce</span>&lt;<span class="ty">Args</span>&gt; {
+    <span class="kw">type</span> <span class="ty">Output</span>;
+    <span class="cm">// self를 소비 → 딱 한 번만 호출 가능</span>
+    <span class="kw">fn</span> <span class="fn">call_once</span>(<span class="kw">self</span>, args: <span class="ty">Args</span>) -&gt; <span class="ty">Self</span>::<span class="ty">Output</span>;
+}
+
+<span class="cm">// ② FnMut — FnOnce의 서브트레이트</span>
+<span class="kw">pub trait</span> <span class="ty">FnMut</span>&lt;<span class="ty">Args</span>&gt;: <span class="ty">FnOnce</span>&lt;<span class="ty">Args</span>&gt; {
+    <span class="cm">// &amp;mut self → 상태 변경 가능, 반복 호출 가능</span>
+    <span class="kw">fn</span> <span class="fn">call_mut</span>(&amp;<span class="kw">mut self</span>, args: <span class="ty">Args</span>) -&gt; <span class="ty">Self</span>::<span class="ty">Output</span>;
+}
+
+<span class="cm">// ③ Fn — FnMut의 서브트레이트 (가장 엄격한 요구사항)</span>
+<span class="kw">pub trait</span> <span class="ty">Fn</span>&lt;<span class="ty">Args</span>&gt;: <span class="ty">FnMut</span>&lt;<span class="ty">Args</span>&gt; {
+    <span class="cm">// &amp;self → 상태 변경 불가, 반복 호출 가능, 공유 참조로 호출</span>
+    <span class="kw">fn</span> <span class="fn">call</span>(&amp;<span class="kw">self</span>, args: <span class="ty">Args</span>) -&gt; <span class="ty">Self</span>::<span class="ty">Output</span>;
+}
+
+<span class="cm">// ━━ 자동 구현 규칙 (표준 라이브러리 보장) ━━
+// - Fn 구현 → FnMut, FnOnce 자동 구현
+// - FnMut 구현 → FnOnce 자동 구현
+// - 역방향은 성립하지 않음
+//
+// 추가 보장 (std::ops 문서):
+// - &amp;F가 Fn 구현 → &amp;F도 FnMut 구현 (Fn이 FnMut의 subtrait이므로)
+// - &amp;mut F가 FnMut 구현 → &amp;mut F로도 FnMut 호출 가능
+// - Box&lt;F&gt;가 FnMut 구현 → Box&lt;dyn FnMut&gt; 가능</span>
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="cm">// self 수신 방식을 직접 확인하는 예시</span>
+    <span class="kw">let</span> x = <span class="nm">10</span>;
+
+    <span class="cm">// Fn → &amp;self 로 호출 → 공유 참조(&amp;F)로도 호출 가능</span>
+    <span class="kw">let</span> fn_cl = || <span class="mac">println!</span>(<span class="st">"x = {}"</span>, x);
+    <span class="kw">let</span> r = &amp;fn_cl; <span class="cm">// &amp;F</span>
+    r();            <span class="cm">// &amp;F도 Fn 구현 → 호출 가능</span>
+    fn_cl();        <span class="cm">// 원본도 그대로</span>
+
+    <span class="cm">// FnMut → &amp;mut F 로도 호출 가능</span>
+    <span class="kw">let mut</span> n = <span class="nm">0</span>;
+    <span class="kw">let mut</span> fnmut_cl = || { n += <span class="nm">1</span>; <span class="mac">println!</span>(<span class="st">"n = {}"</span>, n); };
+    {
+        <span class="kw">let</span> rm = &amp;<span class="kw">mut</span> fnmut_cl; <span class="cm">// &amp;mut F</span>
+        rm();                    <span class="cm">// &amp;mut F도 FnMut 구현 → 호출 가능</span>
+    }
+    fnmut_cl(); <span class="cm">// n = 2</span>
+}</pre>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-title">📌 서브트레이트 관계의 의미</div>
+    <code>Fn: FnMut</code>는 "Fn은 FnMut의 서브트레이트"를 의미합니다.
+    즉, <code>Fn</code>을 구현하려면 반드시 <code>FnMut</code>도 구현해야 합니다.
+    따라서 <code>FnMut</code>를 요구하는 곳에 <code>Fn</code>을 전달할 수 있습니다 (리스코프 치환 원칙과 유사).
+    하지만 반대로 <code>Fn</code>을 요구하는 곳에 <code>FnMut</code>만 구현한 클로져는 전달할 수 없습니다.
+  </div>
+</section>
+
+<div class="divider"></div>
+<!-- ════════════════════════════════════════
+  §05  트레이트 계층도
+════════════════════════════════════════ -->
+<section class="sec" id="s5">
+  <div class="sec-hdr">
+    <span class="sec-num">§ 05</span>
+    <h2>트레이트 계층도</h2>
+  </div>
+  <p class="lead">
+    세 트레이트의 상속 관계와 각각의 캡처 방식, 호출 방식을 한눈에 볼 수 있습니다.
+    화살표 방향은 "자동 구현" 방향입니다 — <code>Fn</code>을 구현하면 위로 자동 구현됩니다.
+  </p>
+  <div class="diag-card">
+    <svg width="700" height="420" viewBox="0 0 700 420" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono','Courier New',monospace">
+      <defs>
+        <marker id="arr-up" viewBox="0 0 10 10" refX="5" refY="2" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M1 8L5 2L9 8" fill="none" stroke="#6a6a6a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+        <marker id="arr-r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#3e3e42" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+      <!-- FnOnce box -->
+      <rect x="250" y="24" width="200" height="72" rx="8" fill="rgba(248,113,113,0.1)" stroke="#f87171" stroke-width="1"/>
+      <text x="350" y="52" text-anchor="middle" font-size="16" font-weight="700" fill="#f87171">FnOnce</text>
+      <text x="350" y="72" text-anchor="middle" font-size="11" fill="#fca5a5">call_once(self, …)</text>
+      <text x="350" y="88" text-anchor="middle" font-size="10" fill="#6a6a6a">최대 1회 호출 · 소유권 소비</text>
+      <!-- FnMut box -->
+      <rect x="250" y="158" width="200" height="72" rx="8" fill="rgba(251,191,36,0.1)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="350" y="186" text-anchor="middle" font-size="16" font-weight="700" fill="#fbbf24">FnMut</text>
+      <text x="350" y="206" text-anchor="middle" font-size="11" fill="#fde68a">call_mut(&amp;mut self, …)</text>
+      <text x="350" y="222" text-anchor="middle" font-size="10" fill="#6a6a6a">반복 호출 · 상태 변경 가능</text>
+      <!-- Fn box -->
+      <rect x="250" y="292" width="200" height="72" rx="8" fill="rgba(78,201,176,0.1)" stroke="#4ec9b0" stroke-width="1"/>
+      <text x="350" y="320" text-anchor="middle" font-size="16" font-weight="700" fill="#4ec9b0">Fn</text>
+      <text x="350" y="340" text-anchor="middle" font-size="11" fill="#a8e6d8">call(&amp;self, …)</text>
+      <text x="350" y="356" text-anchor="middle" font-size="10" fill="#6a6a6a">반복 호출 · 불변 환경</text>
+      <!-- arrows -->
+      <line x1="350" y1="292" x2="350" y2="232" stroke="#6a6a6a" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-up)"/>
+      <line x1="350" y1="158" x2="350" y2="98"  stroke="#6a6a6a" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-up)"/>
+      <text x="362" y="275" font-size="10" fill="#6a6a6a">자동 구현</text>
+      <text x="362" y="143" font-size="10" fill="#6a6a6a">자동 구현</text>
+      <!-- Left panel -->
+      <rect x="28" y="20" width="170" height="350" rx="6" fill="none" stroke="#3e3e42" stroke-width="0.8" stroke-dasharray="6 3"/>
+      <text x="113" y="44" text-anchor="middle" font-size="12" font-weight="600" fill="#9d9d9d">캡처 방식</text>
+      <text x="113" y="70"  text-anchor="middle" font-size="11" fill="#6a6a6a">소유권 이전</text>
+      <text x="113" y="84"  text-anchor="middle" font-size="10" fill="#4a4a4a">move / into_*</text>
+      <line x1="198" y1="72" x2="250" y2="65" stroke="#3e3e42" stroke-width="0.7" stroke-dasharray="4 2"/>
+      <text x="113" y="202" text-anchor="middle" font-size="11" fill="#6a6a6a">&amp;mut T</text>
+      <text x="113" y="216" text-anchor="middle" font-size="10" fill="#4a4a4a">가변 참조</text>
+      <line x1="198" y1="207" x2="250" y2="197" stroke="#3e3e42" stroke-width="0.7" stroke-dasharray="4 2"/>
+      <text x="113" y="336" text-anchor="middle" font-size="11" fill="#6a6a6a">&amp;T</text>
+      <text x="113" y="350" text-anchor="middle" font-size="10" fill="#4a4a4a">불변 참조</text>
+      <line x1="198" y1="340" x2="250" y2="330" stroke="#3e3e42" stroke-width="0.7" stroke-dasharray="4 2"/>
+      <!-- Right panel -->
+      <rect x="502" y="20" width="170" height="350" rx="6" fill="none" stroke="#3e3e42" stroke-width="0.8" stroke-dasharray="6 3"/>
+      <text x="587" y="44" text-anchor="middle" font-size="12" font-weight="600" fill="#9d9d9d">호출 방식</text>
+      <text x="587" y="70"  text-anchor="middle" font-size="11" fill="#6a6a6a">self 소비</text>
+      <text x="587" y="84"  text-anchor="middle" font-size="10" fill="#4a4a4a">1회만 가능</text>
+      <line x1="450" y1="72" x2="502" y2="65" stroke="#3e3e42" stroke-width="0.7" stroke-dasharray="4 2"/>
+      <text x="587" y="202" text-anchor="middle" font-size="11" fill="#6a6a6a">&amp;mut self</text>
+      <text x="587" y="216" text-anchor="middle" font-size="10" fill="#4a4a4a">반복 가능</text>
+      <line x1="450" y1="207" x2="502" y2="197" stroke="#3e3e42" stroke-width="0.7" stroke-dasharray="4 2"/>
+      <text x="587" y="336" text-anchor="middle" font-size="11" fill="#6a6a6a">&amp;self</text>
+      <text x="587" y="350" text-anchor="middle" font-size="10" fill="#4a4a4a">반복 · 공유 가능</text>
+      <line x1="450" y1="340" x2="502" y2="330" stroke="#3e3e42" stroke-width="0.7" stroke-dasharray="4 2"/>
+      <text x="350" y="400" text-anchor="middle" font-size="11" fill="#4a4a4a">Fn ⊆ FnMut ⊆ FnOnce  ·  Fn을 구현하면 나머지 둘 자동 구현</text>
+    </svg>
+    <div class="diag-cap">[ 그림 ] Fn / FnMut / FnOnce 트레이트 계층 — 점선 화살표 = 자동 구현 방향</div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════
+  §06  Fn — 예제 5개
+════════════════════════════════════════ -->
+<section class="sec" id="s6">
+  <div class="sec-hdr"><span class="sec-num">§ 06</span><h2>Fn 트레이트 — 예제 5개</h2></div>
+  <p class="lead"><code>Fn</code>은 캡처한 변수를 <strong>불변 참조(<code>&amp;T</code>)</strong>로만 사용합니다. <code>&amp;self</code>로 호출되므로 몇 번이든 반복 호출 가능하며, 동시에 여러 곳에서 사용할 수도 있습니다. 표준 라이브러리의 <code>map</code>, <code>filter</code> 등 대부분의 Iterator 어댑터가 <code>Fn</code>을 요구합니다.</p>
+  <div class="callout info">
+    <div class="callout-title">📌 std::ops::Fn 공식 정의</div>
+    "An instance of Fn can be called repeatedly without mutating state." — Fn을 구현하는 타입에는 모든 safe 함수 포인터도 포함됩니다. <code>&amp;F</code>가 <code>Fn</code>을 구현하면 <code>&amp;F</code>도 자동으로 <code>FnMut</code>를 구현합니다 (std::ops 문서 명시).
+  </div>
+
+  <div class="th th-fn"><span class="th-name">Fn</span><span class="th-desc">예제 1 — 기본: 불변 참조 캡처, 반복 호출, 원본 변수 유지</span><span class="th-tag">&amp;self · 기본</span></div>
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">fn_01_basic.rs</span><span class="cb-badge cb-fn">Fn</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// [Fn 예제 1] 기본: 불변 참조(&amp;T) 캡처
+// 규칙: 클로져 내부에서 변수를 읽기만 하면 자동으로 Fn
+// &amp;self 호출 → 몇 번이든 반복 가능, 원본 변수 유지
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="cm">// Fn 바운드: f를 몇 번이든 반복 호출 가능</span>
+<span class="kw">fn</span> <span class="fn">call_twice</span>&lt;<span class="ty">F</span>: <span class="ty">Fn</span>(<span class="ty">i32</span>) -&gt; <span class="ty">i32</span>&gt;(f: <span class="ty">F</span>, val: <span class="ty">i32</span>) -&gt; (<span class="ty">i32</span>, <span class="ty">i32</span>) {
+    (f(val), f(val)) <span class="cm">// &amp;self 호출이므로 두 번 다 OK</span>
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="cm">// ① String을 불변 참조로 캡처</span>
+    <span class="kw">let</span> greeting = <span class="ty">String</span>::from(<span class="st">"안녕하세요"</span>);
+    <span class="kw">let</span> greet = |name: &amp;<span class="ty">str</span>| format!(<span class="st">"{}, {}!"</span>, greeting, name);
+
+    <span class="mac">println!</span>(<span class="st">"{}"</span>, greet(<span class="st">"Alice"</span>)); <span class="cm">// 안녕하세요, Alice!</span>
+    <span class="mac">println!</span>(<span class="st">"{}"</span>, greet(<span class="st">"Bob"</span>));   <span class="cm">// 안녕하세요, Bob! (Fn → 재호출 OK)</span>
+    <span class="mac">println!</span>(<span class="st">"greeting 유효: {}"</span>, greeting); <span class="ok-c">// ✅ 불변 참조이므로 원본 유지</span>
+
+    <span class="cm">// ② i32(Copy 타입)는 값이 복사되어 캡처</span>
+    <span class="kw">let</span> base = <span class="nm">100</span>;
+    <span class="kw">let</span> add_base = |x| x + base; <span class="cm">// base의 복사본 캡처 → Fn</span>
+    <span class="kw">let</span> (r1, r2) = call_twice(add_base, <span class="nm">5</span>);
+    <span class="mac">println!</span>(<span class="st">"r1={}, r2={}"</span>, r1, r2); <span class="cm">// 105, 105</span>
+    <span class="mac">println!</span>(<span class="st">"base 유효: {}"</span>, base);      <span class="ok-c">// ✅ 여전히 100</span>
+
+    <span class="cm">// ③ 여러 변수를 동시에 캡처 (모두 불변 참조)</span>
+    <span class="kw">let</span> prefix = <span class="ty">String</span>::from(<span class="st">"LOG"</span>);
+    <span class="kw">let</span> level = <span class="nm">3</span>;
+    <span class="kw">let</span> log = |msg: &amp;<span class="ty">str</span>| format!(<span class="st">"[{}][Lv{}] {}"</span>, prefix, level, msg);
+    <span class="mac">println!</span>(<span class="st">"{}"</span>, log(<span class="st">"서버 시작"</span>));
+    <span class="mac">println!</span>(<span class="st">"prefix 유효: {}"</span>, prefix); <span class="ok-c">// ✅</span>
+
+    <span class="cm">// ④ Fn은 공유 참조(&amp;F)로도 호출 가능 (std::ops 문서 명시)</span>
+    <span class="kw">let</span> double = |x: <span class="ty">i32</span>| x * <span class="nm">2</span>;
+    <span class="kw">let</span> r = &amp;double;
+    <span class="mac">println!</span>(<span class="st">"r(7) = {}"</span>, r(<span class="nm">7</span>)); <span class="cm">// 14 — &amp;F도 Fn 구현</span>
+    <span class="mac">println!</span>(<span class="st">"double(7) = {}"</span>, double(<span class="nm">7</span>)); <span class="cm">// 14</span>
+}</pre>
+  </div>
+
+  <div class="th th-fn"><span class="th-name">Fn</span><span class="th-desc">예제 2 — 고차 함수: impl Fn 반환 (클로져 팩토리)</span><span class="th-tag">move + impl Fn</span></div>
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">fn_02_factory.rs</span><span class="cb-badge cb-fn">Fn</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// [Fn 예제 2] 고차 함수 — impl Fn 반환 (클로져 팩토리)
+// move: 함수 종료 후에도 캡처 변수가 유효하도록 소유권 이전
+// impl Fn(...) → 정적 디스패치, zero-cost abstraction
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="kw">fn</span> <span class="fn">make_multiplier</span>(factor: <span class="ty">i32</span>) -&gt; <span class="kw">impl</span> <span class="ty">Fn</span>(<span class="ty">i32</span>) -&gt; <span class="ty">i32</span> {
+    <span class="kw">move</span> |x| x * factor <span class="cm">// factor(Copy) 복사본 캡처</span>
+}
+
+<span class="kw">fn</span> <span class="fn">make_range_checker</span>(min: <span class="ty">i32</span>, max: <span class="ty">i32</span>) -&gt; <span class="kw">impl</span> <span class="ty">Fn</span>(<span class="ty">i32</span>) -&gt; <span class="ty">bool</span> {
+    <span class="kw">move</span> |x| x &gt;= min &amp;&amp; x &lt;= max
+}
+
+<span class="kw">fn</span> <span class="fn">make_formatter</span>(prefix: <span class="ty">String</span>, suffix: <span class="ty">String</span>) -&gt; <span class="kw">impl</span> <span class="ty">Fn</span>(&amp;<span class="ty">str</span>) -&gt; <span class="ty">String</span> {
+    <span class="kw">move</span> |content| format!(<span class="st">"{}{}{}"</span>, prefix, content, suffix) <span class="cm">// String 소유권 이전</span>
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> triple    = make_multiplier(<span class="nm">3</span>);
+    <span class="kw">let</span> quadruple = make_multiplier(<span class="nm">4</span>);
+    <span class="mac">println!</span>(<span class="st">"triple(5) = {}"</span>,    triple(<span class="nm">5</span>));    <span class="cm">// 15</span>
+    <span class="mac">println!</span>(<span class="st">"triple(10) = {}"</span>,   triple(<span class="nm">10</span>));   <span class="cm">// 30 — Fn이므로 재호출 OK</span>
+    <span class="mac">println!</span>(<span class="st">"quadruple(5) = {}"</span>, quadruple(<span class="nm">5</span>)); <span class="cm">// 20</span>
+
+    <span class="kw">let</span> is_valid = make_range_checker(<span class="nm">0</span>, <span class="nm">100</span>);
+    <span class="kw">let</span> is_teen  = make_range_checker(<span class="nm">13</span>, <span class="nm">19</span>);
+    <span class="mac">println!</span>(<span class="st">"is_valid(50) = {}"</span>, is_valid(<span class="nm">50</span>)); <span class="cm">// true</span>
+    <span class="mac">println!</span>(<span class="st">"is_teen(15) = {}"</span>,  is_teen(<span class="nm">15</span>));  <span class="cm">// true</span>
+
+    <span class="kw">let</span> html_bold = make_formatter(<span class="ty">String</span>::from(<span class="st">"&lt;b&gt;"</span>), <span class="ty">String</span>::from(<span class="st">"&lt;/b&gt;"</span>));
+    <span class="mac">println!</span>(<span class="st">"{}"</span>, html_bold(<span class="st">"Rust"</span>));  <span class="cm">// &lt;b&gt;Rust&lt;/b&gt;</span>
+    <span class="mac">println!</span>(<span class="st">"{}"</span>, html_bold(<span class="st">"클로져"</span>)); <span class="cm">// &lt;b&gt;클로져&lt;/b&gt; — Fn 재호출</span>
+
+    <span class="kw">let</span> nums = vec![<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>, <span class="nm">4</span>, <span class="nm">5</span>];
+    <span class="kw">let</span> result: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = nums.iter()
+        .filter(|&&amp;x| is_valid(x))
+        .map(|&amp;x| triple(x))
+        .collect();
+    <span class="mac">println!</span>(<span class="st">"result: {:?}"</span>, result); <span class="cm">// [3, 6, 9, 12, 15]</span>
+}</pre>
+  </div>
+
+  <div class="th th-fn"><span class="th-name">Fn</span><span class="th-desc">예제 3 — fn 포인터 호환 + 함수 합성 compose</span><span class="th-tag">제네릭 + 합성</span></div>
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">fn_03_compose.rs</span><span class="cb-badge cb-fn">Fn</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// [Fn 예제 3] fn 포인터 호환 + compose
+// std::ops 문서: "safe function pointers implement Fn"
+// fn 포인터는 Fn, FnMut, FnOnce 모두 자동 구현
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="kw">fn</span> <span class="fn">apply_n_times</span>&lt;<span class="ty">T</span>: <span class="ty">Clone</span>, <span class="ty">F</span>: <span class="ty">Fn</span>(<span class="ty">T</span>) -&gt; <span class="ty">T</span>&gt;(f: <span class="ty">F</span>, <span class="kw">mut</span> val: <span class="ty">T</span>, n: <span class="ty">usize</span>) -&gt; <span class="ty">T</span> {
+    <span class="kw">for</span> _ <span class="kw">in</span> <span class="nm">0</span>..n { val = f(val.clone()); }
+    val
+}
+
+<span class="kw">fn</span> <span class="fn">compose</span>&lt;<span class="ty">T</span>, <span class="ty">F1</span>: <span class="ty">Fn</span>(<span class="ty">T</span>)-&gt;<span class="ty">T</span>, <span class="ty">F2</span>: <span class="ty">Fn</span>(<span class="ty">T</span>)-&gt;<span class="ty">T</span>&gt;(f1: <span class="ty">F1</span>, f2: <span class="ty">F2</span>) -&gt; <span class="kw">impl</span> <span class="ty">Fn</span>(<span class="ty">T</span>) -&gt; <span class="ty">T</span> {
+    <span class="kw">move</span> |x| f2(f1(x))
+}
+
+<span class="kw">fn</span> <span class="fn">double</span>(x: <span class="ty">i32</span>) -&gt; <span class="ty">i32</span> { x * <span class="nm">2</span> }
+<span class="kw">fn</span> <span class="fn">square</span>(x: <span class="ty">i32</span>) -&gt; <span class="ty">i32</span> { x * x }
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="cm">// fn 포인터 전달 (Fn 자동 구현)</span>
+    <span class="mac">println!</span>(<span class="st">"1을 4번 double: {}"</span>, apply_n_times(double, <span class="nm">1</span>, <span class="nm">4</span>)); <span class="cm">// 16</span>
+    <span class="mac">println!</span>(<span class="st">"2를 3번 square: {}"</span>, apply_n_times(square, <span class="nm">2</span>, <span class="nm">3</span>)); <span class="cm">// 256</span>
+
+    <span class="cm">// 클로져 전달</span>
+    <span class="mac">println!</span>(<span class="st">"0에 3을 5번: {}"</span>, apply_n_times(|x| x + <span class="nm">3</span>, <span class="nm">0</span>, <span class="nm">5</span>)); <span class="cm">// 15</span>
+
+    <span class="cm">// 함수 합성</span>
+    <span class="kw">let</span> double_then_square = compose(double, square);
+    <span class="mac">println!</span>(<span class="st">"double_then_square(3) = {}"</span>, double_then_square(<span class="nm">3</span>)); <span class="cm">// (3*2)^2=36</span>
+    <span class="mac">println!</span>(<span class="st">"double_then_square(5) = {}"</span>, double_then_square(<span class="nm">5</span>)); <span class="cm">// (5*2)^2=100</span>
+
+    <span class="cm">// fn 포인터는 같은 타입 → Vec에 직접 저장 가능</span>
+    <span class="kw">let</span> ops: <span class="ty">Vec</span>&lt;<span class="kw">fn</span>(<span class="ty">i32</span>) -&gt; <span class="ty">i32</span>&gt; = vec![double, square];
+    <span class="kw">let mut</span> val = <span class="nm">3</span>;
+    <span class="kw">for</span> op <span class="kw">in</span> &amp;ops { val = op(val); } <span class="cm">// 3 → 6 → 36</span>
+    <span class="mac">println!</span>(<span class="st">"파이프라인: {}"</span>, val);
+}</pre>
+  </div>
+
+  <div class="th th-fn"><span class="th-name">Fn</span><span class="th-desc">예제 4 — Iterator 체인 (map / filter / fold / any / all)</span><span class="th-tag">Iterator</span></div>
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">fn_04_iterator.rs</span><span class="cb-badge cb-fn">Fn</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// [Fn 예제 4] Iterator 어댑터는 Fn 바운드
+// map, filter, fold, any, all 등은 모두 Fn(T) → U
+// 외부 변수를 읽기만 하므로 자동 Fn
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> threshold = <span class="nm">60</span>;
+    <span class="kw">let</span> multiplier = <span class="nm">2</span>;
+    <span class="kw">let</span> scores = vec![<span class="nm">45</span>, <span class="nm">72</span>, <span class="nm">58</span>, <span class="nm">89</span>, <span class="nm">34</span>, <span class="nm">93</span>, <span class="nm">61</span>];
+
+    <span class="cm">// filter + map + collect</span>
+    <span class="kw">let</span> passing: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = scores.iter().copied()
+        .filter(|&amp;s| s &gt;= threshold) <span class="cm">// threshold 불변 캡처 → Fn</span>
+        .collect();
+    <span class="kw">let</span> doubled: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = passing.iter()
+        .map(|&amp;s| s * multiplier)     <span class="cm">// multiplier 불변 캡처 → Fn</span>
+        .collect();
+    <span class="mac">println!</span>(<span class="st">"합격: {:?}"</span>, passing);
+    <span class="mac">println!</span>(<span class="st">"2배: {:?}"</span>, doubled);
+
+    <span class="cm">// fold — 누적 합산</span>
+    <span class="kw">let</span> total: <span class="ty">i32</span> = passing.iter().fold(<span class="nm">0</span>, |acc, &amp;x| acc + x);
+    <span class="mac">println!</span>(<span class="st">"합계: {}, 평균: {:.1}"</span>, total, total <span class="kw">as</span> <span class="ty">f64</span> / passing.len() <span class="kw">as</span> <span class="ty">f64</span>);
+
+    <span class="cm">// any / all</span>
+    <span class="mac">println!</span>(<span class="st">"만점 있음: {}"</span>, scores.iter().any(|&amp;s| s == <span class="nm">100</span>)); <span class="cm">// false</span>
+    <span class="mac">println!</span>(<span class="st">"모두 합격: {}"</span>, scores.iter().all(|&amp;s| s &gt;= threshold)); <span class="cm">// false</span>
+
+    <span class="cm">// 체이닝 — 여러 Fn 클로져</span>
+    <span class="kw">let</span> label = <span class="ty">String</span>::from(<span class="st">"점"</span>);
+    <span class="kw">let</span> result: <span class="ty">Vec</span>&lt;<span class="ty">String</span>&gt; = scores.iter().copied()
+        .filter(|&amp;s| s &gt;= threshold)
+        .map(|s| format!(<span class="st">"{}{}"</span>, s, label)) <span class="cm">// &amp;label 캡처 → Fn</span>
+        .collect();
+    <span class="mac">println!</span>(<span class="st">"결과: {:?}"</span>, result);
+    <span class="mac">println!</span>(<span class="st">"label 유효: {}"</span>, label); <span class="ok-c">// ✅</span>
+}</pre>
+  </div>
+
+  <div class="th th-fn"><span class="th-name">Fn</span><span class="th-desc">예제 5 — struct에 Fn 저장: EventBus + 변환 Pipeline</span><span class="th-tag">Box&lt;dyn Fn&gt;</span></div>
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">fn_05_struct_store.rs</span><span class="cb-badge cb-fn">Fn</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// [Fn 예제 5] struct에 Fn 저장
+// Box&lt;dyn Fn&gt; → 서로 다른 타입의 클로져를 하나의 Vec에 저장
+// 'static: 클로져가 스택 프레임 수명을 초과해도 유효하도록
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="kw">struct</span> <span class="ty">EventBus</span> {
+    handlers: <span class="ty">Vec</span>&lt;<span class="ty">Box</span>&lt;<span class="kw">dyn</span> <span class="ty">Fn</span>(&amp;<span class="ty">str</span>)&gt;&gt;,
+}
+<span class="kw">impl</span> <span class="ty">EventBus</span> {
+    <span class="kw">fn</span> <span class="fn">new</span>() -&gt; <span class="ty">Self</span> { <span class="ty">EventBus</span> { handlers: <span class="ty">Vec</span>::new() } }
+    <span class="kw">fn</span> <span class="fn">on</span>&lt;<span class="ty">F</span>: <span class="ty">Fn</span>(&amp;<span class="ty">str</span>) + <span class="st">'static</span>&gt;(&amp;<span class="kw">mut</span> <span class="kw">self</span>, h: <span class="ty">F</span>) { <span class="kw">self</span>.handlers.push(<span class="ty">Box</span>::new(h)); }
+    <span class="kw">fn</span> <span class="fn">emit</span>(&amp;<span class="kw">self</span>, ev: &amp;<span class="ty">str</span>) { <span class="kw">for</span> h <span class="kw">in</span> &amp;<span class="kw">self</span>.handlers { h(ev); } }
+}
+
+<span class="kw">struct</span> <span class="ty">Pipeline</span> {
+    steps: <span class="ty">Vec</span>&lt;<span class="ty">Box</span>&lt;<span class="kw">dyn</span> <span class="ty">Fn</span>(<span class="ty">String</span>) -&gt; <span class="ty">String</span>&gt;&gt;,
+}
+<span class="kw">impl</span> <span class="ty">Pipeline</span> {
+    <span class="kw">fn</span> <span class="fn">new</span>() -&gt; <span class="ty">Self</span> { <span class="ty">Pipeline</span> { steps: <span class="ty">Vec</span>::new() } }
+    <span class="kw">fn</span> <span class="fn">step</span>&lt;<span class="ty">F</span>: <span class="ty">Fn</span>(<span class="ty">String</span>)-&gt;<span class="ty">String</span>+<span class="st">'static</span>&gt;(&amp;<span class="kw">mut</span> <span class="kw">self</span>, f: <span class="ty">F</span>) -&gt; &amp;<span class="kw">mut</span> <span class="ty">Self</span> {
+        <span class="kw">self</span>.steps.push(<span class="ty">Box</span>::new(f)); <span class="kw">self</span>
+    }
+    <span class="kw">fn</span> <span class="fn">run</span>(&amp;<span class="kw">self</span>, input: <span class="ty">String</span>) -&gt; <span class="ty">String</span> {
+        <span class="kw">self</span>.steps.iter().fold(input, |acc, s| s(acc))
+    }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let mut</span> bus = <span class="ty">EventBus</span>::new();
+    bus.on(|e| <span class="mac">println!</span>(<span class="st">"[Logger]  {}"</span>, e));
+    bus.on(|e| <span class="mac">println!</span>(<span class="st">"[Monitor] {}"</span>, e));
+    bus.emit(<span class="st">"사용자 로그인"</span>);
+    bus.emit(<span class="st">"데이터 저장"</span>);
+
+    <span class="kw">let mut</span> p = <span class="ty">Pipeline</span>::new();
+    p.step(|s| s.trim().to_string())
+     .step(|s| s.to_lowercase())
+     .step(|s| s.replace(<span class="st">' '</span>, <span class="st">"_"</span>));
+    <span class="mac">println!</span>(<span class="st">"결과: '{}'"</span>, p.run(<span class="st">"  Hello World  "</span>.to_string())); <span class="cm">// 'hello_world'</span>
+}</pre>
+  </div>
+</section>
+<div class="divider"></div>
+<!-- ════════════════════════════════════════
+  §07  FnMut — 예제 5개
+════════════════════════════════════════ -->
+<section class="sec" id="s7">
+  <div class="sec-hdr"><span class="sec-num">§ 07</span><h2>FnMut 트레이트 — 예제 5개</h2></div>
+  <p class="lead"><code>FnMut</code>는 캡처한 변수를 <strong>가변 참조(<code>&amp;mut T</code>)</strong>로 빌립니다. <code>&amp;mut self</code>로 호출되므로 반복 호출은 가능하지만, 클로져가 살아있는 동안 캡처한 변수를 직접 사용할 수 없습니다. 클로져 변수를 <code>mut</code>로 선언해야 하며, 함수 인자로 받을 때도 <code>mut f: F</code>로 받아야 합니다.</p>
+  <div class="callout info">
+    <div class="callout-title">📌 std::ops::FnMut 공식 정의</div>
+    "FnMut is implemented automatically by closures which take mutable references to captured variables." 또한 <code>&amp;mut F</code>가 <code>FnMut</code>를 구현하면 <code>&amp;mut F</code>도 <code>FnMut</code>를 자동 구현합니다. <code>sort_by_key</code>처럼 한 항목당 여러 번 클로져를 호출해야 하는 경우에 사용합니다.
+  </div>
+
+  <div class="th th-fnmut"><span class="th-name">FnMut</span><span class="th-desc">예제 1 — 카운터: 호출마다 내부 상태 변경</span><span class="th-tag">&amp;mut self · 기본</span></div>
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">fnmut_01_counter.rs</span><span class="cb-badge cb-fnmut">FnMut</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// [FnMut 예제 1] 카운터 — 가변 참조(&amp;mut T) 캡처
+// 핵심: 클로져 내부에서 변수를 '수정'하면 자동 FnMut
+// 클로져 변수는 반드시 mut, 인자로 받을 때도 mut f 필수
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="cm">// FnMut 바운드: mut f 로 받아야 &amp;mut self 호출 가능</span>
+<span class="kw">fn</span> <span class="fn">call_three_times</span>&lt;<span class="ty">F</span>: <span class="ty">FnMut</span>()&gt;(<span class="kw">mut</span> f: <span class="ty">F</span>) {
+    f(); f(); f();
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let mut</span> count = <span class="nm">0</span>;
+    <span class="kw">let mut</span> counter = || {
+        count += <span class="nm">1</span>; <span class="cm">// count를 수정 → &amp;mut count 캡처 → FnMut</span>
+        <span class="mac">println!</span>(<span class="st">"카운트: {}"</span>, count);
+    };
+    counter(); counter(); counter();
+    <span class="cm">// println!("{}", count); // ❌ 가변 빌림 중</span>
+    drop(counter);
+    <span class="mac">println!</span>(<span class="st">"최종: {}"</span>, count); <span class="ok-c">// ✅ 3</span>
+
+    <span class="cm">// call_three_times에 FnMut 전달</span>
+    <span class="kw">let mut</span> log = <span class="ty">Vec</span>::new();
+    call_three_times(|| log.push(<span class="st">"이벤트"</span>)); <span class="cm">// log 수정 → FnMut</span>
+    <span class="mac">println!</span>(<span class="st">"log: {:?}"</span>, log); <span class="cm">// ["이벤트", "이벤트", "이벤트"]</span>
+
+    <span class="cm">// &amp;mut F도 FnMut 구현 (std::ops 문서)</span>
+    <span class="kw">let mut</span> n = <span class="nm">0</span>;
+    <span class="kw">let mut</span> inc = || { n += <span class="nm">1</span>; };
+    {
+        <span class="kw">let</span> rm = &amp;<span class="kw">mut</span> inc;
+        rm(); rm(); <span class="cm">// &amp;mut F로도 호출 가능</span>
+    }
+    drop(inc);
+    <span class="mac">println!</span>(<span class="st">"n = {}"</span>, n); <span class="cm">// 2</span>
+}</pre>
+  </div>
+
+  <div class="th th-fnmut"><span class="th-name">FnMut</span><span class="th-desc">예제 2 — impl FnMut 반환: 누산기 / 이동 평균</span><span class="th-tag">impl FnMut 반환</span></div>
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">fnmut_02_accumulator.rs</span><span class="cb-badge cb-fnmut">FnMut</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// [FnMut 예제 2] 상태를 가진 클로져 반환 — 누산기 / 이동 평균
+// impl FnMut 반환 → 각 인스턴스가 독립적인 내부 상태 보유
+// move: 내부 상태(Vec 등)의 소유권을 클로져로 이전
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="kw">fn</span> <span class="fn">make_accumulator</span>(start: <span class="ty">i32</span>) -&gt; <span class="kw">impl</span> <span class="ty">FnMut</span>(<span class="ty">i32</span>) -&gt; <span class="ty">i32</span> {
+    <span class="kw">let mut</span> total = start;
+    <span class="kw">move</span> |x| { total += x; total }
+}
+
+<span class="kw">fn</span> <span class="fn">make_moving_avg</span>(window: <span class="ty">usize</span>) -&gt; <span class="kw">impl</span> <span class="ty">FnMut</span>(<span class="ty">f64</span>) -&gt; <span class="ty">f64</span> {
+    <span class="kw">let mut</span> buf: <span class="ty">Vec</span>&lt;<span class="ty">f64</span>&gt; = <span class="ty">Vec</span>::new();
+    <span class="kw">move</span> |v| {
+        buf.push(v);
+        <span class="kw">let</span> slice = <span class="kw">if</span> buf.len() &gt; window { &amp;buf[buf.len()-window..] } <span class="kw">else</span> { &amp;buf };
+        slice.iter().sum::&lt;<span class="ty">f64</span>&gt;() / slice.len() <span class="kw">as</span> <span class="ty">f64</span>
+    }
+}
+
+<span class="kw">fn</span> <span class="fn">make_rate_limiter</span>(max_per_sec: <span class="ty">u32</span>) -&gt; <span class="kw">impl</span> <span class="ty">FnMut</span>() -&gt; <span class="ty">bool</span> {
+    <span class="kw">let mut</span> calls = <span class="nm">0</span>;
+    <span class="kw">move</span> || { calls += <span class="nm">1</span>; calls &lt;= max_per_sec }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let mut</span> a = make_accumulator(<span class="nm">0</span>);
+    <span class="kw">let mut</span> b = make_accumulator(<span class="nm">100</span>); <span class="cm">// 독립적 상태</span>
+    <span class="mac">println!</span>(<span class="st">"a: {} {} {}"</span>, a(<span class="nm">5</span>), a(<span class="nm">10</span>), a(<span class="nm">3</span>)); <span class="cm">// 5 15 18</span>
+    <span class="mac">println!</span>(<span class="st">"b: {} {} {}"</span>, b(<span class="nm">5</span>), b(<span class="nm">10</span>), b(<span class="nm">3</span>)); <span class="cm">// 105 115 118</span>
+
+    <span class="kw">let mut</span> avg3 = make_moving_avg(<span class="nm">3</span>);
+    <span class="kw">for</span> &amp;v <span class="kw">in</span> &amp;[<span class="nm">10.0</span>, <span class="nm">20.0</span>, <span class="nm">30.0</span>, <span class="nm">40.0</span>, <span class="nm">50.0</span>] {
+        <span class="mac">println!</span>(<span class="st">"avg3({}) = {:.1}"</span>, v, avg3(v));
+    }
+
+    <span class="kw">let mut</span> limiter = make_rate_limiter(<span class="nm">3</span>);
+    <span class="kw">for</span> i <span class="kw">in</span> <span class="nm">1</span>..=<span class="nm">5</span> {
+        <span class="mac">println!</span>(<span class="st">"요청 {}: {}"</span>, i, <span class="kw">if</span> limiter() { <span class="st">"허용"</span> } <span class="kw">else</span> { <span class="st">"거절"</span> });
+    }
+}</pre>
+  </div>
+
+  <div class="th th-fnmut"><span class="th-name">FnMut</span><span class="th-desc">예제 3 — sort_by_key: FnMut인 이유 + 비교 횟수 추적</span><span class="th-tag">The Book 예제</span></div>
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">fnmut_03_sort.rs</span><span class="cb-badge cb-fnmut">FnMut</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// [FnMut 예제 3] sort_by_key가 FnMut인 이유
+// The Rust Book ch.13: sort_by_key는 각 요소마다 클로져를 호출
+// → 여러 번 호출 필요 → FnMut (상태 변경도 가능)
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="kw">#[derive(Debug)]</span>
+<span class="kw">struct</span> <span class="ty">Rectangle</span> { width: <span class="ty">u32</span>, height: <span class="ty">u32</span> }
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let mut</span> rects = vec![
+        <span class="ty">Rectangle</span> { width: <span class="nm">10</span>, height: <span class="nm">1</span> },
+        <span class="ty">Rectangle</span> { width: <span class="nm">3</span>,  height: <span class="nm">5</span> },
+        <span class="ty">Rectangle</span> { width: <span class="nm">7</span>,  height: <span class="nm">12</span> },
+    ];
+
+    <span class="cm">// sort_by_key: FnMut(&amp;T) → K</span>
+    <span class="cm">// 각 요소마다 클로져가 호출됨 → FnOnce로는 부족</span>
+    <span class="kw">let mut</span> call_count = <span class="nm">0_usize</span>;
+    rects.sort_by_key(|r| {
+        call_count += <span class="nm">1</span>; <span class="cm">// 정렬 중 호출 횟수 추적 — FnMut!</span>
+        r.width
+    });
+    <span class="mac">println!</span>(<span class="st">"정렬: {:?}"</span>, rects);
+    <span class="mac">println!</span>(<span class="st">"key 함수 호출 횟수: {}"</span>, call_count);
+
+    <span class="cm">// sort_by: 비교 함수, FnMut(&amp;T, &amp;T) → Ordering</span>
+    <span class="kw">let mut</span> nums = vec![<span class="nm">5</span>, <span class="nm">2</span>, <span class="nm">8</span>, <span class="nm">1</span>, <span class="nm">9</span>];
+    <span class="kw">let mut</span> cmp_count = <span class="nm">0</span>;
+    nums.sort_by(|a, b| {
+        cmp_count += <span class="nm">1</span>;
+        a.cmp(b)
+    });
+    <span class="mac">println!</span>(<span class="st">"정렬: {:?}, 비교 횟수: {}"</span>, nums, cmp_count);
+
+    <span class="cm">// FnMut를 직접 여러 번 호출하는 유틸리티</span>
+    <span class="kw">let</span> data = vec![<span class="nm">3</span>, <span class="nm">1</span>, <span class="nm">4</span>, <span class="nm">1</span>, <span class="nm">5</span>, <span class="nm">9</span>];
+    <span class="kw">let mut</span> max = <span class="ty">i32</span>::<span class="ty">MIN</span>;
+    data.iter().for_each(|&amp;x| {
+        <span class="kw">if</span> x &gt; max { max = x; } <span class="cm">// max 수정 → FnMut</span>
+    });
+    <span class="mac">println!</span>(<span class="st">"최댓값: {}"</span>, max); <span class="cm">// 9</span>
+}</pre>
+  </div>
+
+  <div class="th th-fnmut"><span class="th-name">FnMut</span><span class="th-desc">예제 4 — for_each로 외부 상태 누적 수집</span><span class="th-tag">for_each + 수집</span></div>
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">fnmut_04_foreach.rs</span><span class="cb-badge cb-fnmut">FnMut</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// [FnMut 예제 4] for_each: 반복하며 외부 상태 누적
+// for_each(FnMut): 각 항목마다 클로져 호출, 상태 변경 허용
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> words = vec![<span class="st">"rust"</span>, <span class="st">"programming"</span>, <span class="st">"fn"</span>, <span class="st">"closure"</span>, <span class="st">"move"</span>];
+    <span class="kw">let mut</span> long_words:  <span class="ty">Vec</span>&lt;&amp;<span class="ty">str</span>&gt; = <span class="ty">Vec</span>::new();
+    <span class="kw">let mut</span> short_words: <span class="ty">Vec</span>&lt;&amp;<span class="ty">str</span>&gt; = <span class="ty">Vec</span>::new();
+    <span class="kw">let mut</span> total_chars = <span class="nm">0</span>;
+
+    <span class="cm">// 클로져가 long_words, short_words, total_chars를 &amp;mut로 캡처 → FnMut</span>
+    words.iter().for_each(|&amp;w| {
+        total_chars += w.len();
+        <span class="kw">if</span> w.len() &gt;= <span class="nm">4</span> { long_words.push(w); }
+        <span class="kw">else</span>             { short_words.push(w); }
+    });
+    <span class="mac">println!</span>(<span class="st">"총 글자: {}"</span>,   total_chars);
+    <span class="mac">println!</span>(<span class="st">"긴 단어: {:?}"</span>, long_words);
+    <span class="mac">println!</span>(<span class="st">"짧은 단어: {:?}"</span>, short_words);
+
+    <span class="cm">// 파이프라인 로그: 각 변환 단계를 기록하며 처리</span>
+    <span class="kw">let</span> numbers = vec![<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>, <span class="nm">4</span>, <span class="nm">5</span>];
+    <span class="kw">let mut</span> log: <span class="ty">Vec</span>&lt;<span class="ty">String</span>&gt; = <span class="ty">Vec</span>::new();
+    <span class="kw">let mut</span> step = <span class="nm">0</span>;
+    <span class="kw">let</span> result: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = numbers.iter().map(|&amp;n| {
+        step += <span class="nm">1</span>;
+        log.push(format!(<span class="st">"step{}: {} → {}"</span>, step, n, n*<span class="nm">2</span>));
+        n * <span class="nm">2</span>
+    }).collect();
+    <span class="mac">println!</span>(<span class="st">"결과: {:?}"</span>, result);
+    log.iter().for_each(|l| <span class="mac">println!</span>(<span class="st">"  {}"</span>, l));
+}</pre>
+  </div>
+
+  <div class="th th-fnmut"><span class="th-name">FnMut</span><span class="th-desc">예제 5 — 상태 머신: FnMut로 전환 로직 구현</span><span class="th-tag">상태 머신</span></div>
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">fnmut_05_state_machine.rs</span><span class="cb-badge cb-fnmut">FnMut</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// [FnMut 예제 5] 상태 머신: FnMut로 전환 로직
+// 내부 상태(state)를 갖고 호출마다 전환 → FnMut
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="kw">#[derive(Debug, Clone, PartialEq)]</span>
+<span class="kw">enum</span> <span class="ty">State</span> { Idle, Running, Paused, Stopped }
+
+<span class="kw">fn</span> <span class="fn">make_state_machine</span>() -&gt; <span class="kw">impl</span> <span class="ty">FnMut</span>(&amp;<span class="ty">str</span>) -&gt; <span class="ty">State</span> {
+    <span class="kw">let mut</span> state = <span class="ty">State</span>::Idle;
+    <span class="kw">move</span> |cmd| {
+        state = <span class="kw">match</span> (&amp;state, cmd) {
+            (<span class="ty">State</span>::Idle,    <span class="st">"start"</span>)  =&gt; <span class="ty">State</span>::Running,
+            (<span class="ty">State</span>::Running, <span class="st">"pause"</span>)  =&gt; <span class="ty">State</span>::Paused,
+            (<span class="ty">State</span>::Paused,  <span class="st">"resume"</span>) =&gt; <span class="ty">State</span>::Running,
+            (<span class="ty">State</span>::Running, <span class="st">"stop"</span>)   =&gt; <span class="ty">State</span>::Stopped,
+            (<span class="ty">State</span>::Paused,  <span class="st">"stop"</span>)   =&gt; <span class="ty">State</span>::Stopped,
+            _                             =&gt; state.clone(),
+        };
+        state.clone()
+    }
+}
+
+<span class="kw">fn</span> <span class="fn">make_toggle</span>() -&gt; <span class="kw">impl</span> <span class="ty">FnMut</span>() -&gt; <span class="ty">bool</span> {
+    <span class="kw">let mut</span> on = <span class="kw">false</span>;
+    <span class="kw">move</span> || { on = !on; on }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let mut</span> sm = make_state_machine();
+    <span class="kw">for</span> cmd <span class="kw">in</span> &amp;[<span class="st">"start"</span>, <span class="st">"pause"</span>, <span class="st">"resume"</span>, <span class="st">"stop"</span>] {
+        <span class="mac">println!</span>(<span class="st">"cmd='{}' → {:?}"</span>, cmd, sm(cmd));
+    }
+
+    <span class="kw">let mut</span> toggle = make_toggle();
+    <span class="kw">for</span> _ <span class="kw">in</span> <span class="nm">0</span>..<span class="nm">4</span> { <span class="mac">print!</span>(<span class="st">"{} "</span>, toggle()); }
+    <span class="mac">println!</span>(); <span class="cm">// true false true false</span>
+}</pre>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════
+  §08  FnOnce — 예제 5개
+════════════════════════════════════════ -->
+<section class="sec" id="s8">
+  <div class="sec-hdr"><span class="sec-num">§ 08</span><h2>FnOnce 트레이트 — 예제 5개</h2></div>
+  <p class="lead"><code>FnOnce</code>는 <strong><code>self</code>를 소비</strong>하며 호출됩니다. 클로져 내부에서 캡처한 값의 소유권을 이동시키는 연산(<code>drop()</code>, <code>into_bytes()</code>, 값을 다른 변수로 이동 등)을 하면 자동으로 <code>FnOnce</code>만 구현됩니다. 모든 클로져는 최소한 <code>FnOnce</code>를 구현합니다 (The Rust Book ch.13).</p>
+  <div class="callout info">
+    <div class="callout-title">📌 The Rust Book ch.13 원문</div>
+    "FnOnce applies to closures that can be called once. All closures implement at least this trait because all closures can be called. A closure that moves captured values out of its body will only implement FnOnce and none of the other Fn traits because it can only be called once."
+  </div>
+
+  <div class="th th-fnonce"><span class="th-name">FnOnce</span><span class="th-desc">예제 1 — 소유권 소비: 왜 1회만 호출 가능한가</span><span class="th-tag">self 소비</span></div>
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">fnonce_01_consume.rs</span><span class="cb-badge cb-fnonce">FnOnce</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// [FnOnce 예제 1] 소유권 소비 — 1회만 호출 가능한 이유
+// 클로져가 캡처한 값을 '이동'시키면 호출 후 해당 값이 사라짐
+// → 두 번 호출하면 이미 없어진 값에 접근 → 컴파일 에러
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="kw">fn</span> <span class="fn">consume_once</span>&lt;<span class="ty">F</span>: <span class="ty">FnOnce</span>() -&gt; <span class="ty">String</span>&gt;(f: <span class="ty">F</span>) -&gt; <span class="ty">String</span> {
+    <span class="kw">let</span> r = f(); <span class="cm">// f를 소비 (self 이동)</span>
+    <span class="cm">// f(); // ❌ use of moved value: `f`</span>
+    r
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> name = <span class="ty">String</span>::from(<span class="st">"Ferris"</span>);
+    <span class="kw">let</span> consume = <span class="kw">move</span> || {
+        <span class="kw">let</span> bytes = name.into_bytes(); <span class="cm">// name 소유권 소비 → FnOnce</span>
+        format!(<span class="st">"bytes len: {}"</span>, bytes.len())
+    };
+    <span class="mac">println!</span>(<span class="st">"{}"</span>, consume_once(consume));
+    <span class="cm">// consume_once(consume); // ❌ value used after move</span>
+
+    <span class="cm">// drop()으로 명시적 소유권 소비</span>
+    <span class="kw">let</span> resource = vec![<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>];
+    <span class="kw">let</span> destroy = <span class="kw">move</span> || {
+        <span class="mac">println!</span>(<span class="st">"사용: {:?}"</span>, resource);
+        drop(resource); <span class="cm">// 명시적 drop → FnOnce</span>
+    };
+    destroy();
+    <span class="cm">// destroy(); // ❌</span>
+
+    <span class="cm">// 값을 다른 곳으로 이동 → FnOnce</span>
+    <span class="kw">let</span> data = <span class="ty">String</span>::from(<span class="st">"전송할 데이터"</span>);
+    <span class="kw">let mut</span> target = <span class="ty">String</span>::new();
+    <span class="kw">let</span> transfer = <span class="kw">move</span> || {
+        target.push_str(&amp;data); <span class="cm">// data를 target으로 이동 아니라 참조 — FnMut됨</span>
+    };
+    <span class="cm">// 실제 소유권 이동 사례: into_iter가 소유권 소비</span>
+    <span class="kw">let</span> items = vec![<span class="nm">10</span>, <span class="nm">20</span>, <span class="nm">30</span>];
+    <span class="kw">let</span> sum_owned = <span class="kw">move</span> || items.into_iter().sum::&lt;<span class="ty">i32</span>&gt;();
+    <span class="mac">println!</span>(<span class="st">"합계: {}"</span>, sum_owned()); <span class="cm">// 60</span>
+    <span class="cm">// sum_owned(); // ❌</span>
+}</pre>
+  </div>
+
+  <div class="th th-fnonce"><span class="th-name">FnOnce</span><span class="th-desc">예제 2 — thread::spawn: FnOnce + Send + 'static 요구</span><span class="th-tag">스레드</span></div>
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">fnonce_02_thread.rs</span><span class="cb-badge cb-fnonce">FnOnce</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// [FnOnce 예제 2] thread::spawn — FnOnce + Send + 'static
+// thread::spawn 시그니처:
+//   pub fn spawn&lt;F, T&gt;(f: F) → JoinHandle&lt;T&gt;
+//   where F: FnOnce() → T + Send + 'static
+// 스레드는 클로져를 딱 한 번 실행하고 종료 → FnOnce
+// Send: 다른 스레드로 전달 가능 (Rc&lt;T&gt; 등 불가)
+// 'static: dangling reference 방지
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="kw">use</span> std::thread;
+<span class="kw">use</span> std::sync::mpsc;
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="cm">// ① 기본: 소유권을 스레드로 이동</span>
+    <span class="kw">let</span> data = vec![<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>, <span class="nm">4</span>, <span class="nm">5</span>];
+    <span class="kw">let</span> h1 = thread::spawn(<span class="kw">move</span> || {
+        <span class="cm">// data의 소유권이 이 클로져(스레드)로 이동 → FnOnce</span>
+        <span class="kw">let</span> sum: <span class="ty">i32</span> = data.iter().sum();
+        <span class="mac">println!</span>(<span class="st">"[스레드1] 합계: {}"</span>, sum);
+        sum
+    });
+    <span class="mac">println!</span>(<span class="st">"스레드1 결과: {}"</span>, h1.join().unwrap());
+    <span class="cm">// println!("{:?}", data); // ❌ 소유권 이동됨</span>
+
+    <span class="cm">// ② 채널(mpsc): 스레드 간 결과 전달</span>
+    <span class="kw">let</span> (tx, rx) = mpsc::channel::&lt;<span class="ty">String</span>&gt;();
+    <span class="kw">let</span> config = <span class="ty">String</span>::from(<span class="st">"host=localhost:5432"</span>);
+    thread::spawn(<span class="kw">move</span> || {
+        <span class="cm">// config 소유권 이동 → FnOnce</span>
+        <span class="kw">let</span> parsed = config.split(<span class="st">'='</span>).nth(<span class="nm">1</span>).unwrap_or(<span class="st">""</span>).to_string();
+        tx.send(parsed).unwrap();
+    });
+    <span class="mac">println!</span>(<span class="st">"DB 주소: {}"</span>, rx.recv().unwrap());
+
+    <span class="cm">// ③ 여러 스레드 — 각각 독립적인 클로져 (FnOnce 인스턴스)</span>
+    <span class="kw">let</span> handles: <span class="ty">Vec</span>&lt;_&gt; = (<span class="nm">0</span>..<span class="nm">4</span>).map(|i| {
+        thread::spawn(<span class="kw">move</span> || { <span class="cm">// i(Copy)는 복사본 캡처</span>
+            <span class="mac">println!</span>(<span class="st">"스레드 {}: 작업 완료"</span>, i);
+            i * i
+        })
+    }).collect();
+    <span class="kw">let</span> results: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = handles.into_iter().map(|h| h.join().unwrap()).collect();
+    <span class="mac">println!</span>(<span class="st">"결과: {:?}"</span>, results);
+}</pre>
+  </div>
+
+  <div class="th th-fnonce"><span class="th-name">FnOnce</span><span class="th-desc">예제 3 — unwrap_or_else / get_or_insert_with: The Book 예제</span><span class="th-tag">Option 활용</span></div>
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">fnonce_03_option.rs</span><span class="cb-badge cb-fnonce">FnOnce</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// [FnOnce 예제 3] Option 메서드들의 FnOnce 활용
+// unwrap_or_else, get_or_insert_with, ok_or_else 등
+// None/Err 일 때만 클로져 호출 → 최대 1회 → FnOnce 충분
+// The Rust Book: "unwrap_or_else accepts all three kinds of closures
+// and is as flexible as it can be"
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="cm">// Option::unwrap_or_else 시그니처:
+// pub fn unwrap_or_else&lt;F: FnOnce() -&gt; T&gt;(self, f: F) -&gt; T</span>
+
+<span class="kw">fn</span> <span class="fn">find_user</span>(id: <span class="ty">u32</span>) -&gt; <span class="ty">Option</span>&lt;<span class="ty">String</span>&gt; {
+    <span class="kw">if</span> id == <span class="nm">1</span> { <span class="ty">Some</span>(<span class="st">"Alice"</span>.to_string()) } <span class="kw">else</span> { <span class="ty">None</span> }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="cm">// ① unwrap_or_else — None일 때만 클로져 실행 (FnOnce)</span>
+    <span class="kw">let</span> user = find_user(<span class="nm">1</span>).unwrap_or_else(|| <span class="st">"Anonymous"</span>.to_string());
+    <span class="mac">println!</span>(<span class="st">"user: {}"</span>, user); <span class="cm">// Alice</span>
+    <span class="kw">let</span> guest = find_user(<span class="nm">99</span>).unwrap_or_else(|| <span class="st">"Guest"</span>.to_string());
+    <span class="mac">println!</span>(<span class="st">"guest: {}"</span>, guest); <span class="cm">// Guest</span>
+
+    <span class="cm">// ② 소유권을 가진 기본값 생성 — FnOnce 필수</span>
+    <span class="kw">let</span> default_name = <span class="ty">String</span>::from(<span class="st">"기본 사용자"</span>);
+    <span class="kw">let</span> result = find_user(<span class="nm">99</span>).unwrap_or_else(<span class="kw">move</span> || default_name);
+    <span class="mac">println!</span>(<span class="st">"result: {}"</span>, result);
+
+    <span class="cm">// ③ get_or_insert_with — None이면 클로져로 초기화</span>
+    <span class="kw">let mut</span> cache: <span class="ty">Option</span>&lt;<span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt;&gt; = <span class="ty">None</span>;
+    <span class="kw">let</span> v = cache.get_or_insert_with(|| {
+        <span class="mac">println!</span>(<span class="st">"초기화 실행 (1회만)"</span>);
+        vec![<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>]
+    });
+    v.push(<span class="nm">4</span>);
+    <span class="mac">println!</span>(<span class="st">"cache: {:?}"</span>, cache); <span class="cm">// Some([1,2,3,4])</span>
+    cache.get_or_insert_with(|| {
+        <span class="mac">println!</span>(<span class="st">"이 메시지는 출력 안 됨"</span>); <span class="cm">// Some이면 호출 안 함</span>
+        vec![]
+    });
+
+    <span class="cm">// ④ ok_or_else — None을 Err로 변환 (FnOnce)</span>
+    <span class="kw">let</span> val: <span class="ty">Option</span>&lt;<span class="ty">i32</span>&gt; = <span class="ty">None</span>;
+    <span class="kw">let</span> err_msg = <span class="ty">String</span>::from(<span class="st">"값이 없습니다"</span>);
+    <span class="kw">let</span> res: <span class="ty">Result</span>&lt;<span class="ty">i32</span>, <span class="ty">String</span>&gt; = val.ok_or_else(<span class="kw">move</span> || err_msg);
+    <span class="mac">println!</span>(<span class="st">"결과: {:?}"</span>, res); <span class="cm">// Err("값이 없습니다")</span>
+}</pre>
+  </div>
+
+  <div class="th th-fnonce"><span class="th-name">FnOnce</span><span class="th-desc">예제 4 — 빌더 패턴: 일회성 초기화 콜백</span><span class="th-tag">빌더 패턴</span></div>
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">fnonce_04_builder.rs</span><span class="cb-badge cb-fnonce">FnOnce</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// [FnOnce 예제 4] 빌더 패턴 — 일회성 초기화 콜백
+// build() 메서드에서 FnOnce를 받아 초기화 로직을 실행
+// 초기화는 딱 한 번만 하면 되므로 FnOnce 적합
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="kw">struct</span> <span class="ty">Server</span> { host: <span class="ty">String</span>, port: <span class="ty">u16</span>, tls: <span class="ty">bool</span> }
+
+<span class="kw">struct</span> <span class="ty">ServerBuilder</span> { host: <span class="ty">String</span>, port: <span class="ty">u16</span>, tls: <span class="ty">bool</span> }
+
+<span class="kw">impl</span> <span class="ty">ServerBuilder</span> {
+    <span class="kw">fn</span> <span class="fn">new</span>() -&gt; <span class="ty">Self</span> {
+        <span class="ty">ServerBuilder</span> { host: <span class="ty">String</span>::from(<span class="st">"localhost"</span>), port: <span class="nm">8080</span>, tls: <span class="kw">false</span> }
+    }
+    <span class="kw">fn</span> <span class="fn">with_config</span>&lt;<span class="ty">F</span>: <span class="ty">FnOnce</span>(&amp;<span class="kw">mut</span> <span class="ty">Self</span>)&gt;(<span class="kw">mut</span> <span class="kw">self</span>, f: <span class="ty">F</span>) -&gt; <span class="ty">Self</span> {
+        f(&amp;<span class="kw">mut</span> <span class="kw">self</span>); <span class="cm">// 초기화 클로져 실행 (1회)</span>
+        <span class="kw">self</span>
+    }
+    <span class="kw">fn</span> <span class="fn">build</span>(<span class="kw">self</span>) -&gt; <span class="ty">Server</span> {
+        <span class="ty">Server</span> { host: <span class="kw">self</span>.host, port: <span class="kw">self</span>.port, tls: <span class="kw">self</span>.tls }
+    }
+}
+
+<span class="kw">fn</span> <span class="fn">with_callback</span>&lt;<span class="ty">T</span>, <span class="ty">F</span>: <span class="ty">FnOnce</span>() -&gt; <span class="ty">T</span>&gt;(produce: <span class="ty">F</span>) -&gt; <span class="ty">T</span> {
+    produce() <span class="cm">// 딱 한 번 호출 → FnOnce</span>
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> srv = <span class="ty">ServerBuilder</span>::new()
+        .with_config(|b| {
+            b.host = <span class="ty">String</span>::from(<span class="st">"0.0.0.0"</span>);
+            b.port = <span class="nm">443</span>;
+            b.tls = <span class="kw">true</span>;
+        })
+        .build();
+    <span class="mac">println!</span>(<span class="st">"서버: {}:{} TLS={}"</span>, srv.host, srv.port, srv.tls);
+
+    <span class="cm">// FnOnce 콜백으로 값 생성</span>
+    <span class="kw">let</span> value = with_callback(|| {
+        <span class="mac">println!</span>(<span class="st">"값 생성 중..."</span>);
+        vec![<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>]
+    });
+    <span class="mac">println!</span>(<span class="st">"생성된 값: {:?}"</span>, value);
+}</pre>
+  </div>
+
+  <div class="th th-fnonce"><span class="th-name">FnOnce</span><span class="th-desc">예제 5 — 계층 실증: Fn ⊆ FnMut ⊆ FnOnce 확인</span><span class="th-tag">계층 실증</span></div>
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">fnonce_05_hierarchy.rs</span><span class="cb-badge cb-fnonce">FnOnce</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// [FnOnce 예제 5] 트레이트 계층 실증 — 자동 구현 관계
+// Fn ⊆ FnMut ⊆ FnOnce
+// Fn 클로져 → FnMut, FnOnce 모두 충족
+// FnMut 클로져 → FnOnce 충족, Fn은 미충족
+// FnOnce 클로져 → FnOnce만 충족
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="kw">fn</span> <span class="fn">needs_fn</span>    &lt;<span class="ty">F</span>: <span class="ty">Fn</span>()    &gt;(f: <span class="ty">F</span>)       { f(); f(); <span class="mac">println!</span>(<span class="st">"Fn: 2회 완료"</span>);     }
+<span class="kw">fn</span> <span class="fn">needs_fn_mut</span>&lt;<span class="ty">F</span>: <span class="ty">FnMut</span>() &gt;(<span class="kw">mut</span> f: <span class="ty">F</span>) { f(); f(); <span class="mac">println!</span>(<span class="st">"FnMut: 2회 완료"</span>);  }
+<span class="kw">fn</span> <span class="fn">needs_fn_once</span>&lt;<span class="ty">F</span>: <span class="ty">FnOnce</span>()&gt;(f: <span class="ty">F</span>)    { f();     <span class="mac">println!</span>(<span class="st">"FnOnce: 1회 완료"</span>); }
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="mac">println!</span>(<span class="st">"━━ Fn 클로져 ━━"</span>);
+    <span class="kw">let</span> x = <span class="nm">42</span>;
+    <span class="kw">let</span> fn_cl = || <span class="mac">println!</span>(<span class="st">"  x={}"</span>, x); <span class="cm">// &amp;x → Fn</span>
+    needs_fn(fn_cl);       <span class="ok-c">// ✅ Fn    → Fn</span>
+    needs_fn_mut(fn_cl);   <span class="ok-c">// ✅ Fn    → FnMut  (자동 구현)</span>
+    needs_fn_once(fn_cl);  <span class="ok-c">// ✅ Fn    → FnOnce (자동 구현)</span>
+
+    <span class="mac">println!</span>(<span class="st">"━━ FnMut 클로져 ━━"</span>);
+    <span class="kw">let mut</span> n = <span class="nm">0</span>;
+    <span class="kw">let mut</span> fnmut_cl = || { n += <span class="nm">1</span>; <span class="mac">println!</span>(<span class="st">"  n={}"</span>, n); };
+    <span class="cm">// needs_fn(fnmut_cl); // ❌ FnMut는 Fn 미구현</span>
+    needs_fn_mut(&amp;<span class="kw">mut</span> fnmut_cl); <span class="ok-c">// ✅ FnMut → FnMut</span>
+    needs_fn_once(fnmut_cl);      <span class="ok-c">// ✅ FnMut → FnOnce (자동 구현)</span>
+    drop(n);
+
+    <span class="mac">println!</span>(<span class="st">"━━ FnOnce 클로져 ━━"</span>);
+    <span class="kw">let</span> owned = <span class="ty">String</span>::from(<span class="st">"소유값"</span>);
+    <span class="kw">let</span> fnonce_cl = <span class="kw">move</span> || {
+        drop(owned); <span class="cm">// 소비 → FnOnce만</span>
+        <span class="mac">println!</span>(<span class="st">"  소유권 소비"</span>);
+    };
+    <span class="cm">// needs_fn(fnonce_cl);     // ❌</span>
+    <span class="cm">// needs_fn_mut(fnonce_cl); // ❌</span>
+    needs_fn_once(fnonce_cl);     <span class="ok-c">// ✅ FnOnce → FnOnce</span>
+}</pre>
+  </div>
+</section>
+<div class="divider"></div>
+<!-- ════════════════════════════════════════
+  §09  sort_by_key 에러 케이스
+════════════════════════════════════════ -->
+<section class="sec" id="s9">
+  <div class="sec-hdr"><span class="sec-num">§ 09</span><h2>sort_by_key 에러 케이스 — The Rust Book 실제 예제</h2></div>
+  <p class="lead">
+    The Rust Book ch.13의 핵심 예제입니다. <code>sort_by_key</code>는 <code>FnMut</code>를 요구하는데,
+    클로져 내부에서 값을 이동(move out)시키면 <code>FnOnce</code>가 되어 컴파일 에러가 납니다.
+    에러 원인과 해결법을 함께 보여줍니다.
+  </p>
+
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">sort_by_key_error.rs — 컴파일 에러 예시 (The Book Listing 13-8)</span><span class="cb-badge cb-err">컴파일 에러</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// 출처: The Rust Book ch.13 Listing 13-8
+// sort_by_key는 FnMut 요구 (각 요소마다 여러 번 호출)
+// 아래 클로져는 value를 이동(push by value)시키므로
+// FnOnce가 되어 에러 발생
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="kw">#[derive(Debug)]</span>
+<span class="kw">struct</span> <span class="ty">Rectangle</span> { width: <span class="ty">u32</span>, height: <span class="ty">u32</span> }
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let mut</span> list = vec![
+        <span class="ty">Rectangle</span> { width: <span class="nm">10</span>, height: <span class="nm">1</span>  },
+        <span class="ty">Rectangle</span> { width: <span class="nm">3</span>,  height: <span class="nm">5</span>  },
+        <span class="ty">Rectangle</span> { width: <span class="nm">7</span>,  height: <span class="nm">12</span> },
+    ];
+    <span class="kw">let mut</span> sort_operations: <span class="ty">Vec</span>&lt;<span class="ty">String</span>&gt; = vec![];
+    <span class="kw">let</span> value = <span class="ty">String</span>::from(<span class="st">"closure called"</span>);
+
+    <span class="err-c">// ❌ 에러: sort_by_key는 FnMut 요구, 아래는 FnOnce
+    // sort_operations.push(value)는 value를 이동시킴
+    // → 클로져가 FnOnce만 구현 → FnMut 불충족
+    //
+    // error[E0507]: cannot move out of `value`, a captured variable
+    //   in an `FnMut` closure</span>
+    <span class="cm">/*
+    list.sort_by_key(|r| {
+        sort_operations.push(value); // ← value 이동 발생
+        r.width
+    });
+    */</span>
+}</pre>
+  </div>
+
+  <div class="callout err">
+    <div class="callout-title">❌ 에러 원인</div>
+    <code>sort_operations.push(value)</code>는 <code>value</code>의 소유권을 <code>sort_operations</code>로 이동시킵니다.
+    이동은 한 번만 가능하므로 이 클로져는 <code>FnOnce</code>만 구현합니다.
+    그런데 <code>sort_by_key</code>는 N개 요소를 정렬하기 위해 클로져를 여러 번 호출하므로 <code>FnMut</code>가 필요합니다.
+  </div>
+
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">sort_by_key_fixed.rs — 해결: clone() 사용</span><span class="cb-badge cb-fn">수정됨</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// 해결: value를 이동시키지 않고 clone()으로 복사본 사용
+// clone()은 value를 소비하지 않으므로 여러 번 호출 가능
+// → FnMut 충족
+//
+// The Book: "consider cloning the value if the performance
+// cost is acceptable"
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="kw">#[derive(Debug)]</span>
+<span class="kw">struct</span> <span class="ty">Rectangle</span> { width: <span class="ty">u32</span>, height: <span class="ty">u32</span> }
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let mut</span> list = vec![
+        <span class="ty">Rectangle</span> { width: <span class="nm">10</span>, height: <span class="nm">1</span>  },
+        <span class="ty">Rectangle</span> { width: <span class="nm">3</span>,  height: <span class="nm">5</span>  },
+        <span class="ty">Rectangle</span> { width: <span class="nm">7</span>,  height: <span class="nm">12</span> },
+    ];
+    <span class="kw">let mut</span> sort_operations: <span class="ty">Vec</span>&lt;<span class="ty">String</span>&gt; = vec![];
+    <span class="kw">let</span> value = <span class="ty">String</span>::from(<span class="st">"closure called"</span>);
+
+    <span class="ok-c">// ✅ 수정: value.clone()으로 복사본을 push
+    // value 자체는 이동되지 않으므로 FnMut 충족</span>
+    list.sort_by_key(|r| {
+        sort_operations.push(value.clone()); <span class="cm">// clone() → FnMut OK</span>
+        r.width
+    });
+
+    <span class="mac">println!</span>(<span class="st">"{:#?}"</span>, list);
+    <span class="mac">println!</span>(<span class="st">"sort_operations: {:?}"</span>, sort_operations);
+    <span class="cm">// sort_operations에는 정렬 비교 횟수만큼 "closure called"가 추가됨</span>
+
+    <span class="cm">// 대안: usize 카운터 사용 (Copy 타입 → 이동 없음)</span>
+    <span class="kw">let mut</span> call_count = <span class="nm">0_usize</span>;
+    list.sort_by_key(|r| {
+        call_count += <span class="nm">1</span>; <span class="cm">// Copy 타입 수정 → FnMut OK</span>
+        r.width
+    });
+    <span class="mac">println!</span>(<span class="st">"key 함수 호출 횟수: {}"</span>, call_count);
+}</pre>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════
+  §10  move 키워드와 Copy
+════════════════════════════════════════ -->
+<section class="sec" id="s10">
+  <div class="sec-hdr"><span class="sec-num">§ 10</span><h2>move 키워드와 Copy 타입</h2></div>
+  <p class="lead">
+    <code>move</code> 키워드는 클로져가 환경 변수를 캡처할 때 <strong>모두 소유권 이전으로 강제</strong>합니다.
+    단, <code>Copy</code> 트레이트를 구현하는 타입(<code>i32</code>, <code>f64</code>, <code>bool</code>, <code>char</code> 등)은
+    소유권 이전 대신 <strong>값이 복사</strong>됩니다.
+    따라서 <code>move</code>를 사용해도 <code>Copy</code> 타입의 원본은 그대로 사용할 수 있습니다.
+  </p>
+
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">move_and_copy.rs</span><span class="cb-badge cb-basic">move + Copy</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// move 키워드 동작 규칙:
+//   - Copy 타입 (i32, f64, bool, char, &amp;T 등):
+//       값이 복사됨 → 원본 변수 여전히 유효
+//   - non-Copy 타입 (String, Vec, Box 등):
+//       소유권이 클로져로 이전 → 원본 사용 불가
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="kw">use</span> std::thread;
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="cm">// ━━ Copy 타입 ━━</span>
+    <span class="kw">let</span> x: <span class="ty">i32</span>  = <span class="nm">42</span>;
+    <span class="kw">let</span> flag: <span class="ty">bool</span> = <span class="kw">true</span>;
+
+    <span class="kw">let</span> cl = <span class="kw">move</span> || <span class="mac">println!</span>(<span class="st">"x={}, flag={}"</span>, x, flag);
+    cl();
+    <span class="mac">println!</span>(<span class="st">"원본 x={}, flag={}"</span>, x, flag); <span class="ok-c">// ✅ Copy이므로 원본 유효</span>
+
+    <span class="cm">// ━━ non-Copy 타입 ━━</span>
+    <span class="kw">let</span> name = <span class="ty">String</span>::from(<span class="st">"Rust"</span>);
+    <span class="kw">let</span> cl2 = <span class="kw">move</span> || <span class="mac">println!</span>(<span class="st">"name={}"</span>, name); <span class="cm">// name 소유권 이전</span>
+    cl2();
+    <span class="cm">// println!("{}", name); // ❌ 소유권 이전됨</span>
+
+    <span class="cm">// ━━ 스레드: 항상 move 필요 ━━</span>
+    <span class="cm">// Copy 타입도 스레드에서는 move로 복사본 전달</span>
+    <span class="kw">let</span> threshold: <span class="ty">i32</span> = <span class="nm">60</span>;
+    <span class="kw">let</span> h = thread::spawn(<span class="kw">move</span> || {
+        <span class="cm">// threshold는 Copy이므로 복사본이 스레드로 전달</span>
+        <span class="mac">println!</span>(<span class="st">"스레드에서 threshold={}"</span>, threshold);
+    });
+    h.join().unwrap();
+    <span class="mac">println!</span>(<span class="st">"메인에서도 threshold={}"</span>, threshold); <span class="ok-c">// ✅</span>
+
+    <span class="cm">// ━━ move와 트레이트 결정의 관계 ━━</span>
+    <span class="cm">// move는 "캡처 방식"을 강제하지만, 트레이트(Fn/FnMut/FnOnce)는
+    // 클로져 본문에서 캡처한 값을 '어떻게 사용하는가'로 결정됨</span>
+
+    <span class="kw">let</span> s = <span class="ty">String</span>::from(<span class="st">"hello"</span>);
+    <span class="cm">// move로 소유권 이전했지만 내부에서 읽기만 → Fn</span>
+    <span class="kw">let</span> fn_with_move = <span class="kw">move</span> || <span class="mac">println!</span>(<span class="st">"{}"</span>, s); <span class="cm">// Fn (읽기만)</span>
+    fn_with_move();
+    fn_with_move(); <span class="ok-c">// ✅ Fn이므로 재호출 가능</span>
+
+    <span class="kw">let</span> v = vec![<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>];
+    <span class="cm">// move로 소유권 이전했고 내부에서 drop 사용 → FnOnce</span>
+    <span class="kw">let</span> fnonce_with_move = <span class="kw">move</span> || drop(v); <span class="cm">// FnOnce (소비)</span>
+    fnonce_with_move();
+    <span class="cm">// fnonce_with_move(); // ❌ FnOnce</span>
+}</pre>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>상황</th><th>캡처 타입</th><th>move 후 원본</th><th>트레이트 결정</th></tr></thead>
+      <tbody>
+        <tr><td>Copy 타입, 읽기만</td><td class="mono">i32, bool 등</td><td>✅ 유효</td><td class="mono"><span class="chip chip-fn">Fn</span></td></tr>
+        <tr><td>Copy 타입, 수정</td><td class="mono">i32, bool 등</td><td>✅ 유효 (but 빌림)</td><td class="mono"><span class="chip chip-fnmut">FnMut</span></td></tr>
+        <tr><td>non-Copy, move+읽기</td><td class="mono">String, Vec 등</td><td>❌ 이동됨</td><td class="mono"><span class="chip chip-fn">Fn</span></td></tr>
+        <tr><td>non-Copy, move+수정</td><td class="mono">String, Vec 등</td><td>❌ 이동됨</td><td class="mono"><span class="chip chip-fnmut">FnMut</span></td></tr>
+        <tr><td>non-Copy, move+소비</td><td class="mono">String, Vec 등</td><td>❌ 이동됨</td><td class="mono"><span class="chip chip-fnonce">FnOnce</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════
+  §11  Box<dyn Fn> vs impl Fn
+════════════════════════════════════════ -->
+<section class="sec" id="s11">
+  <div class="sec-hdr"><span class="sec-num">§ 11</span><h2>Box&lt;dyn Fn&gt; vs impl Fn — 동적 vs 정적 디스패치</h2></div>
+  <p class="lead">
+    <code>impl Fn</code>은 컴파일 시점에 구체적인 타입이 결정되는 <strong>정적 디스패치(static dispatch)</strong>입니다.
+    <code>Box&lt;dyn Fn&gt;</code>은 런타임에 vtable을 통해 호출하는 <strong>동적 디스패치(dynamic dispatch)</strong>입니다.
+    서로 다른 타입의 클로져를 같은 컬렉션에 저장하거나 반환 타입이 런타임에 결정될 때는 <code>Box&lt;dyn Fn&gt;</code>을 사용합니다.
+  </p>
+
+  <div class="two-col">
+    <div class="callout ok">
+      <div class="callout-title">✅ impl Fn 사용 시기</div>
+      함수의 반환 타입이 컴파일 시점에 확정될 때. 성능이 중요할 때. 단일 클로져 반환 시. 제네릭 함수 바운드.
+    </div>
+    <div class="callout info">
+      <div class="callout-title">📌 Box&lt;dyn Fn&gt; 사용 시기</div>
+      서로 다른 클로져를 Vec 등에 저장할 때. 런타임에 클로져 결정 시. 재귀 구조. 트레이트 객체가 필요할 때.
+    </div>
+  </div>
+
+  <div class="cb">
+    <div class="cb-hdr"><div class="cb-dots"><div class="cb-dot" style="background:#ff5f57"></div><div class="cb-dot" style="background:#febc2e"></div><div class="cb-dot" style="background:#28c840"></div></div><span class="cb-title">dyn_fn_vs_impl_fn.rs</span><span class="cb-badge cb-basic">Box&lt;dyn Fn&gt;</span></div>
+    <pre class="code"><span class="cm">// ─────────────────────────────────────────────────────────
+// impl Fn: 정적 디스패치 — 컴파일 시점에 타입 확정
+//   장점: 인라이닝 가능, 런타임 오버헤드 없음
+//   단점: 다른 타입 클로져를 같은 변수에 저장 불가
+//
+// Box&lt;dyn Fn&gt;: 동적 디스패치 — vtable을 통한 런타임 호출
+//   장점: 다양한 타입의 클로져를 균일하게 처리
+//   단점: 힙 할당 + 간접 호출 비용
+// ─────────────────────────────────────────────────────────</span>
+
+<span class="cm">// ━━ impl Fn: 정적 디스패치 ━━</span>
+<span class="kw">fn</span> <span class="fn">make_adder_impl</span>(n: <span class="ty">i32</span>) -&gt; <span class="kw">impl</span> <span class="ty">Fn</span>(<span class="ty">i32</span>) -&gt; <span class="ty">i32</span> {
+    <span class="kw">move</span> |x| x + n <span class="cm">// 컴파일 시 구체적 타입 결정 → 인라이닝 가능</span>
+}
+
+<span class="cm">// ━━ Box&lt;dyn Fn&gt;: 동적 디스패치 ━━</span>
+<span class="kw">fn</span> <span class="fn">make_adder_dyn</span>(n: <span class="ty">i32</span>) -&gt; <span class="ty">Box</span>&lt;<span class="kw">dyn</span> <span class="ty">Fn</span>(<span class="ty">i32</span>) -&gt; <span class="ty">i32</span>&gt; {
+    <span class="ty">Box</span>::new(<span class="kw">move</span> |x| x + n) <span class="cm">// 힙 할당 + vtable</span>
+}
+
+<span class="cm">// Box&lt;dyn Fn&gt;의 핵심 장점: Vec에 다양한 클로져 저장</span>
+<span class="kw">fn</span> <span class="fn">make_validator</span>(flag: <span class="ty">bool</span>) -&gt; <span class="ty">Box</span>&lt;<span class="kw">dyn</span> <span class="ty">Fn</span>(<span class="ty">i32</span>) -&gt; <span class="ty">bool</span>&gt; {
+    <span class="cm">// 런타임 조건에 따라 다른 클로져 반환 → impl Fn 불가, Box 필수</span>
+    <span class="kw">if</span> flag {
+        <span class="ty">Box</span>::new(|x| x &gt; <span class="nm">0</span>)  <span class="cm">// 양수 검사</span>
+    } <span class="kw">else</span> {
+        <span class="ty">Box</span>::new(|x| x &lt; <span class="nm">0</span>)  <span class="cm">// 음수 검사</span>
+    }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> add5_impl = make_adder_impl(<span class="nm">5</span>);
+    <span class="kw">let</span> add5_dyn  = make_adder_dyn(<span class="nm">5</span>);
+    <span class="mac">println!</span>(<span class="st">"impl: {}, dyn: {}"</span>, add5_impl(<span class="nm">10</span>), add5_dyn(<span class="nm">10</span>)); <span class="cm">// 15, 15</span>
+
+    <span class="cm">// 런타임 선택</span>
+    <span class="kw">let</span> check_pos = make_validator(<span class="kw">true</span>);
+    <span class="kw">let</span> check_neg = make_validator(<span class="kw">false</span>);
+    <span class="mac">println!</span>(<span class="st">"5 양수: {}, -3 음수: {}"</span>, check_pos(<span class="nm">5</span>), check_neg(-<span class="nm">3</span>));
+
+    <span class="cm">// Vec에 서로 다른 클로져 저장 (Box&lt;dyn Fn&gt; 필수)</span>
+    <span class="kw">let</span> rules: <span class="ty">Vec</span>&lt;<span class="ty">Box</span>&lt;<span class="kw">dyn</span> <span class="ty">Fn</span>(<span class="ty">i32</span>) -&gt; <span class="ty">bool</span>&gt;&gt; = vec![
+        <span class="ty">Box</span>::new(|x| x &gt; <span class="nm">0</span>),
+        <span class="ty">Box</span>::new(|x| x % <span class="nm">2</span> == <span class="nm">0</span>),
+        <span class="ty">Box</span>::new(|x| x &lt; <span class="nm">100</span>),
+    ];
+    <span class="kw">let</span> n = <span class="nm">42</span>;
+    <span class="kw">let</span> all_pass = rules.iter().all(|rule| rule(n));
+    <span class="mac">println!</span>(<span class="st">"{}: 모든 규칙 통과={}"</span>, n, all_pass); <span class="cm">// 42: true</span>
+
+    <span class="cm">// FnMut, FnOnce도 동일 패턴</span>
+    <span class="kw">let mut</span> actions: <span class="ty">Vec</span>&lt;<span class="ty">Box</span>&lt;<span class="kw">dyn</span> <span class="ty">FnMut</span>()&gt;&gt; = vec![
+        <span class="ty">Box</span>::new(|| <span class="mac">println!</span>(<span class="st">"Action A"</span>)),
+        <span class="ty">Box</span>::new(|| <span class="mac">println!</span>(<span class="st">"Action B"</span>)),
+    ];
+    <span class="kw">for</span> action <span class="kw">in</span> &amp;<span class="kw">mut</span> actions { action(); }
+}</pre>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════
+  §12  핵심 요약
+════════════════════════════════════════ -->
+<section class="sec" id="s12">
+  <div class="sec-hdr"><span class="sec-num">§ 12</span><h2>핵심 요약 비교표</h2></div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>트레이트</th><th>self 방식</th><th>캡처 방식</th><th>반복 호출</th>
+        <th>mut 선언</th><th>자동 구현</th><th>대표 사용처</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="chip chip-fn" style="font-size:13px;">Fn</span></td>
+          <td class="mono">&amp;self</td>
+          <td class="mono">&amp;T 불변 참조</td>
+          <td style="color:#4ec9b0">무제한</td>
+          <td>불필요</td>
+          <td class="mono">FnMut, FnOnce</td>
+          <td>map, filter, 고차 함수</td>
+        </tr>
+        <tr>
+          <td><span class="chip chip-fnmut" style="font-size:13px;">FnMut</span></td>
+          <td class="mono">&amp;mut self</td>
+          <td class="mono">&amp;mut T 가변 참조</td>
+          <td style="color:#4ec9b0">무제한</td>
+          <td style="color:#fbbf24">필요</td>
+          <td class="mono">FnOnce</td>
+          <td>sort_by_key, for_each, 카운터</td>
+        </tr>
+        <tr>
+          <td><span class="chip chip-fnonce" style="font-size:13px;">FnOnce</span></td>
+          <td class="mono">self 소비</td>
+          <td class="mono">소유권 이전</td>
+          <td style="color:#f87171">단 1회</td>
+          <td>불필요</td>
+          <td>—</td>
+          <td>thread::spawn, unwrap_or_else</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="igrid" style="margin-top:24px;">
+    <div class="icard" style="border-left:3px solid #4ec9b0;">
+      <div class="icard-lbl" style="color:#4ec9b0">자동 구현 규칙</div>
+      <div class="icard-val" style="font-family:'JetBrains Mono',monospace;font-size:13px;">Fn ⊆ FnMut ⊆ FnOnce</div>
+      <div class="icard-sub">Fn 구현 → FnMut, FnOnce 자동. FnMut 구현 → FnOnce 자동. 역방향 불성립.</div>
+    </div>
+    <div class="icard" style="border-left:3px solid #fbbf24;">
+      <div class="icard-lbl" style="color:#fbbf24">컴파일러 추론 순서</div>
+      <div class="icard-val">읽기 → 수정 → 소비</div>
+      <div class="icard-sub">가능한 가장 약한(Fn 방향) 트레이트 우선 선택. move는 캡처 방식만 강제, 트레이트는 본문 분석으로 결정.</div>
+    </div>
+    <div class="icard" style="border-left:3px solid #f87171;">
+      <div class="icard-lbl" style="color:#f87171">API 설계 가이드라인</div>
+      <div class="icard-val">가능한 넓게 (FnOnce 우선)</div>
+      <div class="icard-sub">FnOnce 바운드는 Fn/FnMut 클로져도 수용. 단, 반복 호출 시 FnMut, 재진입 안전성 보장 시 Fn 사용.</div>
+    </div>
+    <div class="icard" style="border-left:3px solid #569cd6;">
+      <div class="icard-lbl" style="color:#569cd6">Box&lt;dyn&gt; vs impl</div>
+      <div class="icard-val">다형성 vs 성능</div>
+      <div class="icard-sub">다양한 타입 저장/런타임 결정 → Box&lt;dyn Fn&gt;. 단일 타입/성능 중요 → impl Fn.</div>
+    </div>
+  </div>
+
+  <div class="callout ok" style="margin-top:24px;">
+    <div class="callout-title">✅ 공식 문서 출처 목록</div>
+    <ul style="padding-left:20px;line-height:2;">
+      <li>The Rust Programming Language, Ch.13: <em>Closures — Anonymous Functions that Capture Their Environment</em></li>
+      <li><code>std::ops::Fn</code> — <a href="https://doc.rust-lang.org/std/ops/trait.Fn.html">https://doc.rust-lang.org/std/ops/trait.Fn.html</a></li>
+      <li><code>std::ops::FnMut</code> — <a href="https://doc.rust-lang.org/std/ops/trait.FnMut.html">https://doc.rust-lang.org/std/ops/trait.FnMut.html</a></li>
+      <li><code>std::ops::FnOnce</code> — <a href="https://doc.rust-lang.org/std/ops/trait.FnOnce.html">https://doc.rust-lang.org/std/ops/trait.FnOnce.html</a></li>
+    </ul>
+  </div>
+</section>
+
+</div><!-- /wrap -->
+
+<footer>
+  <p>Rust 클로져 개념과 예제 — Fn / FnMut / FnOnce 완전 정복</p>
+  <p style="margin-top:6px;font-size:11px;">The Rust Book ch.13 · std::ops 공식 문서 기반 · VS Code Dark Modern 테마</p>
+</footer>
+
+<script>
+(function(){
+  var saved = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  updateBtn(saved);
+  function updateBtn(t){
+    var ic = document.getElementById('themeIcon');
+    var lb = document.getElementById('themeLabel');
+    if(ic) ic.textContent = t==='dark' ? '☀️' : '🌙';
+    if(lb) lb.textContent = t==='dark' ? 'Light' : 'Dark';
+  }
+  window.toggleTheme = function(){
+    var cur = document.documentElement.getAttribute('data-theme');
+    var nxt = cur==='dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', nxt);
+    localStorage.setItem('theme', nxt);
+    updateBtn(nxt);
+  };
+})();
+</script>
+</body>
+</html>

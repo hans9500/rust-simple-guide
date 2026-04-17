@@ -1,0 +1,1723 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Rust 패턴 매칭 완전 가이드</title>
+<style>
+/* ── 테마 ── */
+[data-theme="light"]{
+  --bg:#ffffff;--bg2:#f8f7f5;--bg3:#f0ede8;
+  --text:#1a1a18;--text2:#4a4845;--text3:#888780;
+  --border:#dedad3;--border2:#c8c4bc;
+  --link:#185fa5;
+  --p50:#eeedfe;--p600:#534ab7;--p800:#3c3489;
+  --t50:#e1f5ee;--t600:#0f6e56;--t800:#085041;
+  --a50:#faeeda;--a600:#854f0b;--a800:#633806;
+  --c50:#faece7;--c600:#993c1d;--c800:#712b13;
+  --b50:#e6f1fb;--b600:#185fa5;--b800:#0c447c;
+  --g50:#f1efe8;--g600:#5f5e5a;--g800:#444441;
+  --sidebar-bg:#f8f7f5;
+  --toggle-bg:#d0cdc6;--toggle-knob:#ffffff;
+}
+[data-theme="dark"]{
+  --bg:#181816;--bg2:#222220;--bg3:#2a2a28;
+  --text:#e4e2db;--text2:#a8a49c;--text3:#6b6864;
+  --border:#38362f;--border2:#4a4845;
+  --link:#85b7eb;
+  --p50:#26215c;--p600:#afa9ec;--p800:#cecbf6;
+  --t50:#04342c;--t600:#5dcaa5;--t800:#9fe1cb;
+  --a50:#412402;--a600:#ef9f27;--a800:#fac775;
+  --c50:#4a1b0c;--c600:#f0997b;--c800:#f5c4b3;
+  --b50:#042c53;--b600:#85b7eb;--b800:#b5d4f4;
+  --g50:#2c2c2a;--g600:#b4b2a9;--g800:#d3d1c7;
+  --sidebar-bg:#1e1e1c;
+  --toggle-bg:#4a4845;--toggle-knob:#e4e2db;
+}
+
+/* ── VS Code Dark Modern 코드 테마 ── */
+.code-block{margin:0;border-radius:0 0 8px 8px;overflow:hidden}
+.code-block pre{
+  margin:0;padding:1.1rem 1.25rem;
+  font-family:'Cascadia Code','Fira Code','SF Mono',Consolas,monospace;
+  font-size:.8rem;line-height:1.75;
+  color:#d4d4d4;background:#1f1f1f;
+  overflow-x:auto;
+  /* 줄 음영 완전 제거 */
+  background-image:none !important;
+  -webkit-text-fill-color:unset;
+}
+.code-block pre code{
+  display:block;background:transparent;color:inherit;
+  padding:0;font-size:inherit;border-radius:0;
+  /* 모든 상속 음영 제거 */
+  background-image:none !important;
+}
+/* VS Code Dark Modern 토큰 */
+.k {color:#569cd6;font-weight:normal}
+.ty{color:#4ec9b0}
+.fn{color:#dcdcaa}
+.mc{color:#dcdcaa}
+.st{color:#ce9178}
+.nm{color:#b5cea8}
+.cm{color:#6a9955;font-style:italic}
+.en{color:#4ec9b0}
+.lf{color:#569cd6}
+.de{color:#c8c8c8}
+
+/* ── 레이아웃 ── */
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);line-height:1.75;font-size:15px;transition:background .2s,color .2s}
+.layout{display:flex;min-height:100vh}
+.sidebar{width:252px;flex-shrink:0;background:var(--sidebar-bg);border-right:1px solid var(--border);position:sticky;top:0;height:100vh;overflow-y:auto;transition:background .2s}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.main{flex:1;min-width:0;padding:2.5rem 3rem 5rem;max-width:900px}
+
+/* ── 사이드바 ── */
+.sb-header{padding:1.1rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sb-logo{font-size:.78rem;font-weight:700;color:var(--p600);letter-spacing:.05em;text-transform:uppercase}
+.theme-btn{width:38px;height:20px;border-radius:10px;background:var(--toggle-bg);border:none;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
+.theme-btn::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--toggle-knob);transition:transform .2s}
+[data-theme="dark"] .theme-btn::after{transform:translateX(18px)}
+.sb-section{padding:.5rem 1rem .15rem;font-size:.66rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:.4rem}
+.sb-link{display:block;padding:.3rem 1rem .3rem 1.3rem;font-size:.81rem;color:var(--text2);text-decoration:none;border-left:2px solid transparent;transition:all .12s;line-height:1.4}
+.sb-link:hover{color:var(--text);background:var(--bg3)}
+.sb-link.active{color:var(--p600);border-left-color:var(--p600);background:var(--p50);font-weight:600}
+
+/* ── 타이포 ── */
+h1{font-size:1.85rem;font-weight:700;letter-spacing:-.025em;margin-bottom:.4rem;line-height:1.2}
+.lead{color:var(--text2);font-size:.93rem;margin-bottom:2.5rem;line-height:1.65}
+h2{font-size:1.2rem;font-weight:700;margin:3rem 0 .85rem;padding-bottom:.45rem;border-bottom:1.5px solid var(--border);scroll-margin-top:1.5rem}
+h3{font-size:.97rem;font-weight:700;margin:1.6rem 0 .55rem;scroll-margin-top:1.5rem}
+p{margin-bottom:.85rem;color:var(--text2);line-height:1.75}
+p strong,li strong{color:var(--text);font-weight:600}
+ul,ol{margin:.45rem 0 .85rem 1.35rem;color:var(--text2)}
+li{margin:.28rem 0;line-height:1.65}
+code{font-family:'Cascadia Code','SF Mono',Consolas,monospace;font-size:.8em;background:var(--bg3);color:var(--text);padding:.12em .38em;border-radius:4px}
+
+/* ── 박스 ── */
+.box{border-radius:8px;padding:.8rem 1.05rem;margin:.9rem 0;font-size:.87rem;line-height:1.65}
+.box-info{background:var(--b50);border-left:3px solid var(--b600);color:var(--b800)}
+.box-warn{background:var(--a50);border-left:3px solid var(--a600);color:var(--a800)}
+.box-tip{background:var(--t50);border-left:3px solid var(--t600);color:var(--t800)}
+.box-note{background:var(--g50);border-left:3px solid var(--g600);color:var(--g800)}
+.box strong{font-weight:700}.box code{background:rgba(128,128,128,.15);color:inherit}
+
+/* ── 배지 ── */
+.badge{display:inline-flex;align-items:center;font-size:.67rem;font-weight:700;padding:.2em .6em;border-radius:4px;letter-spacing:.03em;vertical-align:middle}
+.bp{background:var(--p50);color:var(--p800)}.bt{background:var(--t50);color:var(--t800)}
+.ba{background:var(--a50);color:var(--a800)}.bc{background:var(--c50);color:var(--c800)}
+.bb{background:var(--b50);color:var(--b800)}.bg{background:var(--g50);color:var(--g800)}
+
+/* ── 카드 그리드 ── */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:10px;margin:1rem 0}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem}
+.card .cl{font-size:.84rem;font-weight:700;color:var(--text);display:block;margin:.3rem 0 .22rem}
+.card .cd{font-size:.77rem;color:var(--text2);line-height:1.52}
+
+/* ── SVG wrap ── */
+.svg-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin:1.2rem 0;overflow:hidden}
+
+/* ── 테이블 ── */
+.tbl-wrap{overflow-x:auto;margin:1rem 0}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+thead{background:var(--bg3)}
+th{text-align:left;padding:.52rem .8rem;font-weight:700;color:var(--text2);font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:1.5px solid var(--border)}
+td{padding:.48rem .8rem;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.52}
+td:first-child{font-family:'Cascadia Code','SF Mono',Consolas,monospace;font-size:.77rem;color:var(--text);font-weight:600;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg2)}
+
+/* ── 예제 블록 ── */
+.ex-wrap{margin:1.4rem 0 2.4rem;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.ex-head{display:flex;align-items:center;gap:.65rem;background:var(--bg3);padding:.6rem 1rem;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.ex-num{width:23px;height:23px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;flex-shrink:0}
+.ex-title{font-size:.87rem;font-weight:700;color:var(--text)}
+.ex-tags{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap}
+
+.divider{height:1px;background:var(--border);margin:2.5rem 0}
+footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);font-size:.77rem;color:var(--text3);text-align:center}
+@media(max-width:720px){.sidebar{display:none}.main{padding:1.5rem 1.2rem 4rem}}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ── 사이드바 ── -->
+<nav class="sidebar">
+  <div class="sb-header">
+    <span class="sb-logo">Rust Patterns</span>
+    <button class="theme-btn" id="themeBtn" aria-label="테마 전환"></button>
+  </div>
+  <div style="padding-bottom:1.5rem">
+    <div class="sb-section">개념</div>
+    <a class="sb-link" href="#s-overview">전체 구조 다이어그램</a>
+    <a class="sb-link" href="#s-where">사용 위치 6곳</a>
+    <a class="sb-link" href="#s-refut">Refutability</a>
+    <a class="sb-link" href="#s-expr">match는 표현식</a>
+    <a class="sb-link" href="#s-kinds">패턴 종류 목록</a>
+    <a class="sb-link" href="#s-own">패턴과 소유권</a>
+    <a class="sb-link" href="#s-guard">매치 가드 심화</a>
+    <a class="sb-link" href="#s-or">OR 패턴 규칙</a>
+    <a class="sb-link" href="#s-letelse">let-else (1.65+)</a>
+    <a class="sb-link" href="#s-nested">중첩 패턴</a>
+    <div class="sb-section">예제</div>
+    <a class="sb-link" href="#ex1">예제 1 — match 기본</a>
+    <a class="sb-link" href="#ex2">예제 2 — enum/struct 해체</a>
+    <a class="sb-link" href="#ex3">예제 3 — @ 바인딩·가드</a>
+    <a class="sb-link" href="#ex4">예제 4 — 슬라이스 패턴</a>
+    <a class="sb-link" href="#ex5">예제 5 — if/while let·let-else</a>
+    <a class="sb-link" href="#ex6">예제 6 — ref/& 소유권</a>
+    <a class="sb-link" href="#ex7">예제 7 — 함수·클로저 인자</a>
+    <a class="sb-link" href="#ex8">예제 8 — 실전 종합</a>
+    <div class="sb-section">참조</div>
+    <a class="sb-link" href="#s-summary">핵심 요약표</a>
+  </div>
+</nav>
+
+<!-- ── 본문 ── -->
+<main class="main">
+<h1>Rust 패턴 매칭 완전 가이드</h1>
+<p class="lead">The Rust Reference · The Rust Programming Language Book 공식 문서 기반 — 할루시네이션 없이 검증된 내용만 수록. Rust 2021 Edition 기준.</p>
+
+<!-- 1. 전체 구조 -->
+<section id="s-overview">
+<h2>1. 패턴 매칭 전체 구조</h2>
+<p>Rust의 패턴 매칭은 단순 분기문이 아닙니다. <strong>구조 해체(destructuring)</strong>, <strong>조건 가드(guard)</strong>, <strong>변수 바인딩</strong>, <strong>소유권 제어</strong>까지 통합한 언어의 핵심 기능입니다.</p>
+<div class="svg-wrap">
+<!--
+  레이아웃 계산 (viewBox 680 × 560)
+  루트: x=230 w=220  cx=340
+  L1 박스 너비=140, 높이=40, gap=10
+    사용위치: x=10   cx=80
+    패턴종류: x=160  cx=230
+    고급기능: x=310  cx=380  (w=160 cx=390)
+    바인딩  : x=530  cx=600  (w=140)
+  → 총 너비: 10+140+10+140+10+160+10+140 = 620 → 630  맞춤
+  L2 박스 너비=130, 높이=32, y=218/268
+    사용위치 children: x=10,148  각 w=128
+    패턴종류 children: x=10+140+10=160 → x=160,296 각 w=120  cx=220,356
+    고급기능 children: x=316,452       각 w=120  cx=376,512
+    바인딩   children: x=534,   w=134  cx=601  (단일)
+-->
+<svg width="100%" viewBox="0 0 680 540" xmlns="http://www.w3.org/2000/svg" role="img">
+<title>Rust 패턴 매칭 전체 구조</title>
+<defs>
+  <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+    <path d="M2 2L8 5L2 8" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+<style>
+.svt{font:400 12.5px system-ui,sans-serif}
+.svth{font:700 13px system-ui,sans-serif}
+.svts{font:400 11.5px system-ui,sans-serif}
+.al{stroke-width:.9;fill:none;marker-end:url(#ar)}
+[data-theme="light"] .svt,.svth,.svts{fill:#1a1a18}
+[data-theme="light"] .al{stroke:#b0aca4}
+[data-theme="light"] .r-b{fill:#eeedfe;stroke:#534ab7;stroke-width:.8} .r-t{fill:#26215c}
+[data-theme="light"] .t-b{fill:#e1f5ee;stroke:#0f6e56;stroke-width:.8} .t-t{fill:#04342c}
+[data-theme="light"] .bl-b{fill:#e6f1fb;stroke:#185fa5;stroke-width:.8} .bl-t{fill:#042c53}
+[data-theme="light"] .a-b{fill:#faeeda;stroke:#854f0b;stroke-width:.8} .a-t{fill:#412402}
+[data-theme="light"] .c-b{fill:#faece7;stroke:#993c1d;stroke-width:.8} .c-t{fill:#4a1b0c}
+[data-theme="light"] .pb{fill:none;stroke:#dedad3;stroke-width:.8}
+[data-theme="dark"] .svt{fill:#e4e2db}[data-theme="dark"] .svth{fill:#e4e2db}[data-theme="dark"] .svts{fill:#a8a49c}
+[data-theme="dark"] .al{stroke:#4a4845}
+[data-theme="dark"] .r-b{fill:#3c3489;stroke:#afa9ec;stroke-width:.8}[data-theme="dark"] .r-t{fill:#eeedfe}
+[data-theme="dark"] .t-b{fill:#085041;stroke:#5dcaa5;stroke-width:.8}[data-theme="dark"] .t-t{fill:#e1f5ee}
+[data-theme="dark"] .bl-b{fill:#0c447c;stroke:#85b7eb;stroke-width:.8}[data-theme="dark"] .bl-t{fill:#e6f1fb}
+[data-theme="dark"] .a-b{fill:#633806;stroke:#ef9f27;stroke-width:.8}[data-theme="dark"] .a-t{fill:#faeeda}
+[data-theme="dark"] .c-b{fill:#712b13;stroke:#f0997b;stroke-width:.8}[data-theme="dark"] .c-t{fill:#faece7}
+[data-theme="dark"] .pb{fill:none;stroke:#38362f;stroke-width:.8}
+</style>
+
+<!-- 루트 -->
+<rect class="r-b" x="230" y="14" width="220" height="40" rx="8"/>
+<text class="svth r-t" x="340" y="34" text-anchor="middle" dominant-baseline="central">패턴 매칭 (Pattern Matching)</text>
+
+<!-- 루트 → L1 화살표 -->
+<line class="al" x1="290" y1="54" x2="102" y2="118" stroke="#534ab7"/>
+<line class="al" x1="320" y1="54" x2="222" y2="118" stroke="#185fa5"/>
+<line class="al" x1="360" y1="54" x2="382" y2="118" stroke="#854f0b"/>
+<line class="al" x1="390" y1="54" x2="572" y2="118" stroke="#993c1d"/>
+
+<!-- L1: 사용위치 x=32 w=140 cx=102 -->
+<rect class="t-b" x="32" y="118" width="140" height="40" rx="7"/>
+<text class="svth t-t" x="102" y="138" text-anchor="middle" dominant-baseline="central">사용 위치</text>
+
+<!-- L1: 패턴종류 x=182 w=140 cx=252 -->
+<rect class="bl-b" x="182" y="118" width="140" height="40" rx="7"/>
+<text class="svth bl-t" x="252" y="138" text-anchor="middle" dominant-baseline="central">패턴 종류</text>
+
+<!-- L1: 고급기능 x=332 w=140 cx=402 -->
+<rect class="a-b" x="332" y="118" width="140" height="40" rx="7"/>
+<text class="svth a-t" x="402" y="138" text-anchor="middle" dominant-baseline="central">고급 기능</text>
+
+<!-- L1: 바인딩 x=482 w=166 cx=565 -->
+<rect class="c-b" x="482" y="118" width="166" height="40" rx="7"/>
+<text class="svth c-t" x="565" y="138" text-anchor="middle" dominant-baseline="central">바인딩 / 참조</text>
+
+<!-- 사용위치 → L2: x=32,w=64 / x=104,w=72 -->
+<line class="al" x1="80" y1="158" x2="64" y2="208" stroke="#0f6e56"/>
+<line class="al" x1="124" y1="158" x2="140" y2="208" stroke="#0f6e56"/>
+<rect class="t-b" x="32" y="208" width="64" height="30" rx="6"/>
+<text class="svts t-t" x="64" y="223" text-anchor="middle" dominant-baseline="central">match</text>
+<rect class="t-b" x="104" y="208" width="72" height="30" rx="6"/>
+<text class="svts t-t" x="140" y="223" text-anchor="middle" dominant-baseline="central">if/while let</text>
+
+<line class="al" x1="80" y1="158" x2="55" y2="255" stroke="#0f6e56"/>
+<line class="al" x1="124" y1="158" x2="149" y2="255" stroke="#0f6e56"/>
+<rect class="t-b" x="25" y="255" width="60" height="30" rx="6"/>
+<text class="svts t-t" x="55" y="270" text-anchor="middle" dominant-baseline="central">let / for</text>
+<rect class="t-b" x="92" y="255" width="72" height="30" rx="6"/>
+<text class="svts t-t" x="128" y="270" text-anchor="middle" dominant-baseline="central">함수 인자</text>
+
+<!-- 패턴종류 → L2: x=182,w=64 / x=254,w=70 -->
+<line class="al" x1="230" y1="158" x2="214" y2="208" stroke="#185fa5"/>
+<line class="al" x1="274" y1="158" x2="289" y2="208" stroke="#185fa5"/>
+<rect class="bl-b" x="182" y="208" width="64" height="30" rx="6"/>
+<text class="svts bl-t" x="214" y="223" text-anchor="middle" dominant-baseline="central">리터럴·범위</text>
+<rect class="bl-b" x="254" y="208" width="70" height="30" rx="6"/>
+<text class="svts bl-t" x="289" y="223" text-anchor="middle" dominant-baseline="central">구조 해체</text>
+
+<line class="al" x1="230" y1="158" x2="208" y2="255" stroke="#185fa5"/>
+<line class="al" x1="274" y1="158" x2="296" y2="255" stroke="#185fa5"/>
+<rect class="bl-b" x="175" y="255" width="66" height="30" rx="6"/>
+<text class="svts bl-t" x="208" y="270" text-anchor="middle" dominant-baseline="central">enum·tuple</text>
+<rect class="bl-b" x="249" y="255" width="94" height="30" rx="6"/>
+<text class="svts bl-t" x="296" y="270" text-anchor="middle" dominant-baseline="central">슬라이스·OR</text>
+
+<!-- 고급기능 → L2: x=332,w=66 / x=406,w=68 -->
+<line class="al" x1="380" y1="158" x2="365" y2="208" stroke="#854f0b"/>
+<line class="al" x1="424" y1="158" x2="440" y2="208" stroke="#854f0b"/>
+<rect class="a-b" x="332" y="208" width="66" height="30" rx="6"/>
+<text class="svts a-t" x="365" y="223" text-anchor="middle" dominant-baseline="central">match guard</text>
+<rect class="a-b" x="406" y="208" width="68" height="30" rx="6"/>
+<text class="svts a-t" x="440" y="223" text-anchor="middle" dominant-baseline="central">OR 패턴 |</text>
+
+<line class="al" x1="402" y1="158" x2="392" y2="255" stroke="#854f0b"/>
+<rect class="a-b" x="336" y="255" width="114" height="30" rx="6"/>
+<text class="svts a-t" x="393" y="270" text-anchor="middle" dominant-baseline="central">refutability</text>
+
+<!-- 바인딩 → L2: x=482,w=78 / x=568,w=82 -->
+<line class="al" x1="540" y1="158" x2="521" y2="208" stroke="#993c1d"/>
+<line class="al" x1="590" y1="158" x2="609" y2="208" stroke="#993c1d"/>
+<rect class="c-b" x="482" y="208" width="78" height="30" rx="6"/>
+<text class="svts c-t" x="521" y="223" text-anchor="middle" dominant-baseline="central">@ 바인딩</text>
+<rect class="c-b" x="568" y="208" width="82" height="30" rx="6"/>
+<text class="svts c-t" x="609" y="223" text-anchor="middle" dominant-baseline="central">ref · &amp; 패턴</text>
+
+<line class="al" x1="565" y1="158" x2="552" y2="255" stroke="#993c1d"/>
+<rect class="c-b" x="482" y="255" width="140" height="30" rx="6"/>
+<text class="svts c-t" x="552" y="270" text-anchor="middle" dominant-baseline="central">이동 vs 복사 vs ref</text>
+
+<!-- 원칙 박스 -->
+<rect class="pb" x="20" y="310" width="640" height="210" rx="10"/>
+<text class="svth" x="340" y="334" text-anchor="middle" dominant-baseline="central" style="fill:var(--text,#1a1a18)">컴파일러 보장 (Rust Reference 기준)</text>
+<text class="svts" x="36" y="360" style="fill:var(--text2,#4a4845)">• match는 반드시 모든 경우(exhaustive)를 처리해야 함 — 빠진 arm은 컴파일 오류</text>
+<text class="svts" x="36" y="382" style="fill:var(--text2,#4a4845)">• 패턴은 위에서 아래 순서로 시도, 첫 번째 일치한 arm 실행 후 나머지 건너뜀</text>
+<text class="svts" x="36" y="404" style="fill:var(--text2,#4a4845)">• irrefutable(항상 일치) vs refutable(불일치 가능) — 사용 위치마다 허용 여부 다름</text>
+<text class="svts" x="36" y="426" style="fill:var(--text2,#4a4845)">• 패턴 내 바인딩은 기본 소유권 이동(move). Copy 타입은 복사. ref 키워드로 참조 생성</text>
+<text class="svts" x="36" y="448" style="fill:var(--text2,#4a4845)">• OR 패턴(|)의 각 arm은 동일한 이름과 타입의 바인딩 변수를 가져야 함</text>
+<text class="svts" x="36" y="470" style="fill:var(--text2,#4a4845)">• 매치 가드(if guard)는 exhaustiveness 검사에 포함되지 않음</text>
+<text class="svts" x="36" y="492" style="fill:var(--text2,#4a4845)">• match는 표현식 — 모든 arm이 같은 타입을 반환, ! (never)는 모든 타입과 호환</text>
+<text class="svts" x="36" y="514" style="fill:var(--text2,#4a4845)">• let-else (Rust 1.65+): 패턴 불일치 시 else 블록은 반드시 diverge(return/panic 등)</text>
+</svg>
+</div>
+</section>
+
+<!-- 2. 사용 위치 -->
+<section id="s-where">
+<h2>2. 패턴이 사용되는 위치 6곳</h2>
+<p>공식 레퍼런스 <em>The Rust Reference — Patterns</em>에 따르면 패턴은 다음 6곳에서 사용됩니다.</p>
+<div class="card-grid">
+  <div class="card"><span class="badge bp">표현식</span><span class="cl">match 표현식</span><span class="cd">가장 강력한 형태. 컴파일러가 exhaustiveness 강제. 모든 패턴 종류 사용 가능.</span></div>
+  <div class="card"><span class="badge bt">표현식</span><span class="cl">if let / if let-else</span><span class="cd">refutable 패턴 단일 분기. else 선택적. <code>else if let</code> 체이닝 가능.</span></div>
+  <div class="card"><span class="badge bt">루프</span><span class="cl">while let</span><span class="cd">패턴이 일치하는 동안 반복. 스택 소비·이터레이터 수동 소비에 자주 사용.</span></div>
+  <div class="card"><span class="badge bb">구문</span><span class="cl">let 구문</span><span class="cd"><code>let x = 5</code>도 패턴 매칭. irrefutable만 허용. 튜플/구조체 해체 가능.</span></div>
+  <div class="card"><span class="badge bb">루프</span><span class="cl">for 루프</span><span class="cd"><code>for (i, v) in iter</code> — 루프 변수 자체가 패턴. irrefutable만 허용.</span></div>
+  <div class="card"><span class="badge ba">선언</span><span class="cl">함수/클로저 인자</span><span class="cd"><code>fn f((x,y): (i32,i32))</code> 형태. irrefutable만 허용. 클로저도 동일.</span></div>
+</div>
+</section>
+
+<!-- 3. Refutability -->
+<section id="s-refut">
+<h2>3. Refutability — 두 가지 패턴 분류</h2>
+<div class="box box-info"><strong>Irrefutable pattern</strong> — 어떤 값이 주어지더라도 반드시 일치하는 패턴.<br>예: <code>let x = 5</code>, <code>let (a, b) = pair</code>, <code>fn f(x: i32)</code><br><code>let</code>, <code>for</code>, 함수 인자는 irrefutable만 허용합니다.</div>
+<div class="box box-warn"><strong>Refutable pattern</strong> — 특정 값에서 일치하지 않을 수 있는 패턴.<br>예: <code>if let Some(x) = val</code>, <code>if let Ok(n) = result</code><br><code>if let</code>과 <code>while let</code>은 refutable 패턴을 기대합니다.</div>
+<h3>왜 let에서 refutable이 안 되는가?</h3>
+<p><code>let Some(x) = option_val;</code>을 쓰면 컴파일러가 오류를 냅니다. <code>option_val</code>이 <code>None</code>일 때 실행할 코드가 없기 때문입니다. <code>let</code>은 항상 성공해야 하므로 irrefutable 패턴만 허용합니다. 반대로 <code>if let x = val</code> (irrefutable을 if let에 사용)은 컴파일러 경고를 냅니다 — <code>x</code>는 항상 일치하므로 <code>if let</code>이 의미 없기 때문입니다.</p>
+</section>
+
+<!-- 4. match는 표현식 -->
+<section id="s-expr">
+<h2>4. match는 표현식이다</h2>
+<p>C·Java의 <code>switch</code>와 달리, Rust의 <code>match</code>는 <strong>표현식(expression)</strong>입니다. 값을 반환하며 변수에 직접 대입할 수 있습니다.</p>
+<div class="box box-info">
+<strong>규칙 1</strong> — 모든 arm의 반환 타입이 동일해야 합니다.<br>
+<strong>규칙 2</strong> — arm이 블록이면 블록의 마지막 표현식이 반환값입니다 (세미콜론 없이).<br>
+<strong>규칙 3</strong> — arm에서 <code>return</code>, <code>panic!()</code>, <code>break</code>, <code>continue</code>는 never 타입 <code>!</code>을 가지며 어떤 타입과도 호환됩니다.
+</div>
+<p>예: <code>let grade = match score { 90..=100 =&gt; "A", _ =&gt; "F" };</code> — match가 <code>&amp;str</code>을 반환합니다. 일부 arm에서 <code>return</code>을 써도 타입이 맞는 이유가 never 타입 덕분입니다.</p>
+</section>
+
+<!-- 5. 패턴 종류 -->
+<section id="s-kinds">
+<h2>5. 패턴 종류 완전 목록</h2>
+<h3>5-1. 리터럴 패턴</h3>
+<p>정확한 값과 일치합니다. 정수, char, bool, 문자열 리터럴이 가능합니다. 부동소수점 리터럴 패턴은 공식적으로 허용되지만 정밀도 문제로 컴파일러 경고가 발생합니다.</p>
+<h3>5-2. 범위 패턴</h3>
+<p><code>a..=b</code> inclusive range만 패턴에서 허용됩니다. exclusive range (<code>a..b</code>)는 패턴에서 사용 불가입니다 (Rust Reference 기준). 정수형과 <code>char</code>만 지원합니다. <code>i32::MIN..=-1</code>처럼 상수도 끝값으로 쓸 수 있습니다.</p>
+<h3>5-3. 구조체 해체</h3>
+<ul>
+  <li><strong>shorthand</strong> — <code>Point { x, y }</code>: 필드명 = 변수명</li>
+  <li><strong>rename</strong> — <code>Point { x: a, y: b }</code>: 필드 x → 변수 a</li>
+  <li><strong>.. 무시</strong> — <code>Point { x, .. }</code>: 나머지 필드 전체 무시</li>
+</ul>
+<h3>5-4. 슬라이스 패턴</h3>
+<ul>
+  <li><code>[a, b, c]</code> — 정확히 3개</li>
+  <li><code>[first, ..]</code> — 첫 원소만 바인딩</li>
+  <li><code>[.., last]</code> — 마지막 원소만 바인딩</li>
+  <li><code>[first, rest @ .., last]</code> — 앞·끝 바인딩 + 중간을 슬라이스로 캡처 (Rust 1.42+)</li>
+</ul>
+<h3>5-5. @ 바인딩</h3>
+<p><code>n @ 1..=10</code>처럼 패턴과 일치하면서 동시에 값을 바인딩합니다. Rust 1.56+에서 구조체 필드 내부 중첩 @도 가능합니다.</p>
+<div class="tbl-wrap">
+<table>
+<thead><tr><th>패턴 종류</th><th>문법</th><th>irrefutable?</th><th>비고</th></tr></thead>
+<tbody>
+<tr><td>리터럴</td><td><code>42, 'a', true</code></td><td>아니오</td><td>f64는 경고 발생</td></tr>
+<tr><td>범위</td><td><code>1..=5</code></td><td>아니오</td><td>정수·char만, ..= 만 허용</td></tr>
+<tr><td>변수 바인딩</td><td><code>x, name</code></td><td>예</td><td>항상 일치, 소유권 이동</td></tr>
+<tr><td>와일드카드</td><td><code>_</code></td><td>예</td><td>바인딩 없음, 소유권 이동 없음</td></tr>
+<tr><td>구조체 해체</td><td><code>S { x, y }</code></td><td>조건부</td><td>shorthand/rename/..</td></tr>
+<tr><td>튜플 해체</td><td><code>(a, b)</code></td><td>조건부</td><td>.. 지원</td></tr>
+<tr><td>튜플 구조체</td><td><code>Some(x)</code></td><td>아니오</td><td>enum variant</td></tr>
+<tr><td>슬라이스</td><td><code>[a, .., b]</code></td><td>아니오</td><td>rest @ .. (1.42+)</td></tr>
+<tr><td>OR 패턴</td><td><code>a | b</code></td><td>조건부</td><td>동일 바인딩 이름·타입</td></tr>
+<tr><td>@ 바인딩</td><td><code>n @ pat</code></td><td>조건부</td><td>중첩 @ (1.56+)</td></tr>
+<tr><td>ref 패턴</td><td><code>ref x</code></td><td>예</td><td>참조 생성, 소유권 유지</td></tr>
+<tr><td>&amp; 패턴</td><td><code>&amp;x</code></td><td>아니오</td><td>참조를 받아 역참조</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- 6. 소유권 -->
+<section id="s-own">
+<h2>6. 패턴과 소유권</h2>
+<p>패턴 매칭은 소유권 시스템과 긴밀하게 연동됩니다. 이 부분을 정확히 이해하지 못하면 컴파일 오류가 자주 발생합니다.</p>
+<div class="svg-wrap">
+<svg width="100%" viewBox="0 0 680 240" xmlns="http://www.w3.org/2000/svg" role="img">
+<title>패턴 매칭과 소유권/참조 관계</title>
+<style>
+.ow{font:400 11.5px system-ui,sans-serif}
+.owh{font:700 12.5px system-ui,sans-serif}
+[data-theme="light"] .ow,.owh{fill:#1a1a18}
+[data-theme="dark"] .ow{fill:#e4e2db}[data-theme="dark"] .owh{fill:#e4e2db}
+[data-theme="light"] .ob{fill:#faece7;stroke:#993c1d;stroke-width:.8}[data-theme="light"] .ot{fill:#712b13}
+[data-theme="light"] .rb2{fill:#e6f1fb;stroke:#185fa5;stroke-width:.8}[data-theme="light"] .rt2{fill:#0c447c}
+[data-theme="light"] .cb2{fill:#e1f5ee;stroke:#0f6e56;stroke-width:.8}[data-theme="light"] .ct2{fill:#085041}
+[data-theme="dark"] .ob{fill:#4a1b0c;stroke:#f0997b;stroke-width:.8}[data-theme="dark"] .ot{fill:#f5c4b3}
+[data-theme="dark"] .rb2{fill:#042c53;stroke:#85b7eb;stroke-width:.8}[data-theme="dark"] .rt2{fill:#b5d4f4}
+[data-theme="dark"] .cb2{fill:#04342c;stroke:#5dcaa5;stroke-width:.8}[data-theme="dark"] .ct2{fill:#9fe1cb}
+</style>
+<rect class="ob" x="14" y="14" width="204" height="212" rx="10"/>
+<text class="owh ot" x="116" y="38" text-anchor="middle" dominant-baseline="central">소유권 이동 (Move)</text>
+<text class="ow ot" x="26" y="62">• Copy 아닌 타입: String, Vec</text>
+<text class="ow ot" x="26" y="82">• 단순 변수 바인딩 arm</text>
+<text class="ow ot" x="26" y="102">• match s { x =&gt; ... }</text>
+<text class="ow ot" x="26" y="130">원본 변수 사용 불가:</text>
+<text class="ow ot" x="26" y="148">match 후 s 는 이동됨</text>
+<text class="ow ot" x="26" y="174">해결: &amp;s 참조 전달,</text>
+<text class="ow ot" x="26" y="192">또는 ref 키워드 사용,</text>
+<text class="ow ot" x="26" y="210">또는 .clone() 복제</text>
+
+<rect class="rb2" x="232" y="14" width="216" height="212" rx="10"/>
+<text class="owh rt2" x="340" y="38" text-anchor="middle" dominant-baseline="central">참조 바인딩 (ref / &amp;val)</text>
+<text class="ow rt2" x="244" y="62">• ref x — 불변 참조 &amp;T 생성</text>
+<text class="ow rt2" x="244" y="82">• ref mut x — 가변 참조 &amp;mut T</text>
+<text class="ow rt2" x="244" y="102">• match &amp;val { x =&gt; } 로</text>
+<text class="ow rt2" x="244" y="120">  자동 참조 바인딩 (권장)</text>
+<text class="ow rt2" x="244" y="148">원본 소유권 유지:</text>
+<text class="ow rt2" x="244" y="166">match 후에도 val 사용 가능</text>
+<text class="ow rt2" x="244" y="192">&amp;x 패턴은 반대 방향:</text>
+<text class="ow rt2" x="244" y="210">참조를 받아 내부값에 바인딩</text>
+
+<rect class="cb2" x="462" y="14" width="204" height="212" rx="10"/>
+<text class="owh ct2" x="564" y="38" text-anchor="middle" dominant-baseline="central">복사 (Copy)</text>
+<text class="ow ct2" x="474" y="62">• i32, u8, f64, bool, char</text>
+<text class="ow ct2" x="474" y="82">• &amp;T (불변 참조)</text>
+<text class="ow ct2" x="474" y="102">• [T; N] (T가 Copy이면)</text>
+<text class="ow ct2" x="474" y="122">• Copy 타입 tuple</text>
+<text class="ow ct2" x="474" y="150">이동 걱정 없음:</text>
+<text class="ow ct2" x="474" y="168">패턴 매칭 시 자동 복사</text>
+<text class="ow ct2" x="474" y="194">String, Vec은 Copy 아님</text>
+<text class="ow ct2" x="474" y="212">#[derive(Clone)] 로 복제</text>
+</svg>
+</div>
+<div class="box box-tip"><strong>Rust 2021 match ergonomics</strong> — <code>match &amp;val { x =&gt; }</code>처럼 참조를 match 대상으로 넘기면 arm의 바인딩이 자동으로 참조가 됩니다. 현대 Rust에서 권장하는 방식입니다. 명시적 <code>ref</code>는 이전 스타일이지만 여전히 유효합니다.</div>
+</section>
+
+<!-- 7. 가드 -->
+<section id="s-guard">
+<h2>7. 매치 가드 심화</h2>
+<p>매치 가드(match guard)는 <code>패턴 if 조건</code> 형태로, 패턴이 일치한 후 추가 조건을 검사합니다.</p>
+<div class="box box-warn"><strong>가드는 exhaustiveness 검사에 포함되지 않습니다.</strong> 컴파일러는 가드의 조건식을 분석하지 않습니다. 가드가 달린 arm만 있고 <code>_ =&gt;</code>가 없으면 컴파일 오류입니다.</div>
+<h3>OR 패턴과 가드의 우선순위</h3>
+<p><code>A | B if cond</code>에서 가드는 OR 패턴 전체에 적용됩니다. 즉 <code>(A | B) if cond</code>입니다. <code>A | (B if cond)</code>가 아닙니다. 이 차이를 반드시 기억하세요.</p>
+<h3>가드에서 바인딩 변수 사용</h3>
+<p>가드 조건에서 arm의 바인딩 변수를 참조할 수 있습니다. 가드가 <code>false</code>이면 바인딩은 이루어지지 않고 다음 arm으로 넘어갑니다. 소유권 이동도 발생하지 않습니다.</p>
+</section>
+
+<!-- 8. OR 패턴 -->
+<section id="s-or">
+<h2>8. OR 패턴 규칙</h2>
+<p>OR 패턴(<code>|</code>)은 Rust 1.53+에서 패턴이 허용되는 모든 위치로 확장되었습니다.</p>
+<div class="box box-warn"><strong>바인딩 일관성 규칙</strong> — OR 패턴의 모든 분기에서 바인딩 변수의 이름과 타입이 완전히 일치해야 합니다.<br>
+가능: <code>Ok(x) | Err(x)</code> (이름 같고 x 타입도 일치)<br>
+불가: <code>Ok(x) | Err(y)</code> (이름 다름), <code>Ok(x) | Err(_)</code> (한쪽에만 바인딩)</div>
+</section>
+
+<!-- 9. let-else -->
+<section id="s-letelse">
+<h2>9. let-else 구문 (Rust 1.65+)</h2>
+<p><code>let-else</code>는 Rust 1.65에서 안정화된 구문입니다. refutable 패턴이 불일치할 때 조기 탈출(early exit)을 평탄하게 표현합니다.</p>
+<div class="box box-info"><strong>문법:</strong> <code>let PATTERN = EXPR else { DIVERGING_CODE };</code><br>
+else 블록은 반드시 <strong>diverge</strong>해야 합니다 — <code>return</code>, <code>break</code>, <code>continue</code>, <code>panic!()</code>, 무한 <code>loop</code> 중 하나. 일반 표현식은 컴파일 오류입니다.<br>
+바인딩 변수는 <code>let-else</code> <strong>이후 스코프 전체</strong>에서 유효합니다 (<code>if let</code>과의 핵심 차이).</div>
+</section>
+
+<!-- 10. 중첩 패턴 -->
+<section id="s-nested">
+<h2>10. 중첩 패턴</h2>
+<p>Rust 패턴은 이론적으로 무한히 중첩 가능합니다. 구조체 안의 열거형 안의 튜플까지 한 번에 해체할 수 있습니다.</p>
+<div class="box box-info"><strong>중첩 예시:</strong><br><code>Shape::Circle { center: Point { x: x @ 0..=100, y }, radius: r @ 1.0..=50.0 }</code><br>Circle variant + center.x가 0~100 범위 + radius가 1.0~50.0 인 경우만 일치, x·y·r을 바인딩.</div>
+<p>중첩이 3단계 이상이면 가독성이 급격히 떨어집니다. 중간 변수로 분리하는 것을 권장합니다.</p>
+</section>
+
+<div class="divider"></div>
+
+<!-- 예제 1 -->
+<section id="ex1">
+<h2>예제 1 — match 기본: 표현식·리터럴·범위·OR 패턴</h2>
+<p>match가 표현식으로 값을 반환하는 방식, 리터럴·범위·OR 패턴 기본 사용법, never 타입 <code>!</code>을 보여줍니다.</p>
+<div class="ex-wrap">
+<div class="ex-head">
+  <span class="ex-num" style="background:var(--p50);color:var(--p800)">1</span>
+  <span class="ex-title">match 기본 — 표현식·리터럴·범위·OR</span>
+  <span class="ex-tags"><span class="badge bp">match 표현식</span><span class="badge bb">리터럴</span><span class="badge bt">범위</span><span class="badge ba">OR 패턴</span></span>
+</div>
+<div class="code-block"><pre><code id="c1"></code></pre></div>
+</div>
+</section>
+
+<!-- 예제 2 -->
+<section id="ex2">
+<h2>예제 2 — 열거형 · 구조체 해체 심화</h2>
+<p>enum variant 3가지 형태(unit/tuple/struct) 해체, 구조체 shorthand·rename·.. 무시, 중첩 구조체 해체를 다룹니다.</p>
+<div class="ex-wrap">
+<div class="ex-head">
+  <span class="ex-num" style="background:var(--t50);color:var(--t800)">2</span>
+  <span class="ex-title">enum·struct 해체 심화</span>
+  <span class="ex-tags"><span class="badge bt">enum 해체</span><span class="badge bp">struct 해체</span><span class="badge bb">중첩 패턴</span></span>
+</div>
+<div class="code-block"><pre><code id="c2"></code></pre></div>
+</div>
+</section>
+
+<!-- 예제 3 -->
+<section id="ex3">
+<h2>예제 3 — @ 바인딩 · 매치 가드 심화</h2>
+<p>@ 바인딩과 범위 조합, 구조체 필드 내 중첩 @ (Rust 1.56+), 가드에서 바인딩 변수 사용, OR + 가드 우선순위를 다룹니다.</p>
+<div class="ex-wrap">
+<div class="ex-head">
+  <span class="ex-num" style="background:var(--a50);color:var(--a800)">3</span>
+  <span class="ex-title">@ 바인딩 · match guard 심화</span>
+  <span class="ex-tags"><span class="badge ba">@ 바인딩</span><span class="badge bp">match guard</span><span class="badge bt">OR + guard</span></span>
+</div>
+<div class="code-block"><pre><code id="c3"></code></pre></div>
+</div>
+</section>
+
+<!-- 예제 4 -->
+<section id="ex4">
+<h2>예제 4 — 슬라이스 패턴 완전판</h2>
+<p>고정/가변 길이 슬라이스 패턴, <code>rest @ ..</code>로 중간 슬라이스 캡처, 문자열 슬라이스 패턴을 다룹니다.</p>
+<div class="ex-wrap">
+<div class="ex-head">
+  <span class="ex-num" style="background:var(--b50);color:var(--b800)">4</span>
+  <span class="ex-title">슬라이스 패턴 완전판</span>
+  <span class="ex-tags"><span class="badge bb">슬라이스</span><span class="badge bt">rest @ ..</span><span class="badge ba">문자열 슬라이스</span></span>
+</div>
+<div class="code-block"><pre><code id="c4"></code></pre></div>
+</div>
+</section>
+
+<!-- 예제 5 -->
+<section id="ex5">
+<h2>예제 5 — if let · while let · let-else</h2>
+<p>if let-else 체이닝, while let으로 이터레이터 수동 소비, Rust 1.65+ let-else로 조기 반환 패턴을 다룹니다.</p>
+<div class="ex-wrap">
+<div class="ex-head">
+  <span class="ex-num" style="background:var(--c50);color:var(--c800)">5</span>
+  <span class="ex-title">if let · while let · let-else</span>
+  <span class="ex-tags"><span class="badge bc">if let</span><span class="badge bt">while let</span><span class="badge bp">let-else (1.65+)</span></span>
+</div>
+<div class="code-block"><pre><code id="c5"></code></pre></div>
+</div>
+</section>
+
+<!-- 예제 6 -->
+<section id="ex6">
+<h2>예제 6 — ref / &amp; 패턴 · 소유권 심화</h2>
+<p>Non-Copy 타입 매칭 시 소유권 이동 문제, ref와 &amp; 패턴의 방향 차이, ref mut으로 가변 참조 바인딩을 다룹니다.</p>
+<div class="ex-wrap">
+<div class="ex-head">
+  <span class="ex-num" style="background:var(--g50);color:var(--g800)">6</span>
+  <span class="ex-title">ref · &amp; 패턴 · 소유권 심화</span>
+  <span class="ex-tags"><span class="badge bg">ref</span><span class="badge bb">&amp; 패턴</span><span class="badge ba">소유권</span></span>
+</div>
+<div class="code-block"><pre><code id="c6"></code></pre></div>
+</div>
+</section>
+
+<!-- 예제 7 -->
+<section id="ex7">
+<h2>예제 7 — 함수 인자 · for 루프 · 클로저 패턴</h2>
+<p>함수 인자에서 튜플 해체, for 루프 enumerate·zip 조합, 클로저 인자 해체를 다룹니다.</p>
+<div class="ex-wrap">
+<div class="ex-head">
+  <span class="ex-num" style="background:var(--t50);color:var(--t800)">7</span>
+  <span class="ex-title">함수 인자 · for 루프 · 클로저 패턴</span>
+  <span class="ex-tags"><span class="badge bt">함수 인자</span><span class="badge bb">for 루프</span><span class="badge bp">클로저</span></span>
+</div>
+<div class="code-block"><pre><code id="c7"></code></pre></div>
+</div>
+</section>
+
+<!-- 예제 8 -->
+<section id="ex8">
+<h2>예제 8 — 실전 종합: 미니 표현식 인터프리터</h2>
+<p>Lisp 유사 AST를 패턴 매칭으로 평가하는 인터프리터입니다. 중첩 enum 해체, 재귀 match, @ 바인딩, 가드, OR 패턴, let-else, 슬라이스 패턴이 모두 사용됩니다.</p>
+<div class="ex-wrap">
+<div class="ex-head">
+  <span class="ex-num" style="background:var(--p50);color:var(--p800)">8</span>
+  <span class="ex-title">실전 종합 — 미니 표현식 인터프리터</span>
+  <span class="ex-tags"><span class="badge bp">중첩 enum</span><span class="badge ba">재귀 match</span><span class="badge bt">let-else</span><span class="badge bb">종합</span></span>
+</div>
+<div class="code-block"><pre><code id="c8"></code></pre></div>
+</div>
+</section>
+
+<div class="divider"></div>
+
+<!-- 요약표 -->
+<section id="s-summary">
+<h2>핵심 개념 요약표</h2>
+<div class="tbl-wrap">
+<table>
+<thead><tr><th>패턴 / 구문</th><th>허용 위치</th><th>핵심 동작</th><th>버전</th><th>비고</th></tr></thead>
+<tbody>
+<tr><td>match expr { }</td><td>표현식</td><td>exhaustive 강제, 값 반환</td><td>1.0</td><td>모든 arm 타입 동일</td></tr>
+<tr><td>if let pat = expr</td><td>표현식</td><td>refutable 단일 분기</td><td>1.0</td><td>else if let 체이닝 가능</td></tr>
+<tr><td>while let pat = expr</td><td>루프</td><td>패턴 일치 동안 반복</td><td>1.0</td><td>—</td></tr>
+<tr><td>let pat = expr</td><td>구문</td><td>irrefutable만 가능</td><td>1.0</td><td>구조 해체</td></tr>
+<tr><td>let pat = expr else { }</td><td>구문</td><td>refutable + else는 diverge 필수</td><td>1.65</td><td>바인딩 이후 스코프 전체 유효</td></tr>
+<tr><td>for pat in iter</td><td>루프</td><td>irrefutable</td><td>1.0</td><td>—</td></tr>
+<tr><td>fn f(pat: T)</td><td>인자</td><td>irrefutable</td><td>1.0</td><td>클로저도 동일</td></tr>
+<tr><td>_</td><td>어디서든</td><td>값 무시, 바인딩·이동 없음</td><td>1.0</td><td>_x는 바인딩은 하되 경고 억제</td></tr>
+<tr><td>..</td><td>구조체/튜플/슬라이스</td><td>나머지 무시</td><td>1.0</td><td>rest @ ..로 캡처 가능</td></tr>
+<tr><td>n @ pat</td><td>match arm</td><td>값 바인딩 + 패턴 검사 동시</td><td>1.0 / 1.56(중첩)</td><td>—</td></tr>
+<tr><td>pat if cond</td><td>match arm</td><td>추가 조건(가드)</td><td>1.0</td><td>exhaustiveness 미포함</td></tr>
+<tr><td>p1 | p2</td><td>모든 패턴 위치</td><td>OR 패턴</td><td>1.0 / 1.53(확장)</td><td>동일 바인딩 이름·타입 필수</td></tr>
+<tr><td>ref x</td><td>match 내부</td><td>소유권 이동 없이 참조 바인딩</td><td>1.0</td><td>&amp;val 전달이 현대적 방식</td></tr>
+<tr><td>&amp;x 패턴</td><td>match 내부</td><td>참조를 받아 역참조</td><td>1.0</td><td>ref x와 방향 반대</td></tr>
+<tr><td>1..=5 범위</td><td>리터럴 패턴</td><td>범위 매칭</td><td>1.26</td><td>char·정수만, exclusive 불가</td></tr>
+<tr><td>[a, rest @ .., b]</td><td>슬라이스 패턴</td><td>앞·뒤 + 중간 캡처</td><td>1.42</td><td>rest는 &amp;[T] 타입</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<footer>Rust 패턴 매칭 완전 가이드 v3 · The Rust Reference &amp; TRPL 기준 · Rust 2021 Edition · VS Code Dark Modern 코드 테마</footer>
+</main>
+</div>
+
+<script>
+/* ── 테마 토글 ── */
+const html = document.documentElement;
+const btn = document.getElementById('themeBtn');
+const saved = localStorage.getItem('rust-pm-theme');
+if (saved) html.setAttribute('data-theme', saved);
+btn.addEventListener('click', () => {
+  const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('rust-pm-theme', next);
+});
+
+/* ── 사이드바 active ── */
+const links = document.querySelectorAll('.sb-link');
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const a = document.querySelector(`.sb-link[href="#${e.target.id}"]`);
+      if (a) a.classList.add('active');
+    }
+  });
+}, { rootMargin: '-8% 0px -80% 0px' });
+document.querySelectorAll('section[id]').forEach(s => obs.observe(s));
+
+/* ── VS Code Dark Modern 토크나이저 ── */
+const KW = new Set(['fn','let','mut','match','if','else','while','for','in',
+  'loop','return','break','continue','use','mod','pub','crate','super',
+  'self','impl','trait','where','type','const','static','unsafe','async',
+  'await','dyn','ref','move','struct','enum','union']);
+const TY = new Set(['bool','i8','i16','i32','i64','i128','isize','u8','u16',
+  'u32','u64','u128','usize','f32','f64','char','str','String','Vec',
+  'Option','Result','Box','Rc','Arc','HashMap','HashSet','BTreeMap',
+  'BTreeSet','Ok','Err','Some','None','true','false','Self','usize']);
+const MACROS = new Set(['println','print','format','vec','eprintln','panic',
+  'assert','assert_eq','unreachable','todo','dbg','write','writeln','macro_rules']);
+
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function sp(cls,s){ return `<span class="${cls}">${s}</span>`; }
+
+function highlight(src) {
+  let i = 0, out = '';
+  while (i < src.length) {
+    // 줄 주석
+    if (src[i]==='/' && src[i+1]==='/') {
+      let j=i; while(j<src.length && src[j]!=='\n') j++;
+      out += sp('cm', esc(src.slice(i,j))); i=j; continue;
+    }
+    // 속성 #[...]
+    if (src[i]==='#' && src[i+1]==='[') {
+      let j=i+2, depth=1;
+      while(j<src.length && depth>0){ if(src[j]==='[')depth++; else if(src[j]===']')depth--; j++; }
+      out += sp('de', esc(src.slice(i,j))); i=j; continue;
+    }
+    // 문자열 "..."
+    if (src[i]==='"') {
+      let j=i+1;
+      while(j<src.length){ if(src[j]==='\\'){j+=2;continue;} if(src[j]==='"'){j++;break;} j++; }
+      out += sp('st', esc(src.slice(i,j))); i=j; continue;
+    }
+    // char / lifetime: '...'  or  'ident
+    if (src[i]==="'") {
+      // lifetime: 'a, 'static 등
+      if (/[a-z_]/.test(src[i+1]||'')) {
+        let j=i+1; while(j<src.length && /[a-z_0-9]/.test(src[j])) j++;
+        if (src[j]!=="'") { out += sp('lf', esc(src.slice(i,j))); i=j; continue; }
+      }
+      // char literal '.'
+      let j=i+1;
+      if (src[j]==='\\') j+=2; else j++;
+      if (src[j]==="'") j++;
+      out += sp('st', esc(src.slice(i,j))); i=j; continue;
+    }
+    // 숫자
+    if (/[0-9]/.test(src[i])) {
+      let j=i;
+      while(j<src.length && /[0-9a-fA-F_xobXOB.]/.test(src[j])) j++;
+      // 타입 접미사 i32 u8 etc
+      if (/[iuf]/.test(src[j]||'')) {
+        let k=j; while(k<src.length && /[0-9a-z]/.test(src[k])) k++;
+        out += sp('nm', esc(src.slice(i,k))); i=k; continue;
+      }
+      out += sp('nm', esc(src.slice(i,j))); i=j; continue;
+    }
+    // 식별자 / 키워드
+    if (/[a-zA-Z_]/.test(src[i])) {
+      let j=i; while(j<src.length && /[a-zA-Z0-9_]/.test(src[j])) j++;
+      const word = src.slice(i,j);
+      const isMacro = src[j]==='!' && src[j+1]!=='=';
+      if (isMacro && MACROS.has(word)) {
+        out += sp('mc', esc(word)+'!'); i=j+1; continue;
+      }
+      if (KW.has(word))      { out += sp('k',  esc(word)); i=j; continue; }
+      if (TY.has(word))      { out += sp('ty', esc(word)); i=j; continue; }
+      if (/^[A-Z]/.test(word)){ out += sp('en', esc(word)); i=j; continue; }
+      // 함수 호출: word(  혹은  word::<
+      if (src[j]==='(' || (src[j]==='<' && src[j-1]!=='-')) {
+        out += sp('fn', esc(word)); i=j; continue;
+      }
+      out += esc(word); i=j; continue;
+    }
+    // 나머지 문자
+    out += esc(src[i]); i++;
+  }
+  return out;
+}
+
+function setCode(id, src) {
+  document.getElementById(id).innerHTML = highlight(src);
+}
+
+/* ── 코드 내용 ── */
+setCode('c1', `fn main() {
+    // 1. match는 표현식: 값을 직접 반환한다
+    let score = 87_u32;
+    let grade = match score {
+        90..=100 => "A",
+        80..=89  => "B",   // score=87 여기 일치
+        70..=79  => "C",
+        60..=69  => "D",
+        _        => "F",
+    };
+    println!("점수 {score} → 학점 {grade}");  // B
+
+    // 2. arm이 블록이면 블록의 마지막 표현식이 반환값
+    let n = 42_i32;
+    let desc = match n {
+        0 => {
+            println!("  영입니다");
+            "zero"            // 세미콜론 없음 → 반환값
+        }
+        1..=9   => "one digit",
+        10..=99 => "two digits",   // n=42 일치
+        _       => "large",
+    };
+    println!("n={n}: {desc}");   // two digits
+
+    // 3. OR 패턴(|): 여러 패턴을 하나의 arm으로 묶기
+    for ch in ['a', 'e', 'i', 'o', 'u', 'b', 'z'] {
+        let kind = match ch {
+            'a' | 'e' | 'i' | 'o' | 'u' => "모음",
+            'a'..='z'                    => "자음",
+            _                            => "기타",
+        };
+        println!("  '{ch}' → {kind}");
+    }
+
+    // 4. 리터럴 패턴: 정수·bool·char 조합
+    let flags = [(true, 1_i32), (false, 0), (true, -1)];
+    for (flag, val) in flags {
+        let result = match (flag, val) {
+            (true,  1)  => "활성·양수",
+            (true,  _)  => "활성·기타",
+            (false, 0)  => "비활성·영",
+            (false, _)  => "비활성·기타",
+        };
+        println!("  ({flag}, {val}) → {result}");
+    }
+
+    // 5. 범위 패턴: 상수(i32::MIN, i32::MAX) 활용
+    let temps: &[i32] = &[-30, -1, 0, 20, 37, 100];
+    for &t in temps {
+        let feel = match t {
+            i32::MIN..=-20 => "혹한",
+            -19..=-1       => "추움",
+            0              => "영도",
+            1..=25         => "쾌적",
+            26..=35        => "더움",
+            _              => "폭염",
+        };
+        println!("  {t:4}°C → {feel}");
+    }
+
+    // 6. never 타입(!): arm에서 return 사용
+    fn classify(n: i32) -> &'static str {
+        match n {
+            i32::MIN..=-1 => return "음수",  // ! 타입, 함수 종료
+            0             => "영",
+            _             => "양수",
+        }
+    }
+    for n in [-5, 0, 7] {
+        println!("  {n} → {}", classify(n));
+    }
+    // 출력:
+    //   -5 → 음수
+    //    0 → 영
+    //    7 → 양수
+}`);
+
+setCode('c2', `#[derive(Debug)]
+enum Coin {
+    Penny,               // unit variant
+    Nickel,
+    Dime,
+    Quarter(String),     // tuple variant: 주 이름 포함
+}
+
+#[derive(Debug, Clone)]
+struct Point { x: f64, y: f64 }
+
+#[derive(Debug)]
+struct Rectangle {
+    top_left:     Point,
+    bottom_right: Point,
+    label:        String,
+}
+
+#[derive(Debug)]
+enum Shape {
+    Circle { center: Point, radius: f64 },  // struct variant
+    Rect(Rectangle),                         // tuple variant (struct 래핑)
+    Line { start: Point, end: Point },
+    Dot(Point),
+}
+
+fn coin_value(c: &Coin) -> u32 {
+    match c {
+        Coin::Penny          => 1,
+        Coin::Nickel         => 5,
+        Coin::Dime           => 10,
+        Coin::Quarter(state) => {
+            println!("  Quarter from {state}");
+            25
+        }
+    }
+}
+
+fn demo_struct_destructure() {
+    let p = Point { x: 3.0, y: 4.0 };
+
+    // shorthand: 필드명 = 변수명
+    let Point { x, y } = p.clone();
+    println!("shorthand: x={x}, y={y}");
+
+    // rename: 필드 x → 변수 px
+    let Point { x: px, y: py } = p.clone();
+    println!("rename: px={px}, py={py}");
+
+    // .. 무시: x만 필요
+    let Point { x, .. } = p;
+    println!(".. 무시: x={x}");
+}
+
+fn describe_shape(s: &Shape) -> String {
+    match s {
+        // 중첩 구조체 해체: center.x, center.y 직접 접근
+        Shape::Circle { center: Point { x, y }, radius } => {
+            let dist = (x * x + y * y).sqrt();
+            format!("원  중심({x:.1},{y:.1}) dist={dist:.2} r={radius:.1}")
+        }
+
+        // tuple variant 안의 struct 해체
+        Shape::Rect(Rectangle {
+            top_left:     Point { x: x1, y: y1 },
+            bottom_right: Point { x: x2, y: y2 },
+            label,
+        }) => {
+            let area = (x2 - x1).abs() * (y2 - y1).abs();
+            format!("사각 '{label}' 넓이={area:.1}")
+        }
+
+        // 두 Point 동시 해체
+        Shape::Line {
+            start: Point { x: sx, y: sy },
+            end:   Point { x: ex, y: ey },
+        } => {
+            let len = ((ex - sx).powi(2) + (ey - sy).powi(2)).sqrt();
+            format!("선   ({sx:.1},{sy:.1})→({ex:.1},{ey:.1}) len={len:.2}")
+        }
+
+        Shape::Dot(Point { x, y }) => format!("점   ({x:.1},{y:.1})"),
+    }
+}
+
+fn main() {
+    // 동전
+    let coins = [
+        Coin::Penny,
+        Coin::Quarter("Alaska".to_string()),
+        Coin::Dime,
+    ];
+    let total: u32 = coins.iter().map(coin_value).sum();
+    println!("합계: {total}센트");
+
+    // 구조체 해체 3가지 방식
+    demo_struct_destructure();
+
+    // 도형
+    let shapes = vec![
+        Shape::Circle { center: Point { x: 3.0, y: 4.0 }, radius: 5.0 },
+        Shape::Rect(Rectangle {
+            top_left:     Point { x: 0.0, y: 4.0 },
+            bottom_right: Point { x: 6.0, y: 0.0 },
+            label: "box1".to_string(),
+        }),
+        Shape::Line {
+            start: Point { x: 0.0, y: 0.0 },
+            end:   Point { x: 3.0, y: 4.0 },
+        },
+        Shape::Dot(Point { x: 1.5, y: 2.5 }),
+    ];
+    for s in &shapes {
+        println!("{}", describe_shape(s));
+    }
+}`);
+
+setCode('c3', `// ── @ 바인딩: 범위 검사와 값 캡처를 동시에 ─────────────
+fn classify_binding(n: i32) -> String {
+    match n {
+        0 => "영".to_string(),
+        pos @ 1..=9   => format!("한 자리 양수: {pos}"),
+        neg @ -9..=-1 => format!("한 자리 음수: {neg}"),
+        big @ 100..   => format!("100 이상: {big}"),
+        other         => format!("나머지: {other}"),
+    }
+}
+
+// ── 구조체 필드 내 중첩 @ 바인딩 (Rust 1.56+) ────────────
+#[derive(Debug)]
+struct Sensor { id: u32, value: f64, active: bool }
+
+fn process_sensor(s: &Sensor) -> String {
+    match s {
+        // 필드 해체 + 필드마다 @ 바인딩
+        Sensor {
+            id:     id @ 1..=10,
+            value:  v @ 0.0..=100.0,
+            active: true,
+        } => format!("정상 센서#{id} 값={v:.1}"),
+
+        Sensor { id, value: v, active: false } => {
+            format!("비활성 센서#{id} (마지막 값={v:.1})")
+        }
+
+        Sensor { id, value: v, .. } => {
+            format!("센서#{id} 범위초과 또는 ID 오류: {v:.1}")
+        }
+    }
+}
+
+// ── 매치 가드: 패턴 이후 추가 조건 ──────────────────────
+#[derive(Debug)]
+enum Command {
+    Move { x: i32, y: i32 },
+    Attack(u32),
+    Heal(u32),
+}
+
+fn execute(cmd: &Command, hp: i32, max_hp: i32) -> String {
+    match cmd {
+        // 가드에서 바인딩 변수(x, y) 직접 사용
+        Command::Move { x, y } if *x == 0 && *y == 0 => {
+            "제자리 이동 — 무시".to_string()
+        }
+        Command::Move { x, y } if x.abs() > 100 || y.abs() > 100 => {
+            format!("이동 범위 초과: ({x},{y})")
+        }
+        Command::Move { x, y } => format!("이동: ({x},{y})"),
+
+        Command::Attack(_) if hp <= 0 => {
+            "이미 사망 — 데미지 무효".to_string()
+        }
+        Command::Attack(dmg) => {
+            let new_hp = (hp - *dmg as i32).max(0);
+            format!("피격 {dmg} → HP {hp}→{new_hp}")
+        }
+
+        Command::Heal(_) if hp >= max_hp => {
+            "이미 최대 HP".to_string()
+        }
+        Command::Heal(amount) => {
+            let new_hp = (hp + *amount as i32).min(max_hp);
+            format!("회복 {amount} → HP {hp}→{new_hp}")
+        }
+    }
+}
+
+// ── OR 패턴 + 가드: 우선순위 주의 ───────────────────────
+// (A | B) if cond  ≠  A | (B if cond)
+fn categorize(n: i32) -> &'static str {
+    match n {
+        // 1|2|3 모두 매칭되지만, 그 중 n>1인 경우만
+        1 | 2 | 3 if n > 1 => "2 또는 3",
+        1 | 2 | 3          => "1",       // 가드 실패(n==1) 시 여기로
+        _                  => "기타",
+    }
+}
+
+fn main() {
+    println!("=== @ 바인딩 ===");
+    for n in [0, 5, -3, 150, 42] {
+        println!("  {n:4} → {}", classify_binding(n));
+    }
+    // 출력:
+    //    0 → 영
+    //    5 → 한 자리 양수: 5
+    //   -3 → 한 자리 음수: -3
+    //  150 → 100 이상: 150
+    //   42 → 나머지: 42
+
+    println!("\\n=== 중첩 @ 바인딩 (Rust 1.56+) ===");
+    let sensors = [
+        Sensor { id: 3,  value: 72.5,  active: true  },
+        Sensor { id: 7,  value: -5.0,  active: true  },
+        Sensor { id: 5,  value: 50.0,  active: false },
+        Sensor { id: 15, value: 200.0, active: true  },
+    ];
+    for s in &sensors { println!("  {}", process_sensor(s)); }
+
+    println!("\\n=== 매치 가드 ===");
+    let (mut hp, max_hp) = (80_i32, 100);
+    let cmds = [
+        Command::Move { x: 0, y: 0 },
+        Command::Move { x: 10, y: -5 },
+        Command::Move { x: 200, y: 0 },
+        Command::Attack(30),
+        Command::Heal(60),
+    ];
+    for cmd in &cmds {
+        let msg = execute(cmd, hp, max_hp);
+        println!("  {msg}");
+        match cmd {
+            Command::Attack(d) => hp = (hp - *d as i32).max(0),
+            Command::Heal(h)   => hp = (hp + *h as i32).min(max_hp),
+            _ => {}
+        }
+    }
+
+    println!("\\n=== OR + 가드 우선순위 ===");
+    for n in 1..=4 {
+        println!("  {n} → {}", categorize(n));
+    }
+    // 1→1,  2→2 또는 3,  3→2 또는 3,  4→기타
+}`);
+
+setCode('c4', `fn describe_slice(s: &[i32]) -> String {
+    match s {
+        []        => "비어있음".to_string(),
+        [x]       => format!("원소 1개: {x}"),
+        [x, y]    => format!("원소 2개: {x}, {y}"),
+        [x, y, z] => format!("원소 3개: {x}, {y}, {z}"),
+        [first, ..] => format!("첫={first}, 총 {}개", s.len()),
+    }
+}
+
+// rest @ ..으로 나머지 슬라이스 캡처
+fn sum_rest(s: &[i32]) -> String {
+    match s {
+        [] => "비어있음".to_string(),
+        [head, rest @ ..] => {
+            // rest: &[i32] 타입
+            let sum: i32 = rest.iter().sum();
+            format!("head={head}, rest 합={sum}, rest={:?}", rest)
+        }
+    }
+}
+
+// 앞·뒤 바인딩 + 중간 캡처
+fn sandwich(s: &[i32]) -> String {
+    match s {
+        [] => "비어있음".to_string(),
+        [only] => format!("하나: {only}"),
+        [first, middle @ .., last] => {
+            let mid_sum: i32 = middle.iter().sum();
+            format!("first={first}, last={last}, 중간합={mid_sum}, 중간={:?}", middle)
+        }
+    }
+}
+
+// 고정 길이 배열 패턴 ([T; N])
+fn classify_row(row: &[i32; 3]) -> &'static str {
+    match row {
+        [0, 0, 0]        => "영행",
+        [x, y, z] if x == y && y == z => "동일값행",
+        [a, _, c] if a == c            => "대칭행",
+        _                              => "일반행",
+    }
+}
+
+// 문자열 슬라이스 패턴
+fn greet(words: &[&str]) -> String {
+    match words {
+        [] => "빈 입력".to_string(),
+        // OR 패턴과 슬라이스 패턴 결합
+        ["hello" | "hi", name, ..] => format!("안녕하세요, {name}!"),
+        ["bye" | "goodbye", rest @ ..] => {
+            format!("작별 인사 (단어 {}개 더)", rest.len())
+        }
+        [first, ..] => format!("모르는 시작어: {first}"),
+    }
+}
+
+fn main() {
+    println!("=== 기본 슬라이스 패턴 ===");
+    let cases: &[&[i32]] = &[
+        &[], &[1], &[1, 2], &[1, 2, 3], &[1, 2, 3, 4, 5],
+    ];
+    for &c in cases {
+        println!("  {:?} → {}", c, describe_slice(c));
+    }
+
+    println!("\\n=== rest @ .. 캡처 ===");
+    for &c in cases {
+        println!("  {:?} → {}", c, sum_rest(c));
+    }
+
+    println!("\\n=== 앞·뒤 + 중간 캡처 ===");
+    for &c in cases {
+        println!("  {:?} → {}", c, sandwich(c));
+    }
+
+    println!("\\n=== 고정 길이 배열 패턴 ===");
+    let rows = [[0,0,0], [3,3,3], [1,2,1], [1,2,3]];
+    for row in &rows {
+        println!("  {:?} → {}", row, classify_row(row));
+    }
+    // 영행, 동일값행, 대칭행, 일반행
+
+    println!("\\n=== 문자열 슬라이스 패턴 ===");
+    let inputs: &[&[&str]] = &[
+        &[],
+        &["hello", "Alice"],
+        &["hi", "Bob", "how", "are", "you"],
+        &["bye", "later"],
+        &["what", "is", "this"],
+    ];
+    for &words in inputs {
+        println!("  {:?} → {}", words, greet(words));
+    }
+}`);
+
+setCode('c5', `// ── if let / if let-else chain ──────────────────────────
+#[derive(Debug)]
+enum LogLevel { Debug, Info, Warn, Error(String) }
+
+fn process_log(level: &LogLevel, verbose: bool) {
+    if let LogLevel::Error(msg) = level {
+        eprintln!("[ERROR] {msg}");
+    } else if let LogLevel::Warn = level {
+        println!("[WARN]  경고 발생");
+    } else if verbose {
+        println!("[{level:?}] 상세 로그");
+    } else {
+        println!("[{level:?}]");
+    }
+}
+
+// ── while let: 스택 소비 ─────────────────────────────────
+fn drain_stack(stack: &mut Vec<i32>) {
+    print!("pop 순서: ");
+    while let Some(top) = stack.pop() {
+        print!("{top} ");
+    }
+    println!();
+}
+
+// ── while let: 이터레이터 수동 소비 ─────────────────────
+fn first_negative(data: &[i32]) -> Option<i32> {
+    let mut iter = data.iter();
+    while let Some(&n) = iter.next() {
+        if n < 0 { return Some(n); }
+    }
+    None
+}
+
+// ── let-else (Rust 1.65+) ────────────────────────────────
+// else 블록은 반드시 diverge(return/break/continue/panic)
+#[derive(Debug)]
+struct Config { host: String, port: u16, workers: usize }
+
+fn parse_config(input: &str) -> Result<Config, String> {
+    let parts: Vec<&str> = input.split(',').collect();
+
+    // 슬라이스 패턴 + let-else
+    let [host, port_str, workers_str] = parts.as_slice() else {
+        return Err(format!("필드 3개 필요, {}개 제공됨", parts.len()));
+    };
+
+    let Ok(port) = port_str.trim().parse::<u16>() else {
+        return Err(format!("잘못된 포트: {port_str}"));
+    };
+
+    let Ok(workers) = workers_str.trim().parse::<usize>() else {
+        return Err(format!("잘못된 워커 수: {workers_str}"));
+    };
+
+    // 여기서 host, port, workers 모두 사용 가능 (if let과의 차이)
+    if port == 0       { return Err("포트 0 불가".to_string()); }
+    if workers == 0    { return Err("워커 1개 이상 필요".to_string()); }
+
+    Ok(Config { host: host.trim().to_string(), port, workers })
+}
+
+// ── let-else vs if let: 스코프 차이 비교 ────────────────
+fn lookup(id: u32) -> Option<String> {
+    match id {
+        1 => Some("alice".to_string()),
+        2 => Some("bob".to_string()),
+        _ => None,
+    }
+}
+
+fn username_if_let(id: u32) -> String {
+    // if let: name은 블록 안에서만 유효
+    let name = if let Some(n) = lookup(id) {
+        n
+    } else {
+        return "unknown".to_string();
+    };
+    format!("@{name}")   // name이 여기서 유효 (위 if let 전체가 표현식)
+}
+
+fn username_let_else(id: u32) -> String {
+    // let-else: name이 이후 스코프 전체에서 바로 유효
+    let Some(name) = lookup(id) else {
+        return "unknown".to_string();
+    };
+    format!("@{name}")
+}
+
+fn main() {
+    println!("=== if let-else chain ===");
+    process_log(&LogLevel::Error("DB 연결 실패".to_string()), true);
+    process_log(&LogLevel::Warn, true);
+    process_log(&LogLevel::Info, true);
+    process_log(&LogLevel::Debug, false);
+
+    println!("\\n=== while let ===");
+    let mut stack = vec![1, 2, 3, 4, 5];
+    drain_stack(&mut stack);
+
+    let data = [3, 7, -2, 5, -8];
+    match first_negative(&data) {
+        Some(n) => println!("첫 음수: {n}"),
+        None    => println!("음수 없음"),
+    }
+
+    println!("\\n=== let-else ===");
+    let inputs = [
+        "localhost, 8080, 4",
+        "localhost, 8080",        // 필드 부족
+        "localhost, abc, 4",      // 포트 오류
+        "localhost, 8080, 0",     // 워커 0
+    ];
+    for input in inputs {
+        match parse_config(input) {
+            Ok(cfg) => println!("  OK: {cfg:?}"),
+            Err(e)  => println!("  ERR: {e}"),
+        }
+    }
+
+    println!("\\n=== let-else vs if let ===");
+    for id in [1, 2, 99] {
+        println!("  id={id}: if_let={} let_else={}",
+            username_if_let(id), username_let_else(id));
+    }
+}`);
+
+setCode('c6', `// ── ref vs & 패턴: 방향이 반대 ─────────────────────────
+//
+//  ref x  : 값을 match할 때 소유권 이동 없이 &T 생성
+//  &x 패턴: &T를 match하여 내부 T에 바인딩 (역참조)
+//
+fn demo_ref_vs_amp() {
+    let s = String::from("안녕");
+
+    // ref: 소유권 유지하며 참조 생성
+    match s {
+        ref borrowed => println!("ref borrowed: \\"{borrowed}\\" (&String)"),
+    }
+    println!("match 후 s 유효: \\"{s}\\"");   // OK
+
+    // &val 전달 (현대 Rust 권장): 참조를 match 대상으로
+    match &s {
+        b => println!("&val 전달: \\"{b}\\""),  // b: &String 자동
+    }
+    println!("여전히 유효: \\"{s}\\"");    // OK
+
+    // 소유권 이동: 이후 s2 사용 불가
+    let s2 = String::from("이동");
+    match s2 {
+        owned => println!("이동됨: \\"{owned}\\""),
+    }
+    // println!("{s2}");   // 컴파일 오류: s2 already moved
+}
+
+// ── &x 패턴: 참조에서 역참조 ─────────────────────────────
+fn demo_amp_pattern() {
+    let numbers = vec![1_i32, 2, 3, 4, 5];
+
+    // iter()는 &i32 yield → &x 패턴으로 i32 직접 바인딩
+    let doubled: Vec<i32> = numbers.iter().map(|&x| x * 2).collect();
+    println!("doubled: {doubled:?}");
+
+    // for 루프에서 &n 패턴
+    let mut sum = 0_i32;
+    for &n in &numbers {   // n: i32 (역참조)
+        sum += n;
+    }
+    println!("합계: {sum}");
+    println!("원본 유효: {numbers:?}");    // 이동 없음
+}
+
+// ── ref mut: 가변 참조 바인딩 ────────────────────────────
+fn demo_ref_mut() {
+    let mut data = vec![
+        String::from("hello"),
+        String::from("world"),
+        String::from("rust"),
+    ];
+
+    for s in &mut data {
+        match s {
+            // ref mut으로 가변 참조 바인딩 후 수정
+            ref mut item if item.len() > 4 => {
+                item.push('!');
+                item.make_ascii_uppercase();
+            }
+            ref mut item => {
+                item.push('?');
+            }
+        }
+    }
+    println!("수정 후: {data:?}");
+    // ["HELLO!", "WORLD!", "rust?"]
+}
+
+// ── 구조체에서 &val 매칭 ─────────────────────────────────
+#[derive(Debug)]
+struct User { name: String, age: u32 }
+
+fn greet_user(user: &User) {
+    // &User를 match → 필드 바인딩이 자동으로 참조
+    let User { name, age } = user;
+    // name: &String, age: &u32
+    println!("안녕하세요 {name}님 ({age}세)");
+}
+
+// ── Copy 타입: ref 없어도 이동 없음 ─────────────────────
+fn demo_copy() {
+    let values = [10_i32, 20, 30, 40, 50];
+    for n in values {
+        let desc = match n {
+            x if x % 2 == 0 => format!("{x} 짝수"),
+            x                => format!("{x} 홀수"),
+        };
+        println!("  {desc}");
+    }
+    println!("원본: {values:?}");   // Copy이므로 유효
+}
+
+fn main() {
+    println!("=== ref vs & 패턴 ===");
+    demo_ref_vs_amp();
+
+    println!("\\n=== &x 패턴 (역참조) ===");
+    demo_amp_pattern();
+
+    println!("\\n=== ref mut ===");
+    demo_ref_mut();
+
+    println!("\\n=== 구조체 &val 매칭 ===");
+    let user = User { name: "Alice".to_string(), age: 30 };
+    greet_user(&user);
+    println!("user 여전히 유효: {user:?}");
+
+    println!("\\n=== Copy 타입 ===");
+    demo_copy();
+}`);
+
+setCode('c7', `// ── 함수 인자 패턴: irrefutable만 허용 ─────────────────
+
+// 튜플 인자 해체
+fn distance((x1, y1): (f64, f64), (x2, y2): (f64, f64)) -> f64 {
+    ((x2 - x1).powi(2) + (y2 - y1).powi(2)).sqrt()
+}
+
+// 구조체 참조 인자 해체
+#[derive(Debug, Clone)]
+struct Point { x: f64, y: f64 }
+
+fn print_point(&Point { x, y }: &Point) {
+    println!("  점: ({x:.2}, {y:.2})");
+}
+
+// 중첩 튜플 인자
+fn sum_nested((a, (b, c)): (i32, (i32, i32))) -> i32 {
+    a + b + c
+}
+
+// ── for 루프 패턴 심화 ───────────────────────────────────
+use std::collections::HashMap;
+
+fn demo_for_patterns() {
+    // enumerate: (usize, &T) 해체
+    let words = ["rust", "python", "go", "zig"];
+    for (i, word) in words.iter().enumerate() {
+        println!("  [{i}] {word}");
+    }
+
+    // HashMap: (&K, &V) 해체
+    let mut scores: HashMap<&str, Vec<i32>> = HashMap::new();
+    scores.insert("Alice", vec![90, 85, 92]);
+    scores.insert("Bob",   vec![78, 82, 88]);
+
+    let mut entries: Vec<_> = scores.iter().collect();
+    entries.sort_by_key(|(name, _)| *name);
+
+    for (name, grades) in &entries {
+        let avg: f64 = grades.iter().sum::<i32>() as f64 / grades.len() as f64;
+        println!("  {name}: 평균 {avg:.1}");
+    }
+
+    // zip: (&T, &U) 해체
+    let xs = [1.0_f64, 2.0, 3.0];
+    let ys = [4.0_f64, 5.0, 6.0];
+    let dot: f64 = xs.iter().zip(ys.iter()).map(|(&x, &y)| x * y).sum();
+    println!("  내적: {dot}");
+
+    // 2D 배열 대각선 추출
+    let matrix = [[1,2,3],[4,5,6],[7,8,9]];
+    let diag: Vec<i32> = matrix.iter().enumerate()
+        .map(|(r, row)| row[r])
+        .collect();
+    println!("  대각선: {diag:?}");   // [1, 5, 9]
+}
+
+// ── 클로저 인자 패턴 ─────────────────────────────────────
+fn demo_closure_patterns() {
+    // 튜플 해체
+    let pairs = vec![(1_i32, 10), (2, 20), (3, 30)];
+    let sums: Vec<i32> = pairs.iter().map(|&(a, b)| a + b).collect();
+    println!("  튜플 클로저: {sums:?}");
+
+    // 구조체 해체 클로저
+    let points = vec![
+        Point { x: 1.0, y: 2.0 },
+        Point { x: 3.0, y: 4.0 },
+    ];
+    let lengths: Vec<f64> = points.iter()
+        .map(|&Point { x, y }| (x * x + y * y).sqrt())
+        .collect();
+    println!("  원점 거리: {lengths:?}");
+
+    // filter_map + if let
+    let data: Vec<Option<i32>> = vec![Some(1), None, Some(3), None, Some(5)];
+    let vals: Vec<i32> = data.iter()
+        .filter_map(|opt| if let Some(n) = opt { Some(*n * 2) } else { None })
+        .collect();
+    println!("  filter_map: {vals:?}");
+
+    // partition + Result
+    let strings = ["1", "abc", "3", "4x", "5"];
+    let (oks, errs): (Vec<_>, Vec<_>) = strings.iter()
+        .map(|s| s.parse::<i32>())
+        .partition(Result::is_ok);
+    println!("  파싱: 성공 {}개, 실패 {}개", oks.len(), errs.len());
+}
+
+fn main() {
+    println!("=== 함수 인자 패턴 ===");
+    let d = distance((0.0, 0.0), (3.0, 4.0));
+    println!("  거리: {d:.1}");   // 5.0
+
+    let p = Point { x: 2.5, y: -1.0 };
+    print_point(&p);
+
+    println!("  중첩 튜플 합: {}", sum_nested((1, (2, 3))));  // 6
+
+    println!("\\n=== for 루프 패턴 ===");
+    demo_for_patterns();
+
+    println!("\\n=== 클로저 인자 패턴 ===");
+    demo_closure_patterns();
+}`);
+
+setCode('c8', `// ── 실전 종합: 미니 Lisp 인터프리터 ───────────────────
+// 사용된 패턴: 중첩 enum, 재귀 match, @바인딩,
+//              가드, OR패턴, let-else, 슬라이스 패턴
+
+#[derive(Debug, Clone, PartialEq)]
+enum Expr {
+    Num(f64),
+    Bool(bool),
+    Sym(String),
+    List(Vec<Expr>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum Value {
+    Num(f64),
+    Bool(bool),
+    Str(String),
+    Nil,
+}
+
+impl std::fmt::Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Value::Num(n) if n.fract() == 0.0 => write!(f, "{}", *n as i64),
+            Value::Num(n)  => write!(f, "{n:.4}"),
+            Value::Bool(b) => write!(f, "{b}"),
+            Value::Str(s)  => write!(f, "{s}"),
+            Value::Nil     => write!(f, "nil"),
+        }
+    }
+}
+
+type Env = std::collections::HashMap<String, Value>;
+
+fn eval(expr: &Expr, env: &Env) -> Result<Value, String> {
+    match expr {
+        // 리터럴
+        Expr::Num(n)  => Ok(Value::Num(*n)),
+        Expr::Bool(b) => Ok(Value::Bool(*b)),
+
+        // 변수 조회 — let-else로 평탄하게
+        Expr::Sym(name) => {
+            let Some(val) = env.get(name) else {
+                return Err(format!("미정의 변수: {name}"));
+            };
+            Ok(val.clone())
+        }
+
+        // 리스트: (op arg...) — 슬라이스 패턴으로 분해
+        Expr::List(items) => {
+            let [op, args @ ..] = items.as_slice() else {
+                return Err("빈 리스트 평가 불가".to_string());
+            };
+
+            // op은 반드시 심볼
+            let Expr::Sym(op_name) = op else {
+                return Err("첫 원소는 연산자 심볼이어야 함".to_string());
+            };
+
+            match op_name.as_str() {
+                // 산술: 정확히 2개 인자
+                "+" | "-" | "*" | "/" => {
+                    let [lhs_e, rhs_e] = args else {
+                        return Err(format!("{op_name}: 인자 2개 필요"));
+                    };
+                    let (Value::Num(a), Value::Num(b)) =
+                        (eval(lhs_e, env)?, eval(rhs_e, env)?)
+                    else {
+                        return Err(format!("{op_name}: 숫자 타입 필요"));
+                    };
+                    let result = match op_name.as_str() {
+                        "+" => a + b,
+                        "-" => a - b,
+                        "*" => a * b,
+                        "/" if b == 0.0 => return Err("0으로 나누기".to_string()),
+                        "/" => a / b,
+                        _   => unreachable!(),
+                    };
+                    Ok(Value::Num(result))
+                }
+
+                // 비교
+                "=" | "<" | ">" | "<=" | ">=" => {
+                    let [lhs_e, rhs_e] = args else {
+                        return Err(format!("{op_name}: 인자 2개 필요"));
+                    };
+                    let (lv, rv) = (eval(lhs_e, env)?, eval(rhs_e, env)?);
+                    let result = match (op_name.as_str(), &lv, &rv) {
+                        ("=",  Value::Num(a), Value::Num(b)) => a == b,
+                        ("<",  Value::Num(a), Value::Num(b)) => a <  b,
+                        (">",  Value::Num(a), Value::Num(b)) => a >  b,
+                        ("<=", Value::Num(a), Value::Num(b)) => a <= b,
+                        (">=", Value::Num(a), Value::Num(b)) => a >= b,
+                        ("=",  a, b) => a == b,
+                        _ => return Err(format!("{op_name}: 비교 불가")),
+                    };
+                    Ok(Value::Bool(result))
+                }
+
+                // 논리
+                "and" | "or" | "not" => {
+                    match (op_name.as_str(), args) {
+                        ("not", [only]) => {
+                            let Value::Bool(b) = eval(only, env)? else {
+                                return Err("not: bool 필요".to_string());
+                            };
+                            Ok(Value::Bool(!b))
+                        }
+                        ("and" | "or", [lhs_e, rhs_e]) => {
+                            let Value::Bool(a) = eval(lhs_e, env)? else {
+                                return Err(format!("{op_name}: bool 필요"));
+                            };
+                            // 단축 평가
+                            if op_name == "and" && !a { return Ok(Value::Bool(false)); }
+                            if op_name == "or"  &&  a { return Ok(Value::Bool(true));  }
+                            let Value::Bool(b) = eval(rhs_e, env)? else {
+                                return Err(format!("{op_name}: bool 필요"));
+                            };
+                            Ok(Value::Bool(if op_name == "and" { a && b } else { a || b }))
+                        }
+                        _ => Err(format!("{op_name}: 인자 수 오류")),
+                    }
+                }
+
+                // if 표현식
+                "if" => {
+                    let [cond_e, then_e, else_e] = args else {
+                        return Err("if: (if cond then else) 필요".to_string());
+                    };
+                    let Value::Bool(cond) = eval(cond_e, env)? else {
+                        return Err("if: 조건은 bool이어야 함".to_string());
+                    };
+                    if cond { eval(then_e, env) } else { eval(else_e, env) }
+                }
+
+                // list 함수 (가변 인자)
+                "list" => match args {
+                    [] => Ok(Value::Nil),
+                    _ => {
+                        let mut parts = Vec::new();
+                        for a in args { parts.push(eval(a, env)?.to_string()); }
+                        Ok(Value::Str(format!("({})", parts.join(" "))))
+                    }
+                },
+
+                unknown => Err(format!("알 수 없는 연산자: {unknown}")),
+            }
+        }
+    }
+}
+
+fn main() {
+    let mut env = Env::new();
+    env.insert("x".to_string(),    Value::Num(10.0));
+    env.insert("y".to_string(),    Value::Num(3.0));
+    env.insert("flag".to_string(), Value::Bool(true));
+
+    macro_rules! num  { ($n:expr) => { Expr::Num($n as f64) } }
+    macro_rules! sym  { ($s:expr) => { Expr::Sym($s.to_string()) } }
+    macro_rules! list { ($($e:expr),+) => { Expr::List(vec![$($e),+]) } }
+
+    let exprs: &[(&str, Expr)] = &[
+        ("(+ 1 2)",
+         list![sym!("+"), num!(1), num!(2)]),
+        ("(* x y)",
+         list![sym!("*"), sym!("x"), sym!("y")]),
+        ("(/ x (+ y 2))",
+         list![sym!("/"), sym!("x"), list![sym!("+"), sym!("y"), num!(2)]]),
+        ("(if (> x 5) x y)",
+         list![sym!("if"),
+               list![sym!(">"), sym!("x"), num!(5)],
+               sym!("x"), sym!("y")]),
+        ("(and flag (< y 5))",
+         list![sym!("and"), sym!("flag"),
+               list![sym!("<"), sym!("y"), num!(5)]]),
+        ("(/ 1 0)",
+         list![sym!("/"), num!(1), num!(0)]),
+        ("(list x y)",
+         list![sym!("list"), sym!("x"), sym!("y")]),
+    ];
+
+    for (src, expr) in exprs {
+        match eval(expr, &env) {
+            Ok(val)  => println!("  {src:<35} => {val}"),
+            Err(err) => println!("  {src:<35} => ERR: {err}"),
+        }
+    }
+    // (+ 1 2)                             => 3
+    // (* x y)                             => 30
+    // (/ x (+ y 2))                       => 2
+    // (if (> x 5) x y)                    => 10
+    // (and flag (< y 5))                  => true
+    // (/ 1 0)                             => ERR: 0으로 나누기
+    // (list x y)                          => (10 3)
+}`);
+</script>
+</body>
+</html>

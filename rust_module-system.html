@@ -1,0 +1,3185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rust 모듈 시스템 완벽 가이드</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/rust.min.js"></script>
+<style>
+/* VS Code Dark Modern */
+.hljs{background:#1f1f1f!important;color:#d4d4d4;}
+.hljs-keyword{color:#569cd6;}
+.hljs-built_in{color:#4ec9b0;}
+.hljs-type{color:#4ec9b0;}
+.hljs-string{color:#ce9178;}
+.hljs-number{color:#b5cea8;}
+.hljs-comment{color:#6a9955;font-style:italic;}
+.hljs-function .hljs-title,.hljs-title.function_{color:#dcdcaa;}
+.hljs-title.class_{color:#4ec9b0;}
+.hljs-meta{color:#9cdcfe;}
+.hljs-attr{color:#9cdcfe;}
+.hljs-variable{color:#9cdcfe;}
+.hljs-literal{color:#569cd6;}
+.hljs-operator{color:#d4d4d4;}
+
+:root{
+  --bg:#f5f5f5;--bg2:#fff;--bg3:#f0f0f0;
+  --sbg:#1e1e2e;--stx:#cdd6f4;--shv:#313244;--sac:#89b4fa;
+  --tx:#1a1a1a;--tx2:#555;--tx3:#888;
+  --bd:#d8d5d0;--ac:#4f46e5;
+  --tbg:#ede9fe;--ttx:#4f46e5;
+  --tact:#4f46e5;--tin:#e5e7eb;--tintx:#6b7280;
+  --card:#fff;--sh:0 1px 6px rgba(0,0,0,.09);
+  --nb:#eff6ff;--nbr:#3b82f6;
+  --wb:#fffbeb;--wbr:#f59e0b;
+  --gb:#f0fdf4;--gbr:#22c55e;
+  --rb:#fff1f2;--rbr:#ef4444;
+  --pb:#fdf4ff;--pbr:#a855f7;
+  --ftree:#1e1e2e;
+}
+.dark{
+  --bg:#0d0d1a;--bg2:#13131f;--bg3:#1a1a2e;
+  --tx:#e0e0f0;--tx2:#a0a0c0;--tx3:#666;
+  --bd:#252538;--card:#13131f;--sh:0 1px 8px rgba(0,0,0,.5);
+  --tbg:#1e1a3a;--ttx:#89b4fa;
+  --tact:#89b4fa;--tin:#1a1a2e;--tintx:#7070a0;
+  --nb:#0a1525;--nbr:#3b82f6;
+  --wb:#1a1200;--wbr:#f59e0b;
+  --gb:#061206;--gbr:#22c55e;
+  --rb:#1a0608;--rbr:#ef4444;
+  --pb:#120820;--pbr:#a855f7;
+  --ftree:#0d0d1a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:var(--bg);color:var(--tx);font-size:15px;line-height:1.75;display:flex;
+  transition:background .2s,color .2s;}
+
+/* 사이드바 */
+#sb{width:252px;flex-shrink:0;background:var(--sbg);display:flex;flex-direction:column;height:100vh;overflow-y:auto;z-index:50;}
+.sb-hd{padding:18px 16px 12px;border-bottom:1px solid #313244;}
+.sb-hd h1{color:#cdd6f4;font-size:13px;font-weight:600;}
+.sb-hd p{color:#6c7086;font-size:11px;margin-top:2px;}
+.sb-logo{font-size:24px;margin-bottom:6px;}
+.sb-nav{padding:6px 0 20px;flex:1;}
+.sb-grp{padding:8px 16px 3px;font-size:10px;font-weight:700;color:#585b70;letter-spacing:1px;text-transform:uppercase;}
+.sb-it{display:block;padding:6px 16px;color:var(--stx);font-size:12.5px;cursor:pointer;border-left:3px solid transparent;transition:all .12s;user-select:none;line-height:1.4;}
+.sb-it:hover{background:var(--shv);}
+.sb-it.on{border-left-color:var(--sac);color:var(--sac);background:var(--shv);font-weight:500;}
+.sb-it .bx{float:right;background:#313244;color:#89b4fa;font-size:9px;padding:1px 6px;border-radius:8px;}
+.sb-ver{padding:12px 16px;border-top:1px solid #313244;font-size:10px;color:#585b70;}
+#sb::-webkit-scrollbar{width:4px;}
+#sb::-webkit-scrollbar-thumb{background:#313244;border-radius:4px;}
+
+/* 메인 */
+#main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+#topbar{background:var(--bg2);border-bottom:1px solid var(--bd);padding:10px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+#topbar span{font-size:13px;color:var(--tx2);}
+.tbtn2{background:var(--tin);border:none;border-radius:16px;padding:5px 13px;cursor:pointer;font-size:12px;color:var(--tx);}
+.tbtn2:hover{background:var(--ac);color:#fff;}
+#scroll{flex:1;overflow-y:scroll;padding:28px 36px 100px;}
+#scroll::-webkit-scrollbar{width:6px;}
+#scroll::-webkit-scrollbar-thumb{background:var(--bd);border-radius:4px;}
+
+/* 콘텐츠 */
+.wrap{max-width:860px;margin:0 auto;}
+.sec{margin-bottom:60px;scroll-margin-top:16px;}
+.sec-lbl{display:inline-block;background:var(--tbg);color:var(--ttx);font-size:10px;font-weight:700;padding:2px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;}
+.sec h2{font-size:24px;font-weight:700;margin-bottom:6px;line-height:1.3;}
+.sec>.lead{color:var(--tx2);margin-bottom:20px;font-size:14.5px;}
+.subsec{margin-bottom:32px;}
+.subsec h3{font-size:16px;font-weight:600;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid var(--bd);}
+.subsec h4{font-size:14px;font-weight:600;margin:14px 0 6px;color:var(--ac);}
+
+/* 콜아웃 */
+.box{border-radius:0 8px 8px 0;padding:13px 16px;margin:12px 0;border-left-width:4px;border-left-style:solid;}
+.box-t{font-size:11px;font-weight:700;letter-spacing:.5px;margin-bottom:5px;}
+.box p,.box li{font-size:13.5px;line-height:1.65;}
+.box ul,.box ol{padding-left:18px;}
+.box li{margin-bottom:3px;}
+.note{background:var(--nb);border-left-color:var(--nbr);}
+.note .box-t{color:var(--nbr);}
+.warn{background:var(--wb);border-left-color:var(--wbr);}
+.warn .box-t{color:var(--wbr);}
+.good{background:var(--gb);border-left-color:var(--gbr);}
+.good .box-t{color:var(--gbr);}
+.bad{background:var(--rb);border-left-color:var(--rbr);}
+.bad .box-t{color:var(--rbr);}
+.purple{background:var(--pb);border-left-color:var(--pbr);}
+.purple .box-t{color:var(--pbr);}
+
+/* 탭 */
+.tabs{background:var(--card);border:1px solid var(--bd);border-radius:10px;overflow:hidden;box-shadow:var(--sh);margin-bottom:18px;}
+.tbar{display:flex;background:var(--bg3);border-bottom:1px solid var(--bd);overflow-x:auto;flex-wrap:nowrap;}
+.tbar::-webkit-scrollbar{height:3px;}
+.tbar::-webkit-scrollbar-thumb{background:var(--bd);}
+.tbtn{padding:8px 15px;font-size:12.5px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--tintx);white-space:nowrap;border-bottom:2px solid transparent;transition:all .12s;flex-shrink:0;}
+.tbtn.on{color:var(--tact);border-bottom-color:var(--tact);}
+.tbtn:hover:not(.on){color:var(--tx);}
+.tpane{display:none;}
+.tpane.on{display:block;}
+.tpane pre{margin:0!important;border-radius:0!important;}
+.tpane pre code.hljs{font-size:12.5px;line-height:1.65;padding:18px 20px!important;}
+
+/* 비교 그리드 */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
+.gc{background:var(--card);border:1px solid var(--bd);border-radius:8px;overflow:hidden;box-shadow:var(--sh);}
+.gc-hd{padding:7px 13px;font-size:12px;font-weight:600;border-bottom:1px solid var(--bd);}
+.gc-hd.ok{background:var(--gb);color:#166534;}
+.gc-hd.er{background:var(--rb);color:#991b1b;}
+.gc-hd.wr{background:var(--wb);color:#92400e;}
+.gc pre{margin:0!important;}
+.gc pre code.hljs{font-size:12px;padding:13px 15px!important;}
+
+/* 테이블 */
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px;margin:10px 0;}
+.tbl th{background:var(--bg3);padding:9px 13px;text-align:left;font-weight:600;border-bottom:2px solid var(--bd);}
+.tbl td{padding:9px 13px;border-bottom:1px solid var(--bd);vertical-align:top;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:var(--bg3);}
+.stbl{width:100%;border-collapse:collapse;font-size:13.5px;}
+.stbl th{background:var(--ac);color:#fff;padding:9px 13px;text-align:left;}
+.stbl td{padding:9px 13px;border-bottom:1px solid var(--bd);}
+.stbl tr:nth-child(even) td{background:var(--bg3);}
+.kw{font-family:'Cascadia Code','Fira Code',monospace;background:var(--tbg);color:var(--ttx);padding:2px 6px;border-radius:4px;font-size:12px;}
+code{font-family:'Cascadia Code','Fira Code',monospace;background:var(--bg3);color:#7c3aed;padding:1px 5px;border-radius:3px;font-size:13px;}
+.dark code{color:#a78bfa;}
+
+/* 파일 트리 */
+.ftree{background:var(--ftree);border:1px solid var(--bd);border-radius:8px;padding:14px 20px;font-family:'Cascadia Code','Fira Code',monospace;font-size:13px;line-height:2.1;color:#abb2bf;margin-bottom:16px;}
+.ftree .d{color:#61afef;font-weight:600;}
+.ftree .f{color:#98c379;}
+.ftree .c{color:#5c6370;font-style:italic;}
+.ftree .h{color:#e5c07b;}
+
+/* 다이어그램 */
+.dbox{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:18px;box-shadow:var(--sh);overflow-x:auto;}
+.dbox svg{max-width:100%;height:auto;display:block;}
+
+/* 에러 블록 */
+.err-block{background:#1a0000;border:1px solid #5c1a1a;border-radius:8px;padding:14px 18px;margin:12px 0;font-family:'Cascadia Code','Fira Code',monospace;font-size:12.5px;line-height:1.7;color:#f87171;overflow-x:auto;}
+.err-block .err-hd{color:#fca5a5;font-weight:700;margin-bottom:6px;font-size:12px;letter-spacing:.5px;}
+.err-block .em{color:#fde68a;}
+.err-block .note{color:#86efac;background:none;border:none;padding:0;margin:0;}
+
+/* 스텝 */
+.steps{counter-reset:step;margin:14px 0;}
+.step{display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;}
+.step-num{counter-increment:step;background:var(--ac);color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.step-body{flex:1;}
+.step-body p{font-size:13.5px;color:var(--tx2);margin-bottom:6px;}
+</style>
+</head>
+<body>
+
+<aside id="sb">
+  <div class="sb-hd">
+    <div class="sb-logo">🦀</div>
+    <h1>Rust 모듈 시스템</h1>
+    <p>공식 Book(Ch.7) 기반 완벽 가이드</p>
+  </div>
+  <div class="sb-nav">
+    <div class="sb-grp">기초</div>
+    <div class="sb-it on" data-sec="intro">개요 — 5가지 핵심 개념 <span class="bx">start</span></div>
+    <div class="sb-it" data-sec="pkg">1. Package &amp; Crate</div>
+    <div class="sb-it" data-sec="mod">2. mod — 모듈 선언</div>
+    <div class="sb-grp">경로</div>
+    <div class="sb-it" data-sec="path">3. 경로 &amp; crate::</div>
+    <div class="sb-it" data-sec="super">4. super:: — 부모 경로</div>
+    <div class="sb-it" data-sec="self">5. self:: — 현재 모듈</div>
+    <div class="sb-grp">접근 제어</div>
+    <div class="sb-it" data-sec="use">6. use — 경로 단축</div>
+    <div class="sb-it" data-sec="pubuse">7. pub use — 재공개</div>
+    <div class="sb-it" data-sec="visibility">8. 가시성 완전 정리</div>
+    <div class="sb-grp">실전</div>
+    <div class="sb-it" data-sec="realworld">9. 실전 파일 구조</div>
+    <div class="sb-it" data-sec="external">10. 외부 크레이트</div>
+    <div class="sb-it" data-sec="summary">11. 요약 &amp; 치트시트</div>
+  </div>
+  <div class="sb-ver">📖 Rust Book Ch.7 · Reference 기반</div>
+</aside>
+
+<div id="main">
+  <div id="topbar">
+    <span>Rust 모듈 시스템 — 공식 문서 기반 완벽 가이드</span>
+    <button class="tbtn2" id="dtoggle">🌙 다크</button>
+  </div>
+  <div id="scroll"><div class="wrap">
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 개요                                         -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="sec" id="intro">
+    <div class="sec-lbl">개요</div>
+    <h2>Rust 모듈 시스템 — 5가지 핵심 개념</h2>
+    <p class="lead">프로젝트가 커질수록 코드를 여러 파일과 모듈로 나눠야 합니다. Rust Book Ch.7은 다음 다섯 가지를 핵심으로 설명합니다. 이 개념들이 서로 어떻게 맞물리는지가 전체 이해의 열쇠입니다.</p>
+
+    <table class="tbl">
+      <tr><th>개념</th><th>정의 (Rust Book 공식)</th><th>비유</th></tr>
+      <tr><td><span class="kw">Package</span></td><td>하나 이상의 crate를 포함하는 Cargo 단위. <code>Cargo.toml</code>이 포함됨. <strong>rustc는 Package를 모릅니다</strong> — Cargo만 아는 개념</td><td>회사 전체</td></tr>
+      <tr><td><span class="kw">Crate</span></td><td>Rust 컴파일러가 한 번에 처리하는 <strong>최소 코드 단위</strong>. binary 또는 library 두 종류</td><td>건물</td></tr>
+      <tr><td><span class="kw">Module</span></td><td>코드를 논리적으로 묶고 가시성(privacy)을 제어하는 단위. <code>mod</code> 키워드로 선언</td><td>부서</td></tr>
+      <tr><td><span class="kw">Path</span></td><td>모듈 트리 안의 항목을 가리키는 주소. <code>::</code>으로 구분</td><td>사내 주소록</td></tr>
+      <tr><td><span class="kw">use</span></td><td>긴 경로를 현재 스코프에 가져와 짧게 쓸 수 있게 하는 키워드</td><td>단축 다이얼</td></tr>
+    </table>
+
+    <div class="note box">
+      <div class="box-t">📌 Rust Book 공식 — 모듈 시스템이 제공하는 기능</div>
+      <ul>
+        <li><strong>코드 조직화</strong>: 관련 코드를 모듈로 묶어 읽기 쉽게 만들기</li>
+        <li><strong>privacy 제어</strong>: 구현 세부사항을 숨기고 공개 API만 노출하기</li>
+        <li><strong>이름 충돌 방지</strong>: 다른 모듈의 동일한 이름이 충돌하지 않게 하기</li>
+        <li><strong>재사용성</strong>: 잘 정의된 모듈은 다른 프로젝트에서 crate로 사용 가능</li>
+      </ul>
+    </div>
+
+    <div class="dbox">
+      <svg width="100%" viewBox="0 0 680 240" role="img"><title>Package Crate Module 계층</title>
+        <defs><marker id="a0" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+        <rect x="10" y="10" width="660" height="220" rx="14" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+        <text x="28" y="36" font-size="13" font-weight="600" fill="#412402" font-family="sans-serif">Package (my_app) — Cargo.toml 포함, rustc는 모름</text>
+        <rect x="28" y="48" width="290" height="160" rx="10" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+        <text x="48" y="70" font-size="12" font-weight="600" fill="#26215C" font-family="sans-serif">Binary Crate — src/main.rs</text>
+        <text x="48" y="86" font-size="11" fill="#534AB7" font-family="sans-serif">fn main() 포함 · 직접 실행 가능</text>
+        <rect x="48" y="96" width="118" height="28" rx="5" fill="#CECBF6" stroke="#534AB7" stroke-width="0.5"/>
+        <text x="107" y="114" text-anchor="middle" font-size="11" fill="#26215C" font-family="sans-serif">mod utils</text>
+        <rect x="178" y="96" width="118" height="28" rx="5" fill="#CECBF6" stroke="#534AB7" stroke-width="0.5"/>
+        <text x="237" y="114" text-anchor="middle" font-size="11" fill="#26215C" font-family="sans-serif">mod config</text>
+        <text x="48" y="148" font-size="11" fill="#5F5E5A" font-family="sans-serif">src/bin/*.rs → 추가 binary crate</text>
+        <text x="48" y="164" font-size="11" fill="#5F5E5A" font-family="sans-serif">cargo run --bin 이름 으로 실행</text>
+        <rect x="342" y="48" width="316" height="160" rx="10" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.8"/>
+        <text x="362" y="70" font-size="12" font-weight="600" fill="#085041" font-family="sans-serif">Library Crate — src/lib.rs</text>
+        <text x="362" y="86" font-size="11" fill="#0F6E56" font-family="sans-serif">fn main() 없음 · 다른 crate가 사용</text>
+        <rect x="362" y="96" width="128" height="28" rx="5" fill="#9FE1CB" stroke="#0F6E56" stroke-width="0.5"/>
+        <text x="426" y="114" text-anchor="middle" font-size="11" fill="#085041" font-family="sans-serif">pub mod api</text>
+        <rect x="502" y="96" width="138" height="28" rx="5" fill="#9FE1CB" stroke="#0F6E56" stroke-width="0.5"/>
+        <text x="571" y="114" text-anchor="middle" font-size="11" fill="#085041" font-family="sans-serif">pub(crate) mod db</text>
+        <text x="362" y="148" font-size="11" fill="#5F5E5A" font-family="sans-serif">패키지당 최대 1개</text>
+        <text x="362" y="164" font-size="11" fill="#5F5E5A" font-family="sans-serif">binary crate는 여러 개 가능</text>
+        <text x="340" y="224" text-anchor="middle" font-size="11" fill="#854F0B" font-family="sans-serif">Package 규칙: binary 여러 개 가능 / library 최대 1개 / 둘 중 하나 이상 반드시 포함</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 1. Package & Crate                           -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="sec" id="pkg">
+    <div class="sec-lbl">섹션 1</div>
+    <h2>Package &amp; Crate</h2>
+    <p class="lead">Rust Book은 "crate는 Rust 컴파일러가 한 번에 처리하는 최소 코드 단위"라고 정의합니다. 단일 <code>.rs</code> 파일 하나도 crate입니다.</p>
+
+    <div class="subsec">
+      <h3>Binary Crate vs Library Crate</h3>
+      <table class="tbl">
+        <tr><th>구분</th><th>Binary Crate</th><th>Library Crate</th></tr>
+        <tr><td>crate root</td><td><code>src/main.rs</code></td><td><code>src/lib.rs</code></td></tr>
+        <tr><td>fn main()</td><td>필수</td><td>없음</td></tr>
+        <tr><td>실행 가능?</td><td>✅ 직접 실행</td><td>❌ 다른 crate가 사용</td></tr>
+        <tr><td>개수 제한</td><td>여러 개 (src/bin/)</td><td>패키지당 최대 1개</td></tr>
+        <tr><td>용도</td><td>실행 프로그램, CLI 도구</td><td>공유 가능한 라이브러리</td></tr>
+      </table>
+
+      <div class="tabs">
+        <div class="tbar">
+          <button class="tbtn on" data-g="pkg" data-t="t1">기본 구조</button>
+          <button class="tbtn" data-g="pkg" data-t="t2">src/bin/ 다중 binary</button>
+          <button class="tbtn" data-g="pkg" data-t="t3">Cargo.toml 설정</button>
+          <button class="tbtn" data-g="pkg" data-t="t4">best practice</button>
+        </div>
+        <div class="tpane on" id="pkg-t1"><pre><code class="language-rust">// 파일 구조: binary + library 공존 (매우 일반적인 패턴)
+//
+// my_app/
+// ├── Cargo.toml
+// └── src/
+//     ├── main.rs   ← binary crate "my_app" (fn main 포함)
+//     └── lib.rs    ← library crate "my_app" (fn main 없음)
+
+// [src/lib.rs] — 핵심 로직을 library에 구현
+pub fn format_name(first: &str, last: &str) -> String {
+    format!("{} {}", last, first)
+}
+
+pub fn sanitize(input: &str) -> String {
+    input.trim().to_lowercase()
+}
+
+// [src/main.rs] — library를 외부 crate처럼 사용
+// Cargo.toml의 name = "my_app" 이므로 crate 이름도 "my_app"
+use my_app::format_name;  // 같은 패키지의 lib을 외부 crate처럼 가져옴
+
+fn main() {
+    let name = format_name("Gildong", "Hong");
+    println!("{}", name); // "Hong Gildong"
+}
+
+// Rust Book 권장: 핵심 로직은 lib.rs에 두어
+// 다른 프로젝트도 이 library를 사용할 수 있게 하기</code></pre></div>
+        <div class="tpane" id="pkg-t2"><pre><code class="language-rust">// src/bin/ 안의 파일 하나하나가 별도의 binary crate
+
+// 파일 구조:
+// my_app/
+// ├── Cargo.toml
+// └── src/
+//     ├── lib.rs              ← library crate
+//     ├── main.rs             ← binary crate "my_app"
+//     └── bin/
+//         ├── server.rs       ← binary crate "server"
+//         └── client.rs       ← binary crate "client"
+
+// [src/bin/server.rs]
+use my_app::format_name; // lib.rs의 공개 함수 사용
+
+fn main() {
+    println!("서버 시작...");
+    let name = format_name("Server", "Rust");
+    println!("실행: {}", name);
+}
+
+// [src/bin/client.rs]
+use my_app::sanitize;
+
+fn main() {
+    println!("클라이언트 시작...");
+    let clean = sanitize("  HELLO  ");
+    println!("정리됨: {}", clean);
+}
+
+// 실행 방법:
+// cargo run              → src/main.rs
+// cargo run --bin server → src/bin/server.rs
+// cargo run --bin client → src/bin/client.rs
+// cargo build --bins     → 모든 binary 빌드</code></pre></div>
+        <div class="tpane" id="pkg-t3"><pre><code class="language-rust">// Cargo.toml 핵심 설정
+
+// [package]
+// name    = "my_app"      ← crate 이름 (binary, library 모두 이 이름)
+// version = "0.1.0"
+// edition = "2021"        ← 2018+ 방식 (extern crate 불필요, mod.rs 선택사항)
+//
+// [dependencies]
+// serde     = { version = "1", features = ["derive"] }
+// rand      = "0.8"
+// tokio     = { version = "1", features = ["full"] }
+//
+// # 추가 binary를 명시적으로 등록할 수도 있음
+// [[bin]]
+// name = "my_tool"
+// path = "src/bin/tool.rs"
+//
+// # 여러 binary 등록
+// [[bin]]
+// name = "server"
+// path = "src/bin/server.rs"
+//
+// [[bin]]
+// name = "client"
+// path = "src/bin/client.rs"
+
+// edition = "2021" 이면:
+// - mod.rs 없이 파일명으로 모듈 선언 가능
+// - extern crate 선언 불필요 (use만으로 충분)
+// - Rust 2018 이후 모든 기능 사용 가능</code></pre></div>
+        <div class="tpane" id="pkg-t4"><pre><code class="language-rust">// Rust Book Ch.7 권장 패턴:
+// "binary + library 패키지에서 binary crate는
+//  library crate를 호출하는 시작점만 담아야 합니다.
+//  이렇게 하면 다른 프로젝트도 library의 기능을 사용할 수 있습니다."
+
+// ✅ 좋은 패턴: 로직은 lib.rs에
+// [src/lib.rs]
+pub mod config {
+    pub struct AppConfig {
+        pub host: String,
+        pub port: u16,
+        pub debug: bool,
+    }
+    impl AppConfig {
+        pub fn from_env() -> Self {
+            AppConfig {
+                host: std::env::var("HOST").unwrap_or("localhost".into()),
+                port: std::env::var("PORT")
+                    .ok().and_then(|p| p.parse().ok()).unwrap_or(8080),
+                debug: std::env::var("DEBUG").is_ok(),
+            }
+        }
+    }
+}
+
+pub mod server {
+    use super::config::AppConfig;
+    pub fn run(cfg: &AppConfig) {
+        println!("서버 실행: {}:{}", cfg.host, cfg.port);
+    }
+}
+
+// [src/main.rs] — 최소한의 코드만
+use my_app::{config::AppConfig, server};
+
+fn main() {
+    let cfg = AppConfig::from_env();
+    server::run(&cfg);
+}
+// binary crate는 library crate를 "외부 crate처럼" 사용합니다.
+// main.rs에서는 pub(crate) 항목에 접근 불가 — 완전히 다른 crate!</code></pre></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 2. mod                                       -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="sec" id="mod">
+    <div class="sec-lbl">섹션 2</div>
+    <h2>mod — 모듈 선언</h2>
+    <p class="lead">모듈은 코드를 논리적으로 묶고 가시성을 제어하는 단위입니다. <code>mod</code> 키워드로 선언합니다. Rust Reference는 "모듈은 crate를 구성하는 모듈 트리에 새로운 이름의 모듈을 도입한다"고 정의합니다.</p>
+
+    <div class="subsec">
+      <h3>컴파일러의 모듈 파일 탐색 순서 (Rust Reference 공식)</h3>
+      <div class="note box">
+        <div class="box-t">📌 Rust Reference — mod garden; 을 만나면 컴파일러가 찾는 순서</div>
+        <ol>
+          <li><strong>인라인</strong>: <code>mod garden { /* 코드 */ }</code> — 중괄호 안에 바로 코드가 있으면 이것을 사용</li>
+          <li><strong>같은 디렉토리의 파일</strong>: <code>src/garden.rs</code></li>
+          <li><strong>디렉토리 안의 mod.rs</strong>: <code>src/garden/mod.rs</code> (구버전 방식, rustc 1.30 이전 유일한 방법)</li>
+        </ol>
+        <p style="margin-top:8px">⚠️ <strong>같은 모듈에 <code>garden.rs</code>와 <code>garden/mod.rs</code>를 동시에 두면 컴파일 에러입니다!</strong></p>
+      </div>
+
+      <div class="tabs">
+        <div class="tbar">
+          <button class="tbtn on" data-g="mod1" data-t="t1">방법 1: 인라인</button>
+          <button class="tbtn" data-g="mod1" data-t="t2">방법 2: 별도 파일</button>
+          <button class="tbtn" data-g="mod1" data-t="t3">방법 3: 디렉토리</button>
+          <button class="tbtn" data-g="mod1" data-t="t4">2015 mod.rs vs 2018+</button>
+          <button class="tbtn" data-g="mod1" data-t="t5">#[path] 어트리뷰트</button>
+          <button class="tbtn" data-g="mod1" data-t="t6">모듈 중첩</button>
+        </div>
+        <div class="tpane on" id="mod1-t1"><pre><code class="language-rust">// 방법 1: 같은 파일 안에 mod 블록으로 정의 (인라인)
+// 규모가 작거나 관련성이 높은 코드에 적합
+
+// src/lib.rs
+mod front_of_house {        // private: 같은 crate root에서 접근 가능
+    pub mod hosting {       // pub: 외부에서 접근 가능
+        pub fn add_to_waitlist() {
+            println!("대기 목록 추가");
+        }
+        fn seat_at_table() {    // private: hosting 모듈 안에서만
+            println!("좌석 배정");
+        }
+    }
+
+    mod serving {           // private: front_of_house 안에서만
+        fn take_order() {}
+        fn serve_order() {}
+        fn take_payment() {}
+    }
+}
+
+// 모듈 트리 (컴파일러가 인식하는 구조):
+// crate
+//  └── front_of_house
+//      ├── hosting
+//      │   ├── add_to_waitlist  (pub)
+//      │   └── seat_at_table    (private)
+//      └── serving              (private)
+//          ├── take_order
+//          ├── serve_order
+//          └── take_payment
+
+pub fn eat_at_restaurant() {
+    // front_of_house는 private이지만
+    // eat_at_restaurant와 형제(sibling)이므로 접근 가능!
+    front_of_house::hosting::add_to_waitlist();
+}</code></pre></div>
+        <div class="tpane" id="mod1-t2"><pre><code class="language-rust">// 방법 2: 별도 파일로 분리 (2018+ 권장)
+// mod garden; 를 보면 컴파일러가 src/garden.rs 를 찾음
+
+// 파일 구조:
+// src/
+// ├── lib.rs
+// └── garden.rs       ← 이 파일 자체가 garden 모듈의 내용
+
+// [src/lib.rs]
+mod garden;             // 세미콜론! → src/garden.rs 를 찾아 garden 모듈로 로드
+pub use garden::Vegetable; // garden 내부 항목을 재공개 (pub use)
+
+// [src/garden.rs]
+// 이 파일이 곧 garden 모듈 — 별도로 mod garden {} 로 감쌀 필요 없음!
+#[derive(Debug)]
+pub struct Vegetable {
+    pub name: String,
+    pub weight_grams: u32,
+}
+
+impl Vegetable {
+    pub fn new(name: &str, weight: u32) -> Self {
+        Vegetable { name: name.to_string(), weight_grams: weight }
+    }
+    pub fn describe(&self) -> String {
+        format!("{} ({}g)", self.name, self.weight_grams)
+    }
+}
+
+pub fn harvest_season() -> &'static str { "가을" }
+
+// 사용:
+// use my_crate::Vegetable; // pub use 덕분에 garden 없이 접근 가능
+// use my_crate::garden::harvest_season;</code></pre></div>
+        <div class="tpane" id="mod1-t3"><pre><code class="language-rust">// 방법 3: 디렉토리로 분리 (하위 모듈 포함 시)
+// 파일명.rs + 파일명/ 디렉토리 공존 (2018+ 방식)
+
+// 파일 구조:
+// src/
+// ├── lib.rs
+// ├── garden.rs           ← garden 모듈 진입점
+// └── garden/
+//     ├── vegetables.rs   ← garden::vegetables 하위 모듈
+//     └── flowers.rs      ← garden::flowers 하위 모듈
+
+// [src/lib.rs]
+mod garden;                 // garden.rs 를 로드
+
+// [src/garden.rs]
+pub mod vegetables;         // garden/vegetables.rs 를 로드
+pub mod flowers;            // garden/flowers.rs 를 로드
+
+pub fn describe() -> String {
+    format!("채소 {}종, 꽃 {}종",
+        vegetables::count(),
+        flowers::count())
+}
+
+// [src/garden/vegetables.rs]
+pub fn count() -> u32 { 12 }
+
+pub struct Asparagus {
+    pub name: String,
+}
+impl Asparagus {
+    pub fn new() -> Self {
+        Asparagus { name: "아스파라거스".to_string() }
+    }
+}
+
+// [src/garden/flowers.rs]
+pub fn count() -> u32 { 8 }
+
+// 경로 접근:
+// crate::garden::vegetables::Asparagus  ← 절대경로
+// crate::garden::flowers::count()       ← 절대경로</code></pre></div>
+        <div class="tpane" id="mod1-t4"><pre><code class="language-rust">// 2015 mod.rs 방식 vs 2018+ 방식 비교
+// Rust Reference: "rustc 1.30 이전에는 mod.rs가 유일한 방법이었다"
+
+// ── 2015 스타일 (mod.rs 방식) ─────────────────────────────
+// src/
+// ├── lib.rs
+// └── garden/
+//     ├── mod.rs          ← garden 진입점 (항상 mod.rs)
+//     ├── vegetables.rs
+//     └── flowers.rs
+//
+// 문제: 에디터에서 여러 탭이 전부 "mod.rs"로 표시 → 어느 모듈인지 구분 어려움
+// ─────────────────────────────────────────────────────────────
+
+// ── 2018+ 스타일 (권장) ──────────────────────────────────────
+// src/
+// ├── lib.rs
+// ├── garden.rs            ← garden 진입점 (파일명 = 모듈명 ✅)
+// └── garden/
+//     ├── vegetables.rs
+//     └── flowers.rs
+//
+// 장점: 파일명으로 모듈 즉시 구분 가능
+// ─────────────────────────────────────────────────────────────
+
+// ⚠️ 절대 하면 안 되는 것: 둘을 동시에 사용
+// src/garden.rs   AND   src/garden/mod.rs → 컴파일 에러!
+// error: file for module `garden` found at both
+//        "src/garden.rs" and "src/garden/mod.rs"
+
+// Cargo.toml에 edition = "2021" 이면 2018+ 방식이 기본
+// mod.rs 방식은 여전히 지원되지만 권장하지 않음</code></pre></div>
+        <div class="tpane" id="mod1-t5"><pre><code class="language-rust">// #[path] 어트리뷰트 — 파일 위치 직접 지정
+// Rust Reference: "path 어트리뷰트로 외부 파일 모듈의
+//                  디렉토리와 파일을 직접 지정할 수 있다"
+
+// 기본 탐색 경로와 다른 위치의 파일을 모듈로 로드할 때 사용
+
+// src/lib.rs
+#[path = "custom_dir/my_module.rs"]
+mod my_module;  // src/custom_dir/my_module.rs 를 로드
+
+// 디렉토리 전체를 다른 이름으로 지정
+#[path = "thread_files"]
+mod thread {
+    // src/thread_files/ 디렉토리에서 하위 모듈을 찾음
+    #[path = "tls.rs"]
+    mod local_data;  // src/thread_files/tls.rs 를 로드
+}
+
+// 실전 사용 사례:
+// 1. 플랫폼별 구현 분리
+#[cfg(target_os = "windows")]
+#[path = "platform/windows.rs"]
+mod platform;
+
+#[cfg(target_os = "linux")]
+#[path = "platform/linux.rs"]
+mod platform;
+
+// 2. 레거시 프로젝트의 파일 구조가 Rust 관례와 다를 때
+#[path = "../../shared/utils.rs"]
+mod shared_utils;
+
+// 주의: #[path]는 상대 경로를 현재 소스 파일 위치 기준으로 해석</code></pre></div>
+        <div class="tpane" id="mod1-t6"><pre><code class="language-rust">// 모듈 중첩 — 모듈 안에 또 모듈
+// 모듈은 임의로 깊게 중첩 가능
+
+mod mathematics {
+    pub mod algebra {
+        pub mod linear {
+            pub fn solve_linear(a: f64, b: f64) -> f64 {
+                if a == 0.0 { panic!("계수 a는 0이 될 수 없음"); }
+                -b / a
+            }
+            pub fn dot_product(v1: &[f64], v2: &[f64]) -> f64 {
+                v1.iter().zip(v2.iter()).map(|(a, b)| a * b).sum()
+            }
+        }
+        pub mod quadratic {
+            pub fn discriminant(a: f64, b: f64, c: f64) -> f64 {
+                b * b - 4.0 * a * c
+            }
+            pub fn solve(a: f64, b: f64, c: f64) -> Option<(f64, f64)> {
+                let d = discriminant(a, b, c);
+                if d < 0.0 { return None; }
+                let sqrt_d = d.sqrt();
+                Some(((-b + sqrt_d) / (2.0 * a), (-b - sqrt_d) / (2.0 * a)))
+            }
+        }
+    }
+    pub mod calculus {
+        pub fn derivative(f: impl Fn(f64) -> f64, x: f64) -> f64 {
+            let h = 1e-8;
+            (f(x + h) - f(x - h)) / (2.0 * h)
+        }
+    }
+}
+
+fn main() {
+    // 절대경로
+    let x = crate::mathematics::algebra::linear::solve_linear(2.0, -4.0);
+    println!("2x - 4 = 0 → x = {}", x); // 2.0
+
+    // 이차방정식 풀기
+    if let Some((r1, r2)) = mathematics::algebra::quadratic::solve(1.0, -5.0, 6.0) {
+        println!("x² - 5x + 6 = 0 → x = {} or {}", r1, r2); // 3, 2
+    }
+
+    // 도함수 (수치 미분)
+    let f = |x: f64| x * x; // f(x) = x²
+    let df_at_3 = mathematics::calculus::derivative(f, 3.0);
+    println!("f'(3) ≈ {} (정확한 값: 6)", df_at_3);
+}</code></pre></div>
+      </div>
+    </div>
+
+    <div class="subsec">
+      <h3>🍽️ Rust Book 공식 예제 — 레스토랑</h3>
+      <p style="color:var(--tx2);font-size:14px;margin-bottom:12px">Rust Book Ch.7이 모듈을 설명하기 위해 사용하는 대표 예제. 레스토랑은 고객이 보는 <strong>front of house</strong>(홀)와 내부 <strong>back of house</strong>(주방)로 나뉩니다.</p>
+      <div class="tabs">
+        <div class="tbar">
+          <button class="tbtn on" data-g="rest" data-t="t1">기본 모듈 구조</button>
+          <button class="tbtn" data-g="rest" data-t="t2">struct pub (필드별 제어)</button>
+          <button class="tbtn" data-g="rest" data-t="t3">enum pub (전체 공개)</button>
+        </div>
+        <div class="tpane on" id="rest-t1"><pre><code class="language-rust">// src/lib.rs (Rust Book Listing 7-1)
+// 기본적으로 모든 모듈과 함수는 private
+mod front_of_house {
+    mod hosting {
+        fn add_to_waitlist() {}
+        fn seat_at_table() {}
+    }
+    mod serving {
+        fn take_order() {}
+        fn serve_order() {}
+        fn take_payment() {}
+    }
+}
+
+// 핵심 privacy 규칙 (Rust Book):
+// ① 자식 모듈의 항목은 기본적으로 parent에서 접근 불가 (private)
+// ② 자식 모듈은 ancestor의 항목에 접근 가능 (자신이 정의된 맥락을 알기 때문)
+// ③ 형제(sibling) 모듈끼리는 private 항목에 접근 불가
+
+// eat_at_restaurant 와 front_of_house 는 형제(sibling) —
+// front_of_house 가 private이어도 같은 레벨이라 참조 가능
+pub fn eat_at_restaurant() {
+    // front_of_house::hosting::add_to_waitlist(); // 에러! hosting이 private
+}
+
+// 모듈 트리:
+// crate
+//  └── front_of_house      (private)
+//      ├── hosting          (private)
+//      │   ├── add_to_waitlist
+//      │   └── seat_at_table
+//      └── serving          (private)
+//          ├── take_order
+//          ├── serve_order
+//          └── take_payment</code></pre></div>
+        <div class="tpane" id="rest-t2"><pre><code class="language-rust">// Rust Book Listing 7-9
+// struct: pub으로 선언해도 필드는 기본 private
+// 각 필드에 개별적으로 pub 지정 필요
+
+mod back_of_house {
+    pub struct Breakfast {
+        pub toast: String,           // pub: 외부에서 읽기/쓰기 가능
+        seasonal_fruit: String,      // private: 외부에서 직접 접근 불가
+    }
+
+    impl Breakfast {
+        // private 필드가 있으므로 반드시 공개 생성자 제공
+        // (외부에서 Breakfast { ... } 리터럴 생성 불가)
+        pub fn summer(toast: &str) -> Breakfast {
+            Breakfast {
+                toast: String::from(toast),
+                seasonal_fruit: String::from("peaches"),  // 내부에서만 설정
+            }
+        }
+        pub fn get_fruit(&self) -> &str {
+            &self.seasonal_fruit  // 메서드를 통해서만 읽기 허용
+        }
+    }
+}
+
+pub fn eat_at_restaurant() {
+    let mut meal = back_of_house::Breakfast::summer("Rye");
+    meal.toast = String::from("Wheat");          // OK: pub 필드
+    println!("I'd like {} toast please", meal.toast);
+    println!("오늘의 과일: {}", meal.get_fruit()); // OK: pub 메서드
+
+    // 에러! private 필드 직접 수정 불가
+    // meal.seasonal_fruit = String::from("blueberries");
+    // error[E0616]: field `seasonal_fruit` of struct `Breakfast` is private
+
+    // 에러! private 필드가 있는 struct는 리터럴 생성 불가
+    // let meal2 = back_of_house::Breakfast {
+    //     toast: String::from("sourdough"),
+    //     seasonal_fruit: String::from("mango"), // 에러!
+    // };
+}</code></pre></div>
+        <div class="tpane" id="rest-t3"><pre><code class="language-rust">// Rust Book Listing 7-10
+// enum: pub으로 선언하면 모든 variant가 자동으로 pub
+// 이유: 일부 variant만 비공개이면 enum을 사용하는 의미가 없기 때문
+
+mod back_of_house {
+    // struct와 달리 enum은 pub 하나면 모든 variant가 공개
+    pub enum Appetizer {
+        Soup,     // 자동으로 pub
+        Salad,    // 자동으로 pub
+    }
+
+    // 비교: struct는 개별적으로 pub 지정
+    pub struct MenuItem {
+        pub name: String,    // pub 명시
+        price: f64,          // private (명시하지 않으면 private)
+    }
+    impl MenuItem {
+        pub fn new(name: &str, price: f64) -> Self {
+            MenuItem { name: name.to_string(), price }
+        }
+        pub fn price(&self) -> f64 { self.price }
+    }
+}
+
+pub fn eat_at_restaurant() {
+    // enum variant는 자동으로 pub → 접근 가능
+    let order1 = back_of_house::Appetizer::Soup;
+    let order2 = back_of_house::Appetizer::Salad;
+
+    println!("주문: {}", match order1 {
+        back_of_house::Appetizer::Soup  => "수프",
+        back_of_house::Appetizer::Salad => "샐러드",
+    });
+
+    let item = back_of_house::MenuItem::new("파스타", 13500.0);
+    println!("{}: {}원", item.name, item.price()); // pub 필드/메서드만 접근
+    // item.price = 10000.0; // 에러! private 필드
+}</code></pre></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 3. 경로 & crate::                           -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="sec" id="path">
+    <div class="sec-lbl">섹션 3</div>
+    <h2>경로 (Paths) &amp; crate::</h2>
+    <p class="lead">경로는 모듈 트리 안의 항목을 가리키는 주소입니다. Rust Book은 두 가지 형태를 정의합니다: <strong>절대경로</strong>(crate root에서 시작)와 <strong>상대경로</strong>(현재 모듈에서 시작).</p>
+
+    <div class="note box">
+      <div class="box-t">📌 Rust Book 공식 — 경로의 두 형태</div>
+      <ul>
+        <li><strong>절대경로(Absolute path)</strong>: crate root부터 시작. 현재 crate 내 코드는 <code>crate</code> 키워드로 시작. 외부 crate는 crate 이름(예: <code>std</code>)으로 시작.</li>
+        <li><strong>상대경로(Relative path)</strong>: 현재 모듈에서 시작. <code>self</code>, <code>super</code>, 또는 현재 모듈의 식별자로 시작.</li>
+        <li>두 형태 모두 <code>::</code>으로 식별자를 연결.</li>
+      </ul>
+    </div>
+
+    <div class="subsec">
+      <h3>단계별로 이해하는 경로 — 컴파일 에러부터 해결까지</h3>
+      <p style="color:var(--tx2);font-size:14px;margin-bottom:12px">Rust Book의 핵심 교훈: <strong>pub mod로 모듈을 공개해도 그 안의 항목은 여전히 private</strong>입니다. 단계별로 컴파일 에러를 보며 이해합니다.</p>
+
+      <div class="tabs">
+        <div class="tbar">
+          <button class="tbtn on" data-g="path1" data-t="t1">1단계: 에러 — hosting private</button>
+          <button class="tbtn" data-g="path1" data-t="t2">2단계: 에러 — 함수 private</button>
+          <button class="tbtn" data-g="path1" data-t="t3">3단계: 성공</button>
+          <button class="tbtn" data-g="path1" data-t="t4">절대 vs 상대 경로 선택</button>
+          <button class="tbtn" data-g="path1" data-t="t5">경로 심화 예제</button>
+        </div>
+        <div class="tpane on" id="path1-t1"><pre><code class="language-rust">// Rust Book Listing 7-3, 7-4
+// 올바른 경로이지만 hosting이 private → 컴파일 에러
+
+mod front_of_house {
+    mod hosting {           // ← private!
+        fn add_to_waitlist() {}
+    }
+}
+
+pub fn eat_at_restaurant() {
+    crate::front_of_house::hosting::add_to_waitlist();   // 에러!
+    front_of_house::hosting::add_to_waitlist();          // 에러!
+}
+</code></pre>
+<div class="err-block">
+<div class="err-hd">$ cargo build</div>
+error[E0603]: module `hosting` is private
+ --> src/lib.rs:9:28
+  |
+9 |     crate::front_of_house::<span class="em">hosting</span>::add_to_waitlist();
+  |                            <span class="em">^^^^^^^</span>  --------------- function `add_to_waitlist` is not publicly re-exported
+  |                            |
+  |                            <span class="em">private module</span>
+  |
+<span class="note note">note: the module `hosting` is defined here</span>
+ --> src/lib.rs:2:5
+  |
+2 |     mod hosting {
+  |     ^^^^^^^^^^^
+</div></div>
+        <div class="tpane" id="path1-t2"><pre><code class="language-rust">// Rust Book Listing 7-5, 7-6
+// mod hosting 을 pub으로 만들었지만 함수는 여전히 private
+
+mod front_of_house {
+    pub mod hosting {       // pub 추가 — 모듈 공개
+        fn add_to_waitlist() {}  // ← 함수는 여전히 private!
+    }
+}
+
+pub fn eat_at_restaurant() {
+    crate::front_of_house::hosting::add_to_waitlist();  // 에러!
+}
+
+// Rust Book 핵심 설명:
+// "pub 키워드를 모듈 앞에 붙이면 조상 모듈에서 그 모듈을 참조할 수 있게 됩니다.
+//  그러나 모듈의 내용까지 공개되는 것은 아닙니다.
+//  모듈은 컨테이너이므로, 모듈만 공개해서는 의미가 없습니다.
+//  내부 항목 중 하나 이상을 pub으로 지정해야 합니다."
+</code></pre>
+<div class="err-block">
+<div class="err-hd">$ cargo build</div>
+error[E0603]: function `add_to_waitlist` is private
+  --> src/lib.rs:10:37
+   |
+10 |     crate::front_of_house::hosting::<span class="em">add_to_waitlist</span>();
+   |                                     <span class="em">^^^^^^^^^^^^^^^</span> private function
+   |
+<span class="note note">note: the function `add_to_waitlist` is defined here</span>
+  --> src/lib.rs:3:9
+   |
+ 3 |         fn add_to_waitlist() {}
+   |         ^^^^^^^^^^^^^^^^^^^^
+</div></div>
+        <div class="tpane" id="path1-t3"><pre><code class="language-rust">// Rust Book Listing 7-7 — 올바른 코드
+// mod hosting + fn add_to_waitlist 둘 다 pub
+
+mod front_of_house {
+    pub mod hosting {           // pub: 모듈 공개
+        pub fn add_to_waitlist() {}  // pub: 함수도 공개
+        fn seat_at_table() {}        // private 유지
+    }
+}
+
+pub fn eat_at_restaurant() {
+    // 절대경로: crate root부터 시작
+    // "crate는 파일시스템의 /에 해당" (Rust Book)
+    crate::front_of_house::hosting::add_to_waitlist();
+
+    // 상대경로: 현재 모듈(crate root)에서 시작
+    // eat_at_restaurant 와 front_of_house 는 같은 레벨(형제)
+    front_of_house::hosting::add_to_waitlist();
+}
+
+// 왜 형제 관계인 front_of_house 에 접근 가능한가?
+// front_of_house 는 private이지만,
+// eat_at_restaurant 와 같은 모듈(crate root)에 정의되어 있으므로
+// 형제로서 참조 가능.
+// Rust Book: "식별자들은 같은 모듈에 정의된 항목을 참조할 수 있다"</code></pre></div>
+        <div class="tpane" id="path1-t4"><pre><code class="language-rust">// 절대경로 vs 상대경로 — 언제 어떤 것을 사용할까?
+// Rust Book: "일반적으로 절대경로를 선호합니다.
+//             코드 정의와 항목 호출을 독립적으로 이동할 가능성이 더 높기 때문입니다."
+
+mod front_of_house {
+    pub mod hosting {
+        pub fn add_to_waitlist() {}
+    }
+}
+
+// 시나리오: front_of_house 와 eat_at_restaurant 를
+//           customer_experience 모듈로 함께 이동한다면?
+
+// 절대경로: crate::front_of_house 경로는 변경 필요 (모듈이 이동했으므로)
+// 상대경로: front_of_house::hosting::add_to_waitlist() 는 여전히 유효!
+//           (두 모듈이 여전히 형제 관계)
+
+// 반대로 eat_at_restaurant 만 dining 모듈로 이동한다면?
+// 절대경로: 변경 불필요 (crate:: 는 항상 같은 시작점)
+// 상대경로: 변경 필요 (현재 모듈이 바뀌었으므로 front_of_house 를 찾지 못함)
+
+// 실전 가이드라인:
+// crate::  → 정의와 호출이 독립적으로 이동할 때 (라이브러리 내 참조)
+// 상대경로 → 정의와 호출이 항상 함께 이동할 때 (같은 기능 그룹)
+// super::  → 부모-자식이 함께 이동할 가능성이 높을 때</code></pre></div>
+        <div class="tpane" id="path1-t5"><pre><code class="language-rust">// crate:: 심화 예제 — 복잡한 모듈 구조에서의 절대경로
+
+mod network {
+    pub mod http {
+        pub mod request {
+            pub struct Request {
+                pub method: String,
+                pub path: String,
+                pub body: Option<String>,
+            }
+            impl Request {
+                pub fn get(path: &str) -> Self {
+                    Request { method: "GET".into(), path: path.into(), body: None }
+                }
+                pub fn post(path: &str, body: &str) -> Self {
+                    Request { method: "POST".into(), path: path.into(), body: Some(body.into()) }
+                }
+            }
+        }
+        pub mod response {
+            pub struct Response {
+                pub status: u16,
+                pub body: String,
+            }
+            impl Response {
+                pub fn ok(body: &str) -> Self {
+                    Response { status: 200, body: body.into() }
+                }
+                pub fn not_found() -> Self {
+                    Response { status: 404, body: "Not Found".into() }
+                }
+            }
+        }
+        pub mod client {
+            use crate::network::http::request::Request;   // crate:: 절대경로
+            use crate::network::http::response::Response; // crate:: 절대경로
+
+            pub fn send(req: &Request) -> Response {
+                println!("{} {}", req.method, req.path);
+                if req.path.starts_with("/api") {
+                    Response::ok(r#"{"status":"ok"}"#)
+                } else {
+                    Response::not_found()
+                }
+            }
+        }
+    }
+}
+
+fn main() {
+    let req = crate::network::http::request::Request::get("/api/users");
+    let res = crate::network::http::client::send(&req);
+    println!("응답: {} - {}", res.status, res.body);
+}</code></pre></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 4. super::                                   -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="sec" id="super">
+    <div class="sec-lbl">섹션 4</div>
+    <h2>super:: — 부모 모듈 경로</h2>
+    <p class="lead">Rust Book: "<code>super</code>를 사용하면 현재 모듈이 아닌 <strong>부모 모듈</strong>에서 시작하는 상대경로를 만들 수 있습니다. 파일시스템의 <code>..</code> 문법과 같습니다."</p>
+
+    <div class="note box">
+      <div class="box-t">📌 Rust Book — super:: 를 쓰는 이유</div>
+      <p>"<code>super</code>를 사용하면 부모 모듈에 있다는 것을 알고 있는 항목을 참조할 수 있습니다. 이렇게 하면 모듈이 부모와 밀접하게 연관되어 있을 때, 나중에 모듈 트리를 재구성할 경우 업데이트해야 할 코드 위치가 줄어듭니다."</p>
+    </div>
+
+    <div class="subsec">
+      <h3>Rust Book 공식 예제 + 심화</h3>
+      <div class="tabs">
+        <div class="tbar">
+          <button class="tbtn on" data-g="super1" data-t="t1">공식 예제 (Listing 7-8)</button>
+          <button class="tbtn" data-g="super1" data-t="t2">super:: 다단계</button>
+          <button class="tbtn" data-g="super1" data-t="t3">super:: vs crate:: 비교</button>
+          <button class="tbtn" data-g="super1" data-t="t4">테스트 관용구</button>
+          <button class="tbtn" data-g="super1" data-t="t5">실전 심화 예제</button>
+        </div>
+        <div class="tpane on" id="super1-t1"><pre><code class="language-rust">// Rust Book Listing 7-8
+// super:: 로 부모 모듈의 함수 호출
+
+fn deliver_order() {
+    println!("배달 완료");
+}
+
+mod back_of_house {
+    fn cook_order() {
+        println!("요리 완료");
+    }
+
+    pub fn fix_incorrect_order() {
+        cook_order();            // 같은 모듈 — super:: 불필요
+        super::deliver_order();  // 부모(crate root)의 함수 호출
+    }
+}
+
+// Rust Book 설명:
+// "fix_incorrect_order 는 back_of_house 모듈에 있으므로,
+//  super:: 를 사용해 back_of_house 의 부모인 crate root 로 이동합니다.
+//  거기서 deliver_order 를 찾습니다."
+//
+// back_of_house 와 deliver_order 는 함께 이동할 가능성이 높으므로
+// super:: 를 쓰면 나중에 수정할 곳이 줄어듭니다.
+
+fn main() {
+    back_of_house::fix_incorrect_order();
+}</code></pre></div>
+        <div class="tpane" id="super1-t2"><pre><code class="language-rust">// super:: 를 여러 번 연속 사용
+// Rust Reference: "self::super::super:: 형태도 가능"
+
+mod a {
+    pub fn foo() { println!("a::foo"); }
+
+    pub mod b {
+        pub fn foo() { println!("a::b::foo"); }
+
+        pub mod c {
+            pub fn foo() { println!("a::b::c::foo"); }
+
+            pub fn call_ancestors() {
+                foo();                       // 현재 모듈(c): a::b::c::foo
+                super::foo();                // 부모(b): a::b::foo
+                super::super::foo();         // 조부모(a): a::foo
+
+                // self::super:: 도 가능 (Rust Reference)
+                self::super::foo();          // 부모(b): a::b::foo
+                self::super::super::foo();   // 조부모(a): a::foo
+
+                // 단, 이보다는 crate:: 절대경로가 더 명확
+                crate::a::foo();             // 권장: 명확한 절대경로
+            }
+        }
+    }
+}
+
+fn main() {
+    a::b::c::call_ancestors();
+    // 출력:
+    // a::b::c::foo
+    // a::b::foo
+    // a::foo
+    // a::b::foo
+    // a::foo
+    // a::foo
+
+    // 주의: super:: 를 너무 많이 연속 사용하면 가독성이 떨어짐
+    // 3단계 이상이면 crate:: 절대경로 권장
+}</code></pre></div>
+        <div class="tpane" id="super1-t3"><pre><code class="language-rust">// super:: vs crate:: — 실질적 차이
+
+mod config {
+    pub const VERSION: &str = "1.0.0";
+    pub const MAX_CONNECTIONS: u32 = 100;
+
+    pub mod database {
+        pub fn connect() {
+            // super:: — database 와 config 가 함께 이동할 것 같을 때
+            let ver = super::VERSION;
+            let max = super::MAX_CONNECTIONS;
+            println!("DB v{} 연결 (최대 {}개)", ver, max);
+        }
+
+        pub fn connect_abs() {
+            // crate:: — config 가 독립적으로 이동할 수도 있을 때
+            let ver = crate::config::VERSION;
+            let max = crate::config::MAX_CONNECTIONS;
+            println!("DB v{} 연결 (최대 {}개)", ver, max);
+        }
+    }
+}
+
+// super:: 선택 기준:
+// - database 모듈과 config 모듈이 항상 함께 이동할 것으로 예상
+// - 부모-자식 관계가 밀접하게 결합되어 있음
+// - 상대적으로 짧고 의도가 명확
+
+// crate:: 선택 기준 (Rust Book 권장):
+// - 코드 정의와 호출이 독립적으로 이동할 가능성
+// - 다른 개발자가 읽을 때 경로 추적이 쉬움
+// - 리팩토링 시 경로 변경 최소화
+
+fn main() {
+    config::database::connect();
+    config::database::connect_abs();
+}</code></pre></div>
+        <div class="tpane" id="super1-t4"><pre><code class="language-rust">// 테스트에서의 super:: — Rust 관용구
+// use super::* 는 Rust 테스트 모듈의 표준 관용구
+
+fn add(a: i32, b: i32) -> i32 { a + b }
+fn subtract(a: i32, b: i32) -> i32 { a - b }
+fn multiply(a: i32, b: i32) -> i32 { a * b }
+
+fn is_even(n: i32) -> bool { n % 2 == 0 }
+
+pub struct Calculator {
+    pub history: Vec<String>,
+}
+impl Calculator {
+    pub fn new() -> Self { Calculator { history: Vec::new() } }
+    pub fn add(&mut self, a: i32, b: i32) -> i32 {
+        let result = a + b;
+        self.history.push(format!("{} + {} = {}", a, b, result));
+        result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;  // ← 관용구! 부모 모듈의 모든 pub 항목 가져옴
+                   // super:: = 부모(이 파일의 최상위)
+                   // * = 모든 pub 항목 (함수, struct, 상수 등)
+
+    #[test]
+    fn test_add() {
+        assert_eq!(add(2, 3), 5);
+        assert_eq!(add(-1, 1), 0);
+        assert_eq!(add(0, 0), 0);
+    }
+
+    #[test]
+    fn test_subtract() {
+        assert_eq!(subtract(10, 3), 7);
+        assert_eq!(subtract(0, 5), -5);
+    }
+
+    #[test]
+    fn test_is_even() {
+        assert!(is_even(4));
+        assert!(!is_even(3));
+        assert!(is_even(0));
+        assert!(is_even(-2));
+    }
+
+    #[test]
+    fn test_calculator() {
+        let mut calc = Calculator::new(); // use super::* 덕분에 직접 사용
+        assert_eq!(calc.add(5, 3), 8);
+        assert_eq!(calc.history.len(), 1);
+        assert_eq!(calc.history[0], "5 + 3 = 8");
+    }
+}</code></pre></div>
+        <div class="tpane" id="super1-t5"><pre><code class="language-rust">// 실전: 오류 처리 모듈에서의 super::
+// 자식 모듈이 부모의 공통 오류 타입을 참조하는 패턴
+
+#[derive(Debug)]
+pub enum AppError {
+    NotFound(String),
+    Unauthorized(String),
+    Internal(String),
+}
+
+impl std::fmt::Display for AppError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            AppError::NotFound(msg)     => write!(f, "찾을 수 없음: {}", msg),
+            AppError::Unauthorized(msg) => write!(f, "인증 실패: {}", msg),
+            AppError::Internal(msg)     => write!(f, "내부 오류: {}", msg),
+        }
+    }
+}
+
+mod user_service {
+    // super:: 로 부모의 AppError 참조
+    pub fn find_user(id: u32) -> Result<String, super::AppError> {
+        if id == 0 {
+            Err(super::AppError::NotFound(format!("유저 ID {} 없음", id)))
+        } else {
+            Ok(format!("유저 #{}", id))
+        }
+    }
+
+    pub mod auth {
+        // super::super:: 로 조부모(crate root)의 AppError 참조
+        pub fn verify_token(token: &str) -> Result<(), super::super::AppError> {
+            if token.is_empty() {
+                Err(super::super::AppError::Unauthorized("토큰 없음".into()))
+            } else {
+                Ok(())
+            }
+        }
+    }
+}
+
+fn main() {
+    match user_service::find_user(0) {
+        Ok(user)  => println!("성공: {}", user),
+        Err(e)    => println!("오류: {}", e),
+    }
+    match user_service::auth::verify_token("") {
+        Ok(())  => println!("인증 성공"),
+        Err(e)  => println!("인증 오류: {}", e),
+    }
+}</code></pre></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 5. self::                                    -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="sec" id="self">
+    <div class="sec-lbl">섹션 5</div>
+    <h2>self:: — 현재 모듈</h2>
+    <p class="lead">Rust Reference: "<code>self</code>로 시작하는 경로는 현재 모듈에서 해석을 시작합니다." 대부분 생략 가능하지만, <code>use</code> 문에서 모듈 자체를 가져올 때 의미가 있습니다.</p>
+
+    <div class="tabs">
+      <div class="tbar">
+        <button class="tbtn on" data-g="self1" data-t="t1">기본 self::</button>
+        <button class="tbtn" data-g="self1" data-t="t2">use 안에서의 self</button>
+        <button class="tbtn" data-g="self1" data-t="t3">self::super:: 조합</button>
+        <button class="tbtn" data-g="self1" data-t="t4">self 가 필요한 실전 사례</button>
+      </div>
+      <div class="tpane on" id="self1-t1"><pre><code class="language-rust">// self:: — 현재 모듈 자신을 명시적으로 가리킴
+// Rust Reference Listing:
+
+fn foo() { println!("top-level foo"); }
+
+fn bar() {
+    self::foo();  // self:: = 현재 모듈(crate root)의 foo
+    foo();        // self:: 생략 가능 — 동일한 결과
+}
+
+mod my_module {
+    pub fn greet() { println!("안녕하세요!"); }
+
+    pub fn greet_twice() {
+        self::greet(); // my_module::greet() 와 동일
+        greet();       // self:: 생략 가능
+    }
+
+    fn helper() {
+        // self:: 를 명시하면 "이것은 외부에서 가져온 것이 아니라
+        // 현재 모듈의 항목임"을 명확히 표현
+        self::greet();
+    }
+}
+
+// self:: 가 유용한 경우:
+// 1. 코드를 읽는 사람에게 "이것은 현재 모듈의 항목"임을 명시할 때
+// 2. use 문에서 특수한 용도 (다음 탭 참고)
+// 3. Rust Reference: self::super:: 조합으로 조상 참조
+
+fn main() {
+    bar();
+    my_module::greet_twice();
+}</code></pre></div>
+      <div class="tpane" id="self1-t2"><pre><code class="language-rust">// use 안에서의 self — 모듈 자체를 가져올 때 핵심적으로 사용
+// Rust Book Listing 7-19, 7-20
+
+// ❌ 두 개의 분리된 use — 중복
+use std::io;
+use std::io::Write;
+
+// ✅ self 로 합치기 (Rust Book Listing 7-20)
+// self = std::io 자체, Write = std::io::Write
+use std::io::{self, Write};
+// → io::stdin(), io::stdout() 과 Write 트레이트 둘 다 사용 가능
+
+// 더 많은 예제
+use std::collections::{self, HashMap, HashSet};
+// self = std::collections 모듈 자체 → collections::BTreeMap 처럼 사용
+// HashMap = std::collections::HashMap
+// HashSet = std::collections::HashSet
+
+// 모듈과 그 안의 항목을 함께 가져올 때
+mod shapes {
+    pub mod circle {
+        pub const PI: f64 = std::f64::consts::PI;
+        pub struct Circle { pub radius: f64 }
+        impl Circle {
+            pub fn area(&self) -> f64 { PI * self.radius * self.radius }
+            pub fn perimeter(&self) -> f64 { 2.0 * PI * self.radius }
+        }
+    }
+}
+
+// circle 모듈 자체 + PI 상수 함께 가져오기
+use shapes::circle::{self, Circle, PI};
+
+fn main() {
+    let c = Circle { radius: 5.0 };
+    println!("넓이: {:.2}", c.area());
+    println!("둘레: {:.2}", c.perimeter());
+    println!("PI = {:.5}", PI);
+
+    // self 덕분에 circle 모듈도 직접 사용 가능
+    let c2 = circle::Circle { radius: 3.0 };
+    println!("c2 넓이: {:.2}", c2.area());
+}</code></pre></div>
+      <div class="tpane" id="self1-t3"><pre><code class="language-rust">// Rust Reference: self::super:: 조합
+// self 뒤에 super 를 연속으로 사용 가능
+
+mod a {
+    pub fn foo() { println!("a::foo"); }
+
+    pub mod b {
+        pub mod c {
+            pub fn demo() {
+                // super:: = c의 부모(b)
+                super::super::foo();      // a::foo
+
+                // self::super:: = super:: 와 동일
+                self::super::super::foo(); // a::foo
+
+                // Rust Reference 공식 예시:
+                // mod a { fn foo() {}
+                //   mod b { mod c {
+                //     fn foo() {
+                //       super::super::foo();      // a::foo
+                //       self::super::super::foo(); // a::foo
+                //     }
+                //   } } }
+            }
+        }
+    }
+}
+
+fn main() {
+    a::b::c::demo();
+}
+
+// 실용적 팁:
+// self::super:: 는 super:: 와 기능적으로 동일
+// 가독성을 위해 super:: 를 직접 쓰는 것이 더 명확
+// self::super:: 는 주로 매크로 생성 코드에서 나타남</code></pre></div>
+      <div class="tpane" id="self1-t4"><pre><code class="language-rust">// self 가 실제로 필요한 실전 사례들
+
+// 사례 1: 트레이트 메서드 안에서 Self 타입 (소문자 self와 구분)
+// (Self는 현재 타입, self는 현재 모듈 — 다른 개념!)
+trait Builder {
+    fn new() -> Self;
+    fn build(self) -> String;  // self = 인스턴스 자신 (소문자)
+}
+
+// 사례 2: use 에서 모듈과 항목을 동시에 (가장 실용적)
+mod config {
+    pub const DEFAULT_TIMEOUT: u64 = 30;
+    pub const DEFAULT_RETRIES: u32 = 3;
+
+    pub struct Config {
+        pub timeout: u64,
+        pub retries: u32,
+    }
+    impl Config {
+        pub fn default() -> Self {
+            Config { timeout: DEFAULT_TIMEOUT, retries: DEFAULT_RETRIES }
+        }
+    }
+}
+
+// config 모듈 자체 + Config 타입 + 상수들 한번에
+use config::{self, Config, DEFAULT_TIMEOUT, DEFAULT_RETRIES};
+
+fn setup() -> Config {
+    println!("기본 타임아웃: {}s", DEFAULT_TIMEOUT);
+    println!("기본 재시도: {}회", DEFAULT_RETRIES);
+
+    // self 덕분에 config 모듈도 직접 사용
+    let _ = config::Config::default();
+
+    Config::default() // Config 직접 사용
+}
+
+fn main() {
+    let cfg = setup();
+    println!("설정 - 타임아웃: {}s, 재시도: {}회",
+        cfg.timeout, cfg.retries);
+}</code></pre></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 6. use                                       -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="sec" id="use">
+    <div class="sec-lbl">섹션 6</div>
+    <h2>use — 경로 단축키</h2>
+    <p class="lead">Rust Book: "use 와 경로를 스코프에 추가하는 것은 파일시스템에서 심볼릭 링크를 만드는 것과 비슷합니다." 단, use는 선언된 스코프에서만 유효합니다.</p>
+
+    <div class="subsec">
+      <h3>use 스코프 규칙 — 중요하고 자주 놓치는 부분</h3>
+      <div class="warn box">
+        <div class="box-t">⚠️ Rust Book Listing 7-12 — use의 스코프 제한</div>
+        <p>use는 선언된 스코프 안에서만 유효합니다. 자식 모듈에서 부모의 use를 사용하면 컴파일 에러가 발생합니다.</p>
+      </div>
+
+      <div class="tabs">
+        <div class="tbar">
+          <button class="tbtn on" data-g="use1" data-t="t1">스코프 제한 (에러)</button>
+          <button class="tbtn" data-g="use1" data-t="t2">관용적 use 패턴</button>
+          <button class="tbtn" data-g="use1" data-t="t3">as — 별명</button>
+          <button class="tbtn" data-g="use1" data-t="t4">중첩 경로 {}</button>
+          <button class="tbtn" data-g="use1" data-t="t5">glob *</button>
+          <button class="tbtn" data-g="use1" data-t="t6">use 심화 예제</button>
+        </div>
+        <div class="tpane on" id="use1-t1"><pre><code class="language-rust">// Rust Book Listing 7-12
+// use 는 선언된 스코프에서만 유효
+
+mod front_of_house {
+    pub mod hosting {
+        pub fn add_to_waitlist() {}
+    }
+}
+
+use crate::front_of_house::hosting;  // crate root 스코프에 가져옴
+
+mod customer {
+    pub fn eat_at_restaurant() {
+        // 에러! use 는 crate root 스코프에 선언됐지만
+        // 이 함수는 customer 모듈 스코프에 있음
+        hosting::add_to_waitlist();
+    }
+}
+</code></pre>
+<div class="err-block">
+<div class="err-hd">$ cargo build</div>
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `hosting`
+  --> src/lib.rs:11:9
+   |
+11 |         <span class="em">hosting</span>::add_to_waitlist();
+   |         <span class="em">^^^^^^^</span> use of unresolved module or unlinked crate `hosting`
+   |
+help: consider importing this module through its public re-export
+   |
+10 +     use crate::hosting;
+   |
+warning: unused import: `crate::front_of_house::hosting`
+</div>
+<pre style="margin-top:12px"><code class="language-rust">// ✅ 해결 방법 1: customer 모듈 안에서 use 선언
+mod customer {
+    use crate::front_of_house::hosting;  // customer 스코프에 선언
+
+    pub fn eat_at_restaurant() {
+        hosting::add_to_waitlist();  // OK
+    }
+}
+
+// ✅ 해결 방법 2: super:: 로 부모의 항목 참조
+mod customer {
+    pub fn eat_at_restaurant() {
+        super::hosting::add_to_waitlist();  // OK: 부모의 hosting
+    }
+}</code></pre></div>
+        <div class="tpane" id="use1-t2"><pre><code class="language-rust">// 관용적(idiomatic) use 패턴 — Rust Book 권장 방식
+
+// ✅ 관용적: 함수는 부모 모듈까지만 가져오기
+// → "이 함수가 로컬에 정의된 것이 아님"을 명확히 함
+use crate::front_of_house::hosting;
+pub fn eat_at_restaurant() {
+    hosting::add_to_waitlist(); // hosting 이 어디서 왔는지 명확
+}
+
+// ❌ 비관용적: 함수 자체를 직접 가져오기
+// → 함수가 어디서 왔는지 불명확
+use crate::front_of_house::hosting::add_to_waitlist;
+pub fn eat_at_restaurant2() {
+    add_to_waitlist(); // 로컬 함수처럼 보임 → 가독성 떨어짐
+}
+
+// ✅ 관용적: struct, enum은 전체 경로로 직접 가져오기
+// → 이것이 Rust 커뮤니티 관례
+use std::collections::HashMap;
+fn use_map() {
+    let mut map = HashMap::new(); // 관용적
+    map.insert("key", "value");
+}
+
+// ❌ 비관용적: struct를 부모 모듈로만 가져오기
+use std::collections;
+fn use_map2() {
+    let mut map = collections::HashMap::new(); // 장황하고 불필요
+    map.insert("key", "value");
+}
+
+// 예외: 같은 이름의 타입이 여러 모듈에 있을 때
+// → 부모 모듈로 가져와서 구분
+use std::fmt;
+use std::io;
+fn f1() -> fmt::Result { Ok(()) }    // fmt::Result
+fn f2() -> io::Result<()> { Ok(()) } // io::Result</code></pre></div>
+        <div class="tpane" id="use1-t3"><pre><code class="language-rust">// as — 이름 충돌 해결 또는 짧은 별명 (Rust Book Listing 7-15, 7-16)
+
+// 방법 1: 부모 모듈로 구분 (Rust Book Listing 7-15)
+use std::fmt;
+use std::io;
+fn function1() -> fmt::Result { Ok(()) }
+fn function2() -> io::Result<()> { Ok(()) }
+
+// 방법 2: as 로 별명 붙이기 (Rust Book Listing 7-16)
+use std::fmt::Result;
+use std::io::Result as IoResult;  // as로 충돌 해결
+fn function3() -> Result { Ok(()) }
+fn function4() -> IoResult<()> { Ok(()) }
+
+// 두 방법 모두 관용적 (Rust Book: "선택은 여러분에게")
+
+// as 를 활용한 더 많은 예시
+use std::collections::HashMap as Map;
+use std::collections::HashSet as Set;
+use std::collections::BTreeMap as OrderedMap;
+
+fn collections_demo() {
+    let mut m: Map<String, i32> = Map::new();
+    let mut s: Set<i32> = Set::new();
+    let mut om: OrderedMap<String, Vec<i32>> = OrderedMap::new();
+
+    m.insert("one".into(), 1);
+    s.insert(42);
+    om.insert("nums".into(), vec![1, 2, 3]);
+
+    println!("{:?}", m);
+    println!("{:?}", s);
+    println!("{:?}", om);
+}
+
+// 외부 크레이트 이름 충돌 해결
+// use some_crate::Error as SomeCrateError;
+// use another_crate::Error as AnotherError;
+// use std::io::Error as IoError;</code></pre></div>
+        <div class="tpane" id="use1-t4"><pre><code class="language-rust">// 중첩 경로 {} — use 목록을 줄이는 방법 (Rust Book Listing 7-18, 7-19, 7-20)
+
+// ❌ 반복적인 use
+use std::cmp::Ordering;
+use std::io;
+
+// ✅ 중첩 경로로 합치기 (Rust Book Listing 7-18)
+use std::{cmp::Ordering, io};
+
+// ❌ 두 개의 연관된 use
+use std::io;
+use std::io::Write;
+
+// ✅ self 를 활용한 합치기 (Rust Book Listing 7-20)
+// self = std::io 자체 (모듈), Write = std::io::Write
+use std::io::{self, Write};
+
+// 더 복잡한 중첩 경로
+use std::collections::{
+    HashMap,
+    HashSet,
+    BTreeMap,
+    VecDeque,
+    LinkedList,
+};
+
+// 중첩 경로는 임의 깊이에서 사용 가능
+use crate::front_of_house::{
+    hosting::{self, add_to_waitlist},  // hosting 모듈 자체 + 함수
+    serving,
+};
+
+mod front_of_house {
+    pub mod hosting {
+        pub fn add_to_waitlist() { println!("대기 추가"); }
+        pub fn seat_at_table() { println!("착석"); }
+    }
+    pub mod serving {
+        pub fn take_order() { println!("주문 받음"); }
+        pub fn serve_order() { println!("서빙"); }
+    }
+}
+
+fn demo() {
+    add_to_waitlist();          // use 로 직접 가져온 함수
+    hosting::seat_at_table();   // hosting 모듈을 통한 접근 (self 덕분)
+    serving::take_order();
+    serving::serve_order();
+}</code></pre></div>
+        <div class="tpane" id="use1-t5"><pre><code class="language-rust">// glob * — 모든 pub 항목 한번에 가져오기
+// Rust Book: "glob 연산자를 사용할 때는 주의하세요!
+//             어떤 이름이 어디서 왔는지 알기 어려워집니다."
+
+// glob의 위험성:
+use std::collections::*;
+// 이제 HashMap, HashSet, BTreeMap, VecDeque, LinkedList,
+// BTreeSet, BinaryHeap... 전부 현재 스코프에 들어옴
+// → 나중에 std::collections 에 새 타입이 추가되면
+//   내 코드의 타입 이름과 충돌할 수 있음!
+
+// ✅ glob 을 안전하게 쓰는 경우 1: 테스트 모듈
+// Rust Book: "glob 은 테스트 시 tests 모듈로 모든 것을 가져올 때 자주 씀"
+#[cfg(test)]
+mod tests {
+    use super::*;  // 부모 모듈의 모든 pub 항목 — 테스트 관용구
+    // 이것이 사실상 유일하게 권장되는 glob 사용
+
+    #[test]
+    fn test_something() { assert_eq!(2 + 2, 4); }
+}
+
+// ✅ glob 을 안전하게 쓰는 경우 2: prelude 패턴
+// 라이브러리가 의도적으로 제공하는 prelude 모듈
+// use tokio::prelude::*;      // tokio 라이브러리 prelude
+// use diesel::prelude::*;     // diesel ORM prelude
+// use std::prelude::rust_2021::*; // Rust가 자동으로 삽입하는 prelude
+
+// ❌ 일반 코드에서는 glob 을 피해야 함
+// - 어떤 이름이 어디서 왔는지 불명확
+// - 의존성 업데이트 시 이름 충돌 위험
+// - IDE의 자동완성/go-to-definition 기능 방해</code></pre></div>
+        <div class="tpane" id="use1-t6"><pre><code class="language-rust">// use 심화 — 다양한 패턴 종합
+
+// 1. 함수 안에서의 use (함수 스코프에서만 유효)
+fn process_data(data: &str) -> String {
+    use std::collections::HashMap;  // 이 함수 안에서만 유효
+    let mut counts: HashMap<char, u32> = HashMap::new();
+    for ch in data.chars() {
+        *counts.entry(ch).or_insert(0) += 1;
+    }
+    format!("{:?}", counts)
+}
+
+// 2. 블록 안에서의 use
+fn block_scope() {
+    let result = {
+        use std::collections::HashSet;  // 이 블록 안에서만 유효
+        let mut s: HashSet<i32> = HashSet::new();
+        s.insert(1); s.insert(2); s.insert(3);
+        s.len()
+    };
+    println!("고유 원소 수: {}", result);
+    // HashSet 은 여기서 더 이상 사용 불가
+}
+
+// 3. 트레이트 메서드 사용 시 트레이트를 use 해야 함
+fn use_trait_method() {
+    use std::io::Write;  // Write 트레이트를 가져와야 write! 매크로 사용 가능
+    let mut output = Vec::new();
+    write!(output, "Hello, {}!", "world").unwrap();
+    println!("{}", String::from_utf8(output).unwrap());
+}
+
+// 4. 여러 크레이트에서 같은 이름 가져오기
+// use serde::Serialize;       // serde의 Serialize
+// use custom_lib::Serialize as CustomSerialize;  // as로 구분
+
+// 5. 재수출된(re-exported) 항목을 use 로 가져오기
+// 표준 라이브러리의 pub use 예시:
+use std::collections::HashMap;  // 실제 경로는 std::collections::hash_map::HashMap
+                                 // pub use 로 재공개된 경로를 사용
+
+fn main() {
+    println!("{}", process_data("hello world"));
+    block_scope();
+    use_trait_method();
+    let mut map = HashMap::new();
+    map.insert(1, "one");
+    println!("{:?}", map);
+}</code></pre></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 7. pub use                                   -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="sec" id="pubuse">
+    <div class="sec-lbl">섹션 7</div>
+    <h2>pub use — 재공개 (Re-exporting)</h2>
+    <p class="lead">Rust Book: "use 로 이름을 스코프에 가져오면 그 이름은 그 스코프에서 private입니다. <code>pub use</code>를 쓰면 외부 코드도 그 이름을 마치 그 스코프에 정의된 것처럼 사용할 수 있습니다. 이를 <strong>재공개(re-exporting)</strong>라 합니다."</p>
+
+    <div class="note box">
+      <div class="box-t">📌 Rust Book — pub use 가 필요한 이유</div>
+      <p>"재공개는 코드의 내부 구조와 해당 코드를 사용하는 프로그래머가 도메인에 대해 생각하는 방식이 다를 때 유용합니다. 레스토랑 예시에서, 레스토랑을 운영하는 사람은 'front of house'와 'back of house'를 생각하지만, 레스토랑을 방문하는 고객은 그런 용어로 생각하지 않을 것입니다."</p>
+    </div>
+
+    <div class="subsec">
+      <h3>Rust Book 공식 예제 (Listing 7-17) + 심화</h3>
+      <div class="tabs">
+        <div class="tbar">
+          <button class="tbtn on" data-g="pu1" data-t="t1">공식 예제 (Listing 7-17)</button>
+          <button class="tbtn" data-g="pu1" data-t="t2">art 크레이트 예제</button>
+          <button class="tbtn" data-g="pu1" data-t="t3">before/after 비교</button>
+          <button class="tbtn" data-g="pu1" data-t="t4">라이브러리 API 설계</button>
+          <button class="tbtn" data-g="pu1" data-t="t5">prelude 패턴</button>
+          <button class="tbtn" data-g="pu1" data-t="t6">std 실제 사례</button>
+        </div>
+        <div class="tpane on" id="pu1-t1"><pre><code class="language-rust">// Rust Book Listing 7-17 — pub use 기본
+
+mod front_of_house {
+    pub mod hosting {
+        pub fn add_to_waitlist() {
+            println!("대기 목록 추가");
+        }
+    }
+}
+
+// pub use: hosting 모듈을 crate root에서 재공개
+pub use crate::front_of_house::hosting;
+
+pub fn eat_at_restaurant() {
+    hosting::add_to_waitlist();
+}
+
+// pub use 전:
+// 외부 코드가 add_to_waitlist 를 호출하려면:
+//   restaurant::front_of_house::hosting::add_to_waitlist()
+//   (front_of_house 도 pub 이어야 함)
+
+// pub use 후:
+// 외부 코드가 더 짧은 경로로 호출 가능:
+//   restaurant::hosting::add_to_waitlist()
+
+// Rust Book 설명:
+// "이제 pub use 가 hosting 모듈을 루트 모듈에서 재공개했으므로,
+//  외부 코드는 restaurant::hosting::add_to_waitlist() 경로를 사용할 수 있습니다."</code></pre></div>
+        <div class="tpane" id="pu1-t2"><pre><code class="language-rust">// Rust Book Ch.14 — art 크레이트 예제 (pub use 실전)
+// "재공개로 편리한 공개 API 만들기"
+
+// [src/lib.rs] — pub use 없는 버전
+pub mod kinds {
+    pub enum PrimaryColor { Red, Yellow, Blue }
+    pub enum SecondaryColor { Orange, Green, Purple }
+}
+pub mod utils {
+    use crate::kinds::*;
+    pub fn mix(c1: PrimaryColor, c2: PrimaryColor) -> SecondaryColor {
+        // 단순화된 예시
+        match (c1, c2) {
+            (PrimaryColor::Red, PrimaryColor::Yellow) => SecondaryColor::Orange,
+            (PrimaryColor::Yellow, PrimaryColor::Blue) => SecondaryColor::Green,
+            (PrimaryColor::Red, PrimaryColor::Blue)   => SecondaryColor::Purple,
+            _ => SecondaryColor::Orange,
+        }
+    }
+}
+
+// pub use 없으면 사용자가 써야 하는 코드:
+// use art::kinds::PrimaryColor;
+// use art::utils::mix;
+// → 내부 구조(kinds, utils)를 알아야 함!
+
+// [src/lib.rs] — pub use 추가 버전
+pub use self::kinds::PrimaryColor;
+pub use self::kinds::SecondaryColor;
+pub use self::utils::mix;
+
+// 이제 사용자는:
+// use art::PrimaryColor;  // 깔끔!
+// use art::mix;
+// → 내부 구조 몰라도 됨
+
+fn main() {
+    // pub use 덕분에 짧은 경로로 사용
+    use crate::kinds::PrimaryColor;
+    use crate::utils::mix;
+    let red    = PrimaryColor::Red;
+    let yellow = PrimaryColor::Yellow;
+    let orange = mix(red, yellow);
+    println!("{}", match orange {
+        crate::kinds::SecondaryColor::Orange => "주황색 혼합 성공!",
+        _ => "예상치 못한 결과",
+    });
+}</code></pre></div>
+        <div class="tpane" id="pu1-t3"><pre><code class="language-rust">// Before / After 비교 — pub use 효과
+
+// ── Before: pub use 없음 ─────────────────────────────────
+mod internal {
+    pub mod types {
+        pub mod user {
+            pub struct User { pub name: String, pub email: String }
+            impl User {
+                pub fn new(name: &str, email: &str) -> Self {
+                    User { name: name.into(), email: email.into() }
+                }
+            }
+        }
+        pub mod order {
+            pub struct Order { pub id: u32, pub amount: f64 }
+        }
+    }
+    pub mod services {
+        pub mod auth {
+            pub fn login(email: &str, _pw: &str) -> bool {
+                !email.is_empty()
+            }
+        }
+        pub mod payment {
+            pub fn process(amount: f64) -> String {
+                format!("결제 완료: {}원", amount)
+            }
+        }
+    }
+}
+
+// 사용자가 써야 하는 코드 (pub use 없음):
+// use my_lib::internal::types::user::User;      // 너무 길고 내부 구조 노출
+// use my_lib::internal::types::order::Order;
+// use my_lib::internal::services::auth::login;
+// use my_lib::internal::services::payment::process;
+
+// ── After: pub use 추가 ──────────────────────────────────
+// src/lib.rs 에 추가:
+pub use internal::types::user::User;
+pub use internal::types::order::Order;
+pub use internal::services::auth::login;
+pub use internal::services::payment::process;
+
+// 사용자가 쓸 수 있는 코드:
+// use my_lib::User;      // 깔끔!
+// use my_lib::Order;
+// use my_lib::login;
+// use my_lib::process;
+
+// 내부 리팩토링(internal 구조 변경)을 해도
+// pub use 선언만 업데이트하면 사용자 코드 변경 불필요!
+fn demo() {
+    let user = internal::types::user::User::new("홍길동", "hong@example.com");
+    let result = login(&user.email, "password");
+    println!("로그인: {}", result);
+    println!("결제: {}", process(15000.0));
+}</code></pre></div>
+        <div class="tpane" id="pu1-t4"><pre><code class="language-rust">// 현실적인 라이브러리 API 설계
+// 내부는 상세하게, 외부에는 단순한 인터페이스
+
+// ── 내부 구현 (src/내부/*.rs) ──────────────────────────
+mod internal {
+    pub mod error {
+        #[derive(Debug, Clone)]
+        pub enum ErrorKind { Network, Parse, Auth, NotFound, RateLimit }
+
+        #[derive(Debug)]
+        pub struct ApiError {
+            pub kind: ErrorKind,
+            pub message: String,
+            pub status_code: Option<u16>,
+        }
+        impl ApiError {
+            pub fn network(msg: &str) -> Self {
+                ApiError { kind: ErrorKind::Network, message: msg.into(), status_code: None }
+            }
+            pub fn not_found(resource: &str) -> Self {
+                ApiError { kind: ErrorKind::NotFound, message: resource.into(), status_code: Some(404) }
+            }
+        }
+        impl std::fmt::Display for ApiError {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(f, "[{:?}] {}", self.kind, self.message)
+            }
+        }
+    }
+    pub mod client {
+        use super::error::ApiError;
+        pub struct Client { base_url: String, timeout: u64 }
+        impl Client {
+            pub fn new(base_url: &str) -> Self {
+                Client { base_url: base_url.into(), timeout: 30 }
+            }
+            pub fn with_timeout(mut self, secs: u64) -> Self {
+                self.timeout = secs; self
+            }
+            pub fn get(&self, path: &str) -> Result<String, ApiError> {
+                if path.starts_with("/api") {
+                    Ok(format!("GET {}{}  [timeout={}s]", self.base_url, path, self.timeout))
+                } else {
+                    Err(ApiError::not_found(path))
+                }
+            }
+        }
+    }
+}
+
+// ── 공개 API (src/lib.rs) ──────────────────────────────
+pub use internal::client::Client;
+pub use internal::error::{ApiError, ErrorKind};
+pub type Result<T> = std::result::Result<T, ApiError>;  // 타입 별명도 pub use처럼 활용
+
+fn main() {
+    // 사용자 코드: 내부 구조 몰라도 됨
+    let client = Client::new("https://api.example.com")
+        .with_timeout(60);
+
+    match client.get("/api/users") {
+        Ok(response) => println!("성공: {}", response),
+        Err(e) => println!("실패: {}", e),
+    }
+    match client.get("/invalid") {
+        Ok(response) => println!("{}", response),
+        Err(e) => println!("실패: {}", e),
+    }
+}</code></pre></div>
+        <div class="tpane" id="pu1-t5"><pre><code class="language-rust">// prelude 패턴 — "이것만 import하면 기본 세팅 완료"
+// std, tokio, diesel, rayon 등 많은 크레이트가 이 패턴 사용
+
+// src/lib.rs
+mod internal {
+    pub mod types {
+        pub struct Config { pub debug: bool, pub timeout: u64 }
+        impl Config {
+            pub fn default() -> Self { Config { debug: false, timeout: 30 } }
+        }
+        pub struct Request { pub path: String }
+        pub struct Response { pub body: String, pub status: u16 }
+    }
+    pub mod traits {
+        pub trait Handler {
+            fn handle(&self, req: &super::types::Request) -> super::types::Response;
+        }
+        pub trait Middleware: Send + Sync {
+            fn before(&self, req: &super::types::Request);
+        }
+        pub trait FromStr: Sized {
+            fn from_str(s: &str) -> Option<Self>;
+        }
+    }
+}
+
+// prelude 모듈 — 자주 쓰이는 것들만 엄선
+pub mod prelude {
+    // 타입들
+    pub use crate::internal::types::{Config, Request, Response};
+    // 트레이트들
+    pub use crate::internal::traits::{Handler, Middleware};
+}
+
+// 개별 접근도 여전히 허용
+pub use internal::types::Config;
+pub use internal::traits::Handler;
+
+// 사용자 코드:
+// use my_framework::prelude::*;
+// → Config, Request, Response, Handler, Middleware 한번에 사용 가능
+//
+// 또는 선택적으로:
+// use my_framework::prelude::{Config, Handler};</code></pre></div>
+        <div class="tpane" id="pu1-t6"><pre><code class="language-rust">// 표준 라이브러리의 pub use 실제 사례
+
+// ① HashMap의 실제 내부 위치 vs 우리가 쓰는 경로
+// 실제 정의:  std::collections::hash_map::HashMap
+// 재공개:     std::collections::HashMap  (pub use 로 꺼내 놓음)
+// 우리가 씀:  use std::collections::HashMap
+
+use std::collections::HashMap;  // 실제로는 pub use로 재공개된 경로
+fn use_hashmap() {
+    let mut m: HashMap<&str, i32> = HashMap::new();
+    m.insert("one", 1);
+}
+
+// ② std::prelude — Rust가 모든 .rs 파일에 자동으로 삽입
+// 우리가 매번 use 하지 않아도 쓸 수 있는 것들:
+// Vec, String, Option, Result, Box, Clone, Copy, Drop
+// PartialEq, PartialOrd, Debug, Default, Iterator, ...
+// 이 모두가 std::prelude::rust_2021 에서 pub use 로 재공개됨
+
+// ③ std::error::Error 트레이트
+// 실제: std::error::Error (mod error 안의 trait)
+// 재공개: std::error::Error (pub use)
+
+// ④ std::io::Write, Read, BufRead
+// 실제: std::io::write::Write 등 내부 모듈
+// 재공개: std::io::Write (pub use)
+
+// 결론:
+// 표준 라이브러리 없이는 이렇게 써야 했을 것:
+// use std::collections::hash_map::HashMap;  // 너무 길고 내부 구조 노출
+// 현재:
+// use std::collections::HashMap;            // 깔끔!
+fn main() {
+    use_hashmap();
+    // String, Vec, println! 등은 prelude 덕분에 use 없이 사용 가능
+    let v: Vec<i32> = vec![1, 2, 3];
+    let s: String = String::from("hello");
+    println!("{:?} {}", v, s);
+}</code></pre></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 8. 가시성                                    -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="sec" id="visibility">
+    <div class="sec-lbl">섹션 8</div>
+    <h2>가시성 (Visibility) 완전 정리</h2>
+    <p class="lead">Rust Book: "Rust의 모든 항목(함수, 메서드, 구조체, 열거형, 모듈, 상수)은 기본적으로 부모 모듈에게 private입니다." <code>pub</code> 키워드와 그 변형들로 공개 범위를 제어합니다.</p>
+
+    <div class="warn box">
+      <div class="box-t">⚠️ Rust Book 핵심 privacy 규칙</div>
+      <ul>
+        <li>부모 모듈의 항목은 자식 모듈의 private 항목에 <strong>접근할 수 없습니다</strong></li>
+        <li>자식 모듈의 항목은 자신이 정의된 ancestor 모듈의 항목에 <strong>접근할 수 있습니다</strong></li>
+        <li>이는 "자식 모듈은 자신이 정의된 맥락을 알지만, 부모는 자식의 구현 세부사항을 모른다"는 원칙</li>
+      </ul>
+    </div>
+
+    <div class="subsec">
+      <h3>가시성 레벨 완전 정리</h3>
+      <table class="tbl">
+        <tr><th>키워드</th><th>접근 가능 범위</th><th>실전 용도</th></tr>
+        <tr><td><span class="kw">(없음)</span></td><td>현재 모듈과 그 자손 모듈</td><td>기본값. 구현 세부사항 숨기기</td></tr>
+        <tr><td><span class="kw">pub</span></td><td>어디서든 (외부 crate 포함)</td><td>공개 API</td></tr>
+        <tr><td><span class="kw">pub(crate)</span></td><td>현재 crate 전체 (외부 비노출)</td><td>crate 내부 공유 API</td></tr>
+        <tr><td><span class="kw">pub(super)</span></td><td>부모 모듈 (조부모는 불가)</td><td>부모-자식 결합 구현</td></tr>
+        <tr><td><span class="kw">pub(in path)</span></td><td>지정된 조상 모듈과 그 자손</td><td>특정 모듈 범위 제어</td></tr>
+      </table>
+
+      <div class="tabs">
+        <div class="tbar">
+          <button class="tbtn on" data-g="vis1" data-t="t1">가시성 전체 예제</button>
+          <button class="tbtn" data-g="vis1" data-t="t2">pub(crate) 심화</button>
+          <button class="tbtn" data-g="vis1" data-t="t3">pub(super) 심화</button>
+          <button class="tbtn" data-g="vis1" data-t="t4">pub(in path)</button>
+          <button class="tbtn" data-g="vis1" data-t="t5">struct vs enum pub</button>
+          <button class="tbtn" data-g="vis1" data-t="t6">흔한 실수 모음</button>
+          <button class="tbtn" data-g="vis1" data-t="t7">설계 패턴</button>
+        </div>
+        <div class="tpane on" id="vis1-t1"><pre><code class="language-rust">// 모든 가시성 레벨 한눈에 보기
+
+mod outer {
+    fn private_fn() { println!("private: outer만"); }
+    pub(super) fn super_fn() { println!("pub(super): outer의 부모까지"); }
+    pub(crate) fn crate_fn() { println!("pub(crate): 이 crate 전체"); }
+    pub fn public_fn() { println!("pub: 외부 crate 포함 어디서든"); }
+
+    pub mod inner {
+        // pub(in crate::outer): outer와 그 자손에서만
+        pub(in crate::outer) fn outer_scoped() {
+            println!("outer 범위 내에서만");
+        }
+
+        pub fn inner_public() {
+            // 자식은 부모(outer)의 private에 접근 가능!
+            super::private_fn();       // OK
+            super::crate_fn();         // OK: pub(crate)
+            outer_scoped();            // OK: 같은 outer 범위
+        }
+    }
+
+    pub mod sibling {
+        pub fn test() {
+            super::private_fn();      // OK: sibling도 outer 자손
+            super::crate_fn();        // OK: pub(crate)
+            super::inner::outer_scoped(); // OK: sibling도 outer 범위
+            // super::super::SOMETHING // 에러: super::super는 crate root
+        }
+    }
+}
+
+// crate root에서:
+fn root_access() {
+    outer::public_fn();   // OK: pub
+    outer::crate_fn();    // OK: pub(crate)
+    outer::super_fn();    // OK: pub(super), root가 outer의 부모
+    // outer::private_fn() // 에러: private
+    outer::inner::inner_public(); // OK: pub
+    // outer::inner::outer_scoped() // 에러: pub(in crate::outer) 범위 초과
+}</code></pre></div>
+        <div class="tpane" id="vis1-t2"><pre><code class="language-rust">// pub(crate) — 실전에서 가장 자주 쓰이는 제한된 가시성
+// "같은 crate 안에서는 자유롭게, 외부에는 절대 노출하지 않는다"
+
+// 1. 내부 상수 공유
+pub(crate) const DB_POOL_SIZE: u32 = 10;
+pub(crate) const MAX_RETRY: u32 = 3;
+
+// 2. 내부 구현 타입 공유
+pub(crate) struct InternalState {
+    pub(crate) counter: u64,
+    pub(crate) is_initialized: bool,
+}
+
+// 3. 내부 유틸리티 함수
+pub(crate) fn internal_hash(data: &[u8]) -> u64 {
+    data.iter().fold(0u64, |acc, &b| acc.wrapping_mul(31).wrapping_add(b as u64))
+}
+
+// 4. 오류 타입 내부 필드
+pub struct Error {
+    pub kind: ErrorKind,         // 외부에 공개
+    pub(crate) source: Option<Box<dyn std::error::Error>>, // 내부만
+}
+
+#[derive(Debug)]
+pub enum ErrorKind { Io, Parse, Network }
+
+// ⚠️ 중요: main.rs (binary crate)에서는 lib.rs의 pub(crate)에 접근 불가!
+// main.rs는 별도 crate이기 때문
+// binary crate는 library crate를 외부 crate처럼 사용
+
+mod module_a {
+    pub(crate) fn shared_utility() -> u32 { 42 }
+}
+
+mod module_b {
+    pub fn use_shared() -> u32 {
+        super::module_a::shared_utility() // OK: 같은 crate 내
+    }
+}</code></pre></div>
+        <div class="tpane" id="vis1-t3"><pre><code class="language-rust">// pub(super) — 부모 모듈에게만 노출
+// 하위 구현의 일부를 부모가 조율해야 할 때
+
+mod database {
+    // 내부 연결 구조체 — database 모듈만 알면 됨
+    // 단 부모(crate root)에서 초기화하므로 pub(super) 공개
+    pub(super) struct Connection {
+        pub(super) url: String,
+        pub(super) pool_size: u32,
+    }
+    impl Connection {
+        pub(super) fn new(url: &str, pool_size: u32) -> Self {
+            Connection { url: url.into(), pool_size }
+        }
+    }
+
+    pub mod query {
+        // query 모듈은 database의 자손 → pub(super) Connection에 접근 가능
+        pub fn execute(conn: &super::Connection, sql: &str) -> Vec<String> {
+            println!("[{}] SQL 실행: {}", conn.url, sql);
+            vec![format!("결과1 from pool_size={}", conn.pool_size)]
+        }
+    }
+
+    pub mod migration {
+        pub fn run(conn: &super::Connection) -> bool {
+            println!("마이그레이션 실행: {}", conn.url);
+            true
+        }
+    }
+}
+
+// crate root: pub(super)에 접근 가능 (root가 database의 부모)
+fn init_app() {
+    let conn = database::Connection::new("postgres://localhost/mydb", 10);
+    let results = database::query::execute(&conn, "SELECT * FROM users");
+    println!("{:?}", results);
+    let ok = database::migration::run(&conn);
+    println!("마이그레이션: {}", ok);
+}
+// 외부 crate: database::Connection 에 접근 불가 (pub(super) → 외부 노출 X)</code></pre></div>
+        <div class="tpane" id="vis1-t4"><pre><code class="language-rust">// pub(in path) — 매우 세밀한 접근 제어
+// 지정된 조상 모듈과 그 자손에서만 접근 가능
+// 실전에서는 드물게 사용되지만, 깊은 모듈 중첩에서 유용
+
+mod company {
+    // HR 정보는 company 내부에서만 공유
+    mod hr {
+        pub(in crate::company) struct SalaryInfo {
+            pub(in crate::company) employee_id: u32,
+            pub(in crate::company) amount: u64,
+            pub(in crate::company) currency: String,
+        }
+        impl SalaryInfo {
+            pub(in crate::company) fn new(id: u32, amount: u64) -> Self {
+                SalaryInfo {
+                    employee_id: id,
+                    amount,
+                    currency: "KRW".into(),
+                }
+            }
+        }
+    }
+
+    mod payroll {
+        use super::hr::SalaryInfo; // company 자손이므로 접근 가능
+
+        pub fn calculate_bonus(employee_id: u32) -> u64 {
+            let info = SalaryInfo::new(employee_id, 5_000_000);
+            // company 범위 안 → SalaryInfo 접근 가능
+            let bonus = info.amount / 10;
+            println!("직원 #{}: 보너스 {}{}",
+                info.employee_id, bonus, info.currency);
+            bonus
+        }
+    }
+
+    mod audit {
+        use super::hr::SalaryInfo; // audit도 company 자손
+
+        pub fn audit_salary(employee_id: u32) -> bool {
+            let info = SalaryInfo::new(employee_id, 4_500_000);
+            println!("감사: 직원 #{} 급여 {} {}", info.employee_id, info.amount, info.currency);
+            info.amount > 0
+        }
+    }
+
+    pub fn run_payroll() {
+        let bonus = payroll::calculate_bonus(1001);
+        let valid = audit::audit_salary(1001);
+        println!("처리 완료 - 보너스: {}, 유효: {}", bonus, valid);
+    }
+}
+
+fn main() {
+    company::run_payroll();
+    // company::hr::SalaryInfo 에는 접근 불가 (company 밖)
+}</code></pre></div>
+        <div class="tpane" id="vis1-t5"><pre><code class="language-rust">// struct vs enum — pub 동작의 핵심 차이 (Rust Book Ch.7)
+
+mod restaurant {
+    // ── struct: pub이어도 필드는 개별적으로 pub 지정 필요 ──────
+    pub struct Breakfast {
+        pub toast: String,           // 명시적으로 pub 지정
+        seasonal_fruit: String,      // private — 외부 접근 불가
+        preparation_time: u32,       // private
+    }
+    impl Breakfast {
+        // private 필드가 있으므로 반드시 생성자 제공
+        // (외부에서 Breakfast { ... } 리터럴로 생성 불가)
+        pub fn summer(toast: &str) -> Self {
+            Breakfast {
+                toast: toast.into(),
+                seasonal_fruit: "peaches".into(),
+                preparation_time: 5,
+            }
+        }
+        pub fn winter(toast: &str) -> Self {
+            Breakfast {
+                toast: toast.into(),
+                seasonal_fruit: "pears".into(),
+                preparation_time: 7,
+            }
+        }
+        pub fn get_fruit(&self) -> &str { &self.seasonal_fruit }
+        pub fn prep_time(&self) -> u32 { self.preparation_time }
+    }
+
+    // ── enum: pub 하나면 모든 variant 자동 pub ─────────────────
+    // 이유: 일부 variant만 비공개이면 match 에서 처리가 불완전해져
+    //       enum 자체를 사용하는 의미가 없어지기 때문
+    pub enum Appetizer {
+        Soup,      // 자동으로 pub
+        Salad,     // 자동으로 pub
+        Bruschetta // 자동으로 pub
+    }
+
+    pub enum DrinkSize {
+        Small, Medium, Large, ExtraLarge
+    }
+}
+
+pub fn demo() {
+    // struct
+    let mut meal = restaurant::Breakfast::summer("Rye");
+    meal.toast = "Wheat".into();       // OK: pub 필드
+    println!("토스트: {}", meal.toast);
+    println!("과일: {}", meal.get_fruit()); // OK: pub 메서드
+    // meal.seasonal_fruit = ...;       // 에러: private
+    // let meal2 = restaurant::Breakfast { ... }; // 에러: private 필드 때문
+
+    // enum: 모든 variant 접근 가능
+    let app = restaurant::Appetizer::Soup;
+    let size = restaurant::DrinkSize::Large;
+    println!("{}", match app {
+        restaurant::Appetizer::Soup  => "수프",
+        restaurant::Appetizer::Salad => "샐러드",
+        restaurant::Appetizer::Bruschetta => "브루스케타",
+    });
+}</code></pre></div>
+        <div class="tpane" id="vis1-t6"><pre><code class="language-rust">// 흔한 실수 모음 — 에러와 해결책
+
+// ━━ 실수 1: mod만 pub, 함수는 private ━━━━━━━━━━━━━━━━━━
+mod front_of_house {
+    pub mod hosting {
+        fn add_to_waitlist() {}  // ← private!
+    }
+}
+// eat_at_restaurant에서 hosting::add_to_waitlist() 호출 → 에러
+// 해결: pub fn add_to_waitlist() {}
+
+// ━━ 실수 2: struct pub이지만 필드가 private ━━━━━━━━━━━━
+pub struct Config {
+    host: String,  // private!
+    port: u16,     // private!
+}
+// 외부에서 Config { host: ..., port: ... } → 에러
+// 해결 1: pub host, pub port
+// 해결 2: 생성자 함수 제공 (권장)
+impl Config {
+    pub fn new(host: &str, port: u16) -> Self {
+        Config { host: host.into(), port }
+    }
+}
+
+// ━━ 실수 3: main.rs에서 lib의 pub(crate) 접근 ━━━━━━━━━━
+// [src/lib.rs]
+pub(crate) fn internal() -> u32 { 42 }
+// [src/main.rs]
+// let x = my_crate::internal(); // 에러! main.rs는 별도 crate
+// 해결: pub fn internal() 으로 변경하거나 구조 재설계
+
+// ━━ 실수 4: use의 스코프 착각 ━━━━━━━━━━━━━━━━━━━━━━━━━━
+use std::collections::HashMap;
+mod child {
+    pub fn use_map() {
+        // let m: HashMap<..> = ... // 에러! use는 이 스코프에 없음
+        // 해결: child 모듈 안에서 다시 use 선언
+        use std::collections::HashMap;
+        let m: HashMap<String, i32> = HashMap::new();
+    }
+}
+
+// ━━ 실수 5: pub(in path) 경로 오타 ━━━━━━━━━━━━━━━━━━━━━
+mod outer {
+    mod inner {
+        // pub(in outer) fn foo() {}  // 에러! outer는 crate:: 기준으로 써야 함
+        pub(in crate::outer) fn foo() {}  // OK
+    }
+}</code></pre></div>
+        <div class="tpane" id="vis1-t7"><pre><code class="language-rust">// 가시성 설계 패턴 — 실전에서 자주 쓰이는 조합
+
+// 패턴 1: 뉴타입으로 불변 조건 보장
+pub struct UserId(u64);  // 내부 u64는 private
+impl UserId {
+    pub fn new(id: u64) -> Option<Self> {
+        if id > 0 { Some(UserId(id)) } else { None } // 0은 허용 안 함
+    }
+    pub fn value(&self) -> u64 { self.0 }
+    // 외부에서 UserId(0) 직접 생성 불가 → 불변 조건 보장
+}
+
+// 패턴 2: pub(crate) + pub 조합으로 내부/외부 API 분리
+pub struct Cache {
+    pub(crate) data: std::collections::HashMap<String, String>,
+    pub capacity: usize,
+}
+impl Cache {
+    pub fn new(cap: usize) -> Self {
+        Cache { data: std::collections::HashMap::new(), capacity: cap }
+    }
+    pub fn get(&self, key: &str) -> Option<&String> {
+        self.data.get(key)
+    }
+    pub fn set(&mut self, key: String, val: String) -> bool {
+        if self.data.len() >= self.capacity { return false; }
+        self.data.insert(key, val); true
+    }
+    // pub(crate): 같은 crate의 테스트/내부 코드에서 직접 데이터 접근 허용
+    pub(crate) fn raw_data(&self) -> &std::collections::HashMap<String, String> {
+        &self.data
+    }
+}
+
+// 패턴 3: Builder 패턴 — 단계적 공개
+pub struct QueryBuilder {
+    table: String,           // private: Builder 내부
+    conditions: Vec<String>, // private
+    limit: Option<u32>,      // private
+}
+impl QueryBuilder {
+    pub fn new(table: &str) -> Self {
+        QueryBuilder { table: table.into(), conditions: Vec::new(), limit: None }
+    }
+    pub fn where_clause(mut self, cond: &str) -> Self {
+        self.conditions.push(cond.into()); self
+    }
+    pub fn limit(mut self, n: u32) -> Self {
+        self.limit = Some(n); self
+    }
+    pub fn build(&self) -> String {
+        let mut sql = format!("SELECT * FROM {}", self.table);
+        if !self.conditions.is_empty() {
+            sql += &format!(" WHERE {}", self.conditions.join(" AND "));
+        }
+        if let Some(l) = self.limit { sql += &format!(" LIMIT {}", l); }
+        sql
+    }
+}
+
+fn main() {
+    let uid = UserId::new(42).expect("유효한 ID");
+    println!("UserId: {}", uid.value());
+    // UserId(0) 직접 생성 시도 → 컴파일 에러 (private tuple field)
+
+    let mut cache = Cache::new(3);
+    cache.set("key1".into(), "val1".into());
+    println!("캐시: {:?}", cache.get("key1"));
+
+    let sql = QueryBuilder::new("users")
+        .where_clause("age > 18")
+        .where_clause("active = true")
+        .limit(10)
+        .build();
+    println!("{}", sql);
+}</code></pre></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 9. 실전 파일 구조                            -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="sec" id="realworld">
+    <div class="sec-lbl">섹션 9</div>
+    <h2>실전 파일 구조 — 전체 연결</h2>
+    <p class="lead">지금까지 배운 모든 개념을 실제 프로젝트에 적용합니다. 컴파일러가 파일을 읽는 순서와 모듈 트리가 구성되는 과정을 전체적으로 확인합니다.</p>
+
+    <div class="ftree">
+      <span class="d">my_app/</span><br>
+      &nbsp;&nbsp;<span class="f">├── Cargo.toml</span> &nbsp;<span class="c">← name = "my_app", edition = "2021"</span><br>
+      &nbsp;&nbsp;<span class="d">└── src/</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="f">├── main.rs</span> &nbsp;&nbsp;<span class="c">← binary crate root (fn main 포함, lib을 외부 crate처럼 사용)</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="f">├── lib.rs</span> &nbsp;&nbsp;&nbsp;<span class="c">← library crate root (공개 API 정의 + pub use 재공개)</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="f">├── utils.rs</span> &nbsp;<span class="c">← utils 모듈 진입점 (2018+ 방식: utils.rs + utils/)</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="d">└── utils/</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="f">└── helper.rs</span> &nbsp;<span class="c">← utils::helper 하위 모듈</span>
+    </div>
+
+    <div class="note box">
+      <div class="box-t">🔄 컴파일러가 파일을 읽는 순서</div>
+      <p><strong>lib.rs</strong> (crate root) 읽기 시작 → <code>mod utils;</code> 발견 → <strong>utils.rs</strong> 읽음 → <code>pub mod helper;</code> 발견 → <strong>utils/helper.rs</strong> 읽음</p>
+      <p style="margin-top:6px">결과 모듈 트리: <code>crate → utils → helper</code></p>
+    </div>
+
+    <div class="dbox">
+      <svg width="100%" viewBox="0 0 680 500" role="img"><title>my_app 모듈 트리 전체 구조</title>
+        <defs><marker id="a9" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+        <text x="340" y="22" text-anchor="middle" font-size="13" font-weight="600" fill="#2C2C2A" font-family="sans-serif">my_app — 모듈 트리 전체 구조</text>
+        <text x="30" y="46" font-size="11" fill="#888780" font-family="sans-serif">📁 파일 구조</text>
+        <rect x="30" y="54" width="230" height="34" rx="6" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+        <text x="145" y="72" text-anchor="middle" font-size="12" font-weight="500" fill="#2C2C2A" font-family="sans-serif">Cargo.toml  name="my_app"</text>
+        <rect x="30" y="100" width="230" height="288" rx="10" fill="none" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="5 4"/>
+        <text x="44" y="118" font-size="11" fill="#888780" font-family="sans-serif">src/</text>
+        <rect x="46" y="126" width="198" height="38" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+        <text x="145" y="141" text-anchor="middle" font-size="12" font-weight="500" fill="#26215C" font-family="sans-serif">main.rs</text>
+        <text x="145" y="157" text-anchor="middle" font-size="10" fill="#534AB7" font-family="sans-serif">binary crate root</text>
+        <rect x="46" y="174" width="198" height="38" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+        <text x="145" y="189" text-anchor="middle" font-size="12" font-weight="500" fill="#085041" font-family="sans-serif">lib.rs</text>
+        <text x="145" y="205" text-anchor="middle" font-size="10" fill="#0F6E56" font-family="sans-serif">library crate root</text>
+        <rect x="46" y="222" width="198" height="38" rx="6" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+        <text x="145" y="237" text-anchor="middle" font-size="12" font-weight="500" fill="#412402" font-family="sans-serif">utils.rs</text>
+        <text x="145" y="253" text-anchor="middle" font-size="10" fill="#854F0B" font-family="sans-serif">utils 모듈 진입점 (2018+)</text>
+        <rect x="62" y="270" width="182" height="100" rx="8" fill="none" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3"/>
+        <text x="76" y="287" font-size="10" fill="#888780" font-family="sans-serif">utils/</text>
+        <rect x="76" y="294" width="154" height="38" rx="6" fill="#FAECE7" stroke="#993C1D" stroke-width="0.5"/>
+        <text x="153" y="309" text-anchor="middle" font-size="12" font-weight="500" fill="#4A1B0C" font-family="sans-serif">helper.rs</text>
+        <text x="153" y="325" text-anchor="middle" font-size="10" fill="#993C1D" font-family="sans-serif">utils 하위 모듈</text>
+        <text x="360" y="46" font-size="11" fill="#888780" font-family="sans-serif">🌳 모듈 트리 + 가시성</text>
+        <rect x="360" y="54" width="294" height="46" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+        <text x="507" y="72" text-anchor="middle" font-size="12" font-weight="500" fill="#085041" font-family="sans-serif">crate (lib.rs)</text>
+        <text x="507" y="90" text-anchor="middle" font-size="10" fill="#0F6E56" font-family="sans-serif">pub use utils::helper::format_name</text>
+        <rect x="360" y="148" width="294" height="46" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+        <text x="507" y="166" text-anchor="middle" font-size="12" font-weight="500" fill="#412402" font-family="sans-serif">crate::utils</text>
+        <text x="507" y="184" text-anchor="middle" font-size="10" fill="#854F0B" font-family="sans-serif">sanitize() pub · debug_info() pub(crate)</text>
+        <rect x="360" y="242" width="294" height="46" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="0.5"/>
+        <text x="507" y="260" text-anchor="middle" font-size="12" font-weight="500" fill="#4A1B0C" font-family="sans-serif">crate::utils::helper</text>
+        <text x="507" y="278" text-anchor="middle" font-size="10" fill="#993C1D" font-family="sans-serif">format_name() pub · validate() pub(super)</text>
+        <line x1="507" y1="100" x2="507" y2="148" stroke="#888780" stroke-width="1.5" marker-end="url(#a9)"/>
+        <text x="514" y="127" font-size="10" fill="#5F5E5A" font-family="sans-serif">mod utils;</text>
+        <line x1="507" y1="194" x2="507" y2="242" stroke="#888780" stroke-width="1.5" marker-end="url(#a9)"/>
+        <text x="514" y="221" font-size="10" fill="#5F5E5A" font-family="sans-serif">pub mod helper;</text>
+        <path d="M244 193 Q305 193 358 171" fill="none" stroke="#888780" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#a9)" opacity="0.5"/>
+        <path d="M244 241 Q305 241 358 265" fill="none" stroke="#888780" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#a9)" opacity="0.5"/>
+        <path d="M230 313 Q305 313 358 265" fill="none" stroke="#888780" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#a9)" opacity="0.5"/>
+        <rect x="360" y="332" width="140" height="46" rx="6" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+        <text x="430" y="351" text-anchor="middle" font-size="12" font-weight="500" fill="#042C53" font-family="sans-serif">crate::</text>
+        <text x="430" y="369" text-anchor="middle" font-size="10" fill="#185FA5" font-family="sans-serif">절대경로 · 루트부터</text>
+        <rect x="514" y="332" width="140" height="46" rx="6" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+        <text x="584" y="351" text-anchor="middle" font-size="12" font-weight="500" fill="#173404" font-family="sans-serif">super::</text>
+        <text x="584" y="369" text-anchor="middle" font-size="10" fill="#3B6D11" font-family="sans-serif">상대경로 · 부모 모듈</text>
+        <rect x="30" y="420" width="230" height="58" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+        <text x="145" y="440" text-anchor="middle" font-size="12" font-weight="500" fill="#26215C" font-family="sans-serif">binary crate (main.rs)</text>
+        <text x="145" y="456" text-anchor="middle" font-size="10" fill="#534AB7" font-family="sans-serif">use my_app::{User, sanitize}</text>
+        <text x="145" y="470" text-anchor="middle" font-size="10" fill="#993C1D" font-family="sans-serif">pub(crate) 접근 불가 (별도 crate!)</text>
+        <rect x="360" y="420" width="294" height="58" rx="8" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+        <text x="507" y="440" text-anchor="middle" font-size="12" font-weight="500" fill="#2C2C2A" font-family="sans-serif">pub(crate) 핵심 주의사항</text>
+        <text x="507" y="456" text-anchor="middle" font-size="10" fill="#444441" font-family="sans-serif">lib.rs의 pub(crate) = library crate 안에서만</text>
+        <text x="507" y="470" text-anchor="middle" font-size="10" fill="#444441" font-family="sans-serif">main.rs는 별도 binary crate → 접근 불가</text>
+      </svg>
+    </div>
+
+    <div class="tabs">
+      <div class="tbar">
+        <button class="tbtn on" data-g="rw" data-t="t1">utils/helper.rs</button>
+        <button class="tbtn" data-g="rw" data-t="t2">utils.rs</button>
+        <button class="tbtn" data-g="rw" data-t="t3">lib.rs</button>
+        <button class="tbtn" data-g="rw" data-t="t4">main.rs</button>
+      </div>
+      <div class="tpane on" id="rw-t1"><pre><code class="language-rust">// src/utils/helper.rs — 가장 안쪽 모듈
+
+pub fn format_name(first: &str, last: &str) -> String {
+    format!("{} {}", last, first)
+}
+
+pub fn slugify(s: &str) -> String {
+    s.to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '-' })
+        .collect::<String>()
+        .trim_matches('-')
+        .to_string()
+}
+
+// pub(super): 부모인 utils 모듈에서만 접근 가능
+// lib.rs나 외부 crate에서는 직접 호출 불가
+pub(super) fn validate_non_empty(s: &str) -> bool {
+    !s.trim().is_empty()
+}
+
+// private: 이 파일(helper 모듈) 안에서만
+fn normalize(s: &str) -> String {
+    s.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;  // 관용구: helper의 모든 pub 항목을 테스트에서 사용
+
+    #[test]
+    fn test_format_name() {
+        assert_eq!(format_name("Gildong", "Hong"), "Hong Gildong");
+        assert_eq!(format_name("A", "B"), "B A");
+    }
+
+    #[test]
+    fn test_slugify() {
+        assert_eq!(slugify("Hello World"), "hello-world");
+        assert_eq!(slugify("My Blog Post!"), "my-blog-post-");
+    }
+
+    #[test]
+    fn test_validate() {
+        assert!(validate_non_empty("hello"));
+        assert!(!validate_non_empty("   "));
+        assert!(!validate_non_empty(""));
+    }
+}</code></pre></div>
+      <div class="tpane" id="rw-t2"><pre><code class="language-rust">// src/utils.rs — utils 모듈의 진입점 (2018+ 방식)
+
+pub mod helper;  // utils/helper.rs 를 하위 모듈로 로드
+
+pub fn sanitize(input: &str) -> String {
+    // validate_non_empty 는 pub(super) → utils(helper의 부모)에서 접근 가능
+    if helper::validate_non_empty(input) {
+        input.trim().to_lowercase()
+    } else {
+        "(empty)".to_string()
+    }
+}
+
+pub fn process_name(first: &str, last: &str) -> String {
+    // helper의 pub 함수는 utils에서 직접 호출 가능
+    let name = helper::format_name(first, last);
+    sanitize(&name)
+}
+
+// pub(crate): 이 library crate 안 어디서든 사용 가능
+// 외부 crate(binary crate 포함)에서는 접근 불가
+pub(crate) fn debug_info() -> String {
+    format!("utils v1.0 [debug_mode={}]", cfg!(debug_assertions))
+}
+
+// private: utils 모듈 안에서만
+fn log_internal(msg: &str) {
+    if cfg!(debug_assertions) {
+        eprintln!("[utils::internal] {}", msg);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sanitize() {
+        assert_eq!(sanitize("  Hello World  "), "hello world");
+        assert_eq!(sanitize(""), "(empty)");
+        assert_eq!(sanitize("   "), "(empty)");
+    }
+
+    #[test]
+    fn test_process_name() {
+        assert_eq!(process_name("Younghee", "Kim"), "kim younghee");
+    }
+}</code></pre></div>
+      <div class="tpane" id="rw-t3"><pre><code class="language-rust">// src/lib.rs — library crate root
+// 공개 API 정의 + pub use 재공개 + 핵심 타입 정의
+
+mod utils;  // utils.rs 를 utils 모듈로 로드 (= mod 선언의 방법 2)
+
+// pub use: 내부 구조를 숨기고 깔끔한 공개 API 제공
+// 사용자는 crate::utils::helper::format_name 대신
+// crate::format_name 으로 바로 접근 가능
+pub use utils::helper::format_name;
+pub use utils::helper::slugify;
+pub use utils::sanitize;
+pub use utils::process_name;
+
+pub struct User {
+    pub name: String,
+    pub slug: String,
+    pub(crate) score: u32,  // library crate 내부에서만 수정 가능
+    created_at: u64,         // private: User 메서드만 접근 가능
+}
+
+impl User {
+    pub fn new(first: &str, last: &str) -> Self {
+        let name = format_name(first, last);  // pub use 덕분에 짧게 사용
+        let slug = slugify(&name);
+        User { name, slug, score: 0, created_at: 0 }
+    }
+
+    pub fn display(&self) -> String {
+        // crate:: 절대경로로 pub(crate) 함수 호출
+        let info = crate::utils::debug_info();
+        format!("{} (slug: {}) [{}]", self.name, self.slug, info)
+    }
+
+    // pub(crate): library crate 내부에서만 score 수정 가능
+    pub(crate) fn add_score(&mut self, points: u32) {
+        self.score += points;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_user_new() {
+        let u = User::new("Younghee", "Kim");
+        assert_eq!(u.name, "Kim Younghee");
+        assert_eq!(u.slug, "kim-younghee");
+        assert_eq!(u.score, 0);
+    }
+
+    #[test]
+    fn test_pub_use() {
+        // pub use 로 재공개된 함수들이 crate root에서 직접 접근 가능한지 확인
+        assert_eq!(format_name("A", "B"), "B A");
+        assert_eq!(sanitize("  TEST  "), "test");
+    }
+}</code></pre></div>
+      <div class="tpane" id="rw-t4"><pre><code class="language-rust">// src/main.rs — binary crate root
+// Cargo.toml의 name = "my_app" → library crate 이름도 "my_app"
+// binary crate는 library crate를 완전히 외부 crate처럼 사용
+
+use my_app::{User, sanitize, format_name, slugify, process_name};
+
+fn main() {
+    // 1. User 생성 및 출력
+    let user = User::new("Younghee", "Kim");
+    println!("{}", user.display());
+    // 출력: "Kim Younghee (slug: kim-younghee) [utils v1.0 [debug_mode=true]]"
+
+    // 2. pub use 로 재공개된 함수들 직접 사용
+    let name = format_name("Gildong", "Hong");
+    println!("이름: {}", name);       // "Hong Gildong"
+
+    let slug = slugify("My Blog Post!");
+    println!("슬러그: {}", slug);     // "my-blog-post-"
+
+    let clean = sanitize("  HELLO WORLD  ");
+    println!("정리: {}", clean);      // "hello world"
+
+    let processed = process_name("Cheolsu", "Park");
+    println!("처리: {}", processed);  // "park cheolsu"
+
+    // 3. 접근 불가 항목들
+    // user.score = 100;                // 에러: pub(crate) 필드
+    //                                  // main.rs는 별도 binary crate
+    // user.add_score(10);              // 에러: pub(crate) 메서드
+    // my_app::utils::debug_info();     // 에러: pub(crate) 함수
+    // user.created_at;                 // 에러: private 필드
+
+    // 4. 내부 모듈 직접 접근 (pub use가 없으면 이렇게 써야 함)
+    // my_app::utils::helper::format_name(...) // 가능하지만 길고 내부 구조 노출
+    // pub use 덕분에 my_app::format_name(...) 으로 짧게 사용
+}</code></pre></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 10. 외부 크레이트                            -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="sec" id="external">
+    <div class="sec-lbl">섹션 10</div>
+    <h2>외부 크레이트 사용하기</h2>
+    <p class="lead">Rust Book: "Cargo.toml의 <code>[dependencies]</code>에 외부 패키지를 추가하면 Cargo가 crates.io에서 다운로드합니다. 그러면 <code>use</code>로 해당 crate의 항목을 스코프에 가져올 수 있습니다."</p>
+
+    <div class="note box">
+      <div class="box-t">📌 Rust Book — std 는 특별한 외부 crate</div>
+      <p>"표준 라이브러리(std)도 엄밀히는 외부 crate입니다. 그러나 Rust 언어에 함께 배포되므로 Cargo.toml에 추가할 필요가 없습니다. 다만, <code>use</code>로 스코프에 가져와야 합니다."</p>
+    </div>
+
+    <div class="tabs">
+      <div class="tbar">
+        <button class="tbtn on" data-g="ext" data-t="t1">Cargo.toml + 전체 흐름</button>
+        <button class="tbtn" data-g="ext" data-t="t2">rand 크레이트</button>
+        <button class="tbtn" data-g="ext" data-t="t3">serde 크레이트</button>
+        <button class="tbtn" data-g="ext" data-t="t4">std 주요 모듈</button>
+        <button class="tbtn" data-g="ext" data-t="t5">2015 vs 2018+ extern crate</button>
+      </div>
+      <div class="tpane on" id="ext-t1"><pre><code class="language-rust">// 외부 크레이트 사용 전체 흐름 (Rust Book Ch.7)
+
+// 1단계: Cargo.toml에 의존성 추가
+// [package]
+// name    = "my_app"
+// version = "0.1.0"
+// edition = "2021"
+//
+// [dependencies]
+// rand  = "0.8.5"          ← 버전 지정
+// serde = { version = "1", features = ["derive"] }  ← 기능 플래그
+// tokio = { version = "1", features = ["full"] }
+// anyhow = "1"             ← 에러 처리 라이브러리
+
+// 2단계: cargo build 실행 시 Cargo가 자동으로
+//   - crates.io 에서 다운로드 (https://crates.io)
+//   - 의존성의 의존성(transitive dependencies)도 처리
+//   - Cargo.lock 에 정확한 버전 고정
+//   - 컴파일 후 링크
+
+// 3단계: use 로 가져오기 (Rust 2018+: extern crate 불필요)
+use rand::Rng;             // rand crate의 Rng 트레이트
+use serde::{Serialize, Deserialize}; // serde의 derive 매크로용 트레이트
+
+// Rust Book: "std 는 Cargo.toml 불필요, 하지만 use는 필요"
+use std::collections::HashMap;  // std 도 use 필요
+use std::io::{self, Write};
+
+fn main() {
+    let mut rng = rand::thread_rng();
+    let n: u32 = rng.gen_range(1..=100);
+    println!("난수: {}", n);
+
+    let mut map = HashMap::new();
+    map.insert("key", n);
+    println!("맵: {:?}", map);
+}</code></pre></div>
+      <div class="tpane" id="ext-t2"><pre><code class="language-rust">// rand 크레이트 — 난수 생성 (Rust Book 예제)
+// Cargo.toml: rand = "0.8.5"
+
+// Rust Book: "2장의 숫자 맞추기 게임에서 rand를 사용했습니다.
+//             rand::Rng 트레이트를 스코프에 가져와 gen_range 메서드 사용"
+
+use rand::Rng;                          // 트레이트: gen_range 등 제공
+use rand::seq::SliceRandom;             // 슬라이스 셔플 기능
+use rand::distributions::{Distribution, Uniform};
+
+fn main() {
+    let mut rng = rand::thread_rng();  // 현재 스레드의 RNG
+
+    // 1. 범위 내 정수 (Rust Book 예제)
+    let secret: u32 = rng.gen_range(1..=100);
+    println!("비밀 숫자: {}", secret);
+
+    // 2. 부동소수점 (0.0~1.0)
+    let probability: f64 = rng.gen();
+    println!("확률: {:.4}", probability);
+
+    // 3. bool
+    let flip: bool = rng.gen();
+    println!("동전: {}", if flip { "앞" } else { "뒤" });
+
+    // 4. 벡터 셔플
+    let mut deck: Vec<u32> = (1..=52).collect();
+    deck.shuffle(&mut rng);
+    println!("첫 5장: {:?}", &deck[..5]);
+
+    // 5. 균등 분포
+    let die = Uniform::from(1u32..=6);
+    let rolls: Vec<u32> = (0..10).map(|_| die.sample(&mut rng)).collect();
+    println!("주사위 10번: {:?}", rolls);
+
+    // 6. 숫자 맞추기 게임 핵심 로직 (Rust Book Ch.2)
+    let secret_number = rand::thread_rng().gen_range(1..=100);
+    println!("비밀 숫자 (1~100): {}", secret_number);
+}</code></pre></div>
+      <div class="tpane" id="ext-t3"><pre><code class="language-rust">// serde 크레이트 — 직렬화/역직렬화
+// Cargo.toml: serde = { version = "1", features = ["derive"] }
+//             serde_json = "1"
+
+use serde::{Serialize, Deserialize};
+use std::collections::HashMap;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct UserProfile {
+    id: u32,
+    name: String,
+    email: String,
+    #[serde(default)]
+    tags: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    phone: Option<String>,
+    #[serde(rename = "created_at")]
+    created: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ApiResponse<T> {
+    success: bool,
+    data: Option<T>,
+    error: Option<String>,
+}
+
+fn main() {
+    let user = UserProfile {
+        id: 1,
+        name: "홍길동".into(),
+        email: "hong@example.com".into(),
+        tags: vec!["admin".into(), "user".into()],
+        phone: None,          // skip_serializing_if로 JSON에서 생략됨
+        created: "2024-01-01".into(),
+    };
+
+    // struct → JSON
+    let json = serde_json::to_string_pretty(&user).unwrap();
+    println!("직렬화:\n{}", json);
+
+    // JSON → struct
+    let json2 = r#"{"id":2,"name":"김철수","email":"kim@test.com","created_at":"2024-02-01"}"#;
+    let user2: UserProfile = serde_json::from_str(json2).unwrap();
+    println!("\n역직렬화: {:?}", user2);
+
+    // ApiResponse 직렬화
+    let response: ApiResponse<UserProfile> = ApiResponse {
+        success: true,
+        data: Some(user),
+        error: None,
+    };
+    println!("\nAPI 응답:\n{}", serde_json::to_string_pretty(&response).unwrap());
+
+    // HashMap 직렬화
+    let mut settings: HashMap<String, serde_json::Value> = HashMap::new();
+    settings.insert("theme".into(), serde_json::json!("dark"));
+    settings.insert("lang".into(), serde_json::json!("ko"));
+    println!("\n설정:\n{}", serde_json::to_string_pretty(&settings).unwrap());
+}</code></pre></div>
+      <div class="tpane" id="ext-t4"><pre><code class="language-rust">// std — 표준 라이브러리 주요 모듈
+// Rust Book: "std도 외부 crate이지만 Cargo.toml 추가 불필요"
+// use는 필요!
+
+// 컬렉션
+use std::collections::{HashMap, HashSet, BTreeMap, VecDeque};
+
+// I/O
+use std::io::{self, BufRead, Write, BufReader, BufWriter};
+use std::fs::{self, File};
+
+// 경로
+use std::path::{Path, PathBuf};
+
+// 환경
+use std::env;
+
+// 동시성
+use std::sync::{Arc, Mutex, RwLock};
+use std::thread;
+
+// 시간
+use std::time::{Duration, Instant};
+
+fn collections_demo() {
+    let mut map: HashMap<String, Vec<i32>> = HashMap::new();
+    map.entry("evens".into()).or_insert_with(Vec::new).push(2);
+    map.entry("evens".into()).or_insert_with(Vec::new).push(4);
+
+    let mut set: HashSet<&str> = HashSet::new();
+    set.insert("Rust"); set.insert("Go"); set.insert("Rust"); // 중복 제거
+
+    let mut ordered: BTreeMap<i32, &str> = BTreeMap::new();
+    ordered.insert(3, "three"); ordered.insert(1, "one"); ordered.insert(2, "two");
+
+    println!("HashMap: {:?}", map);
+    println!("HashSet (크기={}): {:?}", set.len(), set);
+    println!("BTreeMap (정렬됨): {:?}", ordered);
+}
+
+fn concurrency_demo() {
+    let counter = Arc::new(Mutex::new(0u32));
+    let handles: Vec<_> = (0..8).map(|i| {
+        let c = Arc::clone(&counter);
+        thread::spawn(move || {
+            let mut lock = c.lock().unwrap();
+            *lock += i;
+        })
+    }).collect();
+    handles.into_iter().for_each(|h| h.join().unwrap());
+    println!("카운터 합계: {}", *counter.lock().unwrap()); // 0+1+2+3+4+5+6+7=28
+}
+
+fn main() {
+    collections_demo();
+    concurrency_demo();
+
+    let start = Instant::now();
+    thread::sleep(Duration::from_millis(10));
+    println!("경과: {:?}", start.elapsed());
+}</code></pre></div>
+      <div class="tpane" id="ext-t5"><pre><code class="language-rust">// Rust 2015 vs 2018+ — extern crate 차이
+
+// ── Rust 2015 (edition = "2015") ───────────────────────────
+// extern crate 선언이 필수
+// Cargo.toml에 rand = "0.8" 추가 후:
+extern crate rand;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive; // 매크로를 쓰려면 #[macro_use]도 필요했음
+
+use rand::Rng;
+
+fn old_style() {
+    let mut rng = rand::thread_rng();
+    let n: u32 = rng.gen_range(0..100);
+    println!("{}", n);
+}
+
+// ── Rust 2018+ (edition = "2018" or "2021") ─────────────────
+// extern crate 불필요! use 만으로 충분
+use rand::Rng;
+use serde::{Serialize, Deserialize};  // derive 기능은 features = ["derive"]로
+
+fn new_style() {
+    let mut rng = rand::thread_rng();
+    let n: u32 = rng.gen_range(1..=100);
+    println!("{}", n);
+}
+
+// extern crate 가 여전히 필요한 경우 (드묾):
+// 1. crate 이름에 하이픈이 있을 때 (하이픈 → 언더스코어)
+//    Cargo.toml: some-crate = "1.0"
+extern crate some_crate as some_crate_renamed; // 하이픈을 언더스코어로
+
+// 2. macro_rules! 매크로를 crate 레벨로 가져올 때
+#[macro_use]
+extern crate lazy_static;  // lazy_static! 매크로 사용을 위해
+
+// Rust Book 결론:
+// "2018 에디션 이후, 외부 crate를 사용하기 위해 명시적으로
+//  extern crate 를 쓸 필요가 없습니다."</code></pre></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 11. 요약                                     -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="sec" id="summary">
+    <div class="sec-lbl">섹션 11</div>
+    <h2>요약 &amp; 치트시트</h2>
+    <p class="lead">공식 Rust Book Ch.7과 Rust Reference를 기반으로 배운 모든 내용을 한 곳에 정리했습니다.</p>
+
+    <div class="subsec">
+      <h3>핵심 개념 요약</h3>
+      <table class="stbl">
+        <tr><th>키워드</th><th>비유</th><th>핵심 설명</th></tr>
+        <tr><td><span class="kw">Package</span></td><td>회사</td><td>cargo new로 만드는 단위. Cargo.toml + src/. rustc는 모름</td></tr>
+        <tr><td><span class="kw">Crate</span></td><td>건물</td><td>rustc의 컴파일 단위. binary(main.rs) / library(lib.rs)</td></tr>
+        <tr><td><span class="kw">mod</span></td><td>부서</td><td>코드 조직 + 가시성 제어. 기본 private. 파일 탐색: inline → .rs → /mod.rs</td></tr>
+        <tr><td><span class="kw">pub</span></td><td>외부 출입증</td><td>어디서든 접근 가능 (외부 crate 포함)</td></tr>
+        <tr><td><span class="kw">pub(crate)</span></td><td>사원증</td><td>현재 crate 안에서만. binary crate에서는 lib의 pub(crate)에 접근 불가!</td></tr>
+        <tr><td><span class="kw">pub(super)</span></td><td>상사 전용</td><td>부모 모듈까지만. 테스트·부모 조율에 유용</td></tr>
+        <tr><td><span class="kw">pub(in path)</span></td><td>특정 부서</td><td>지정한 조상 모듈까지. 드물지만 세밀한 제어에 사용</td></tr>
+        <tr><td><span class="kw">use</span></td><td>단축 다이얼</td><td>긴 경로에 짧은 별명. 선언된 스코프에서만 유효!</td></tr>
+        <tr><td><span class="kw">pub use</span></td><td>안내데스크</td><td>re-export. 내부 구조와 다른 공개 API 설계 가능</td></tr>
+        <tr><td><span class="kw">crate::</span></td><td>본사 주소</td><td>절대경로. crate root부터. Rust Book 권장</td></tr>
+        <tr><td><span class="kw">super::</span></td><td>위층 부서</td><td>부모 모듈 상대경로. 파일시스템 ".."과 같음</td></tr>
+        <tr><td><span class="kw">self::</span></td><td>내 자리</td><td>현재 모듈. use 에서 모듈 자체를 가져올 때 핵심</td></tr>
+        <tr><td><span class="kw">use super::*</span></td><td>위층 전부</td><td>테스트 모듈의 표준 관용구</td></tr>
+      </table>
+    </div>
+
+    <div class="subsec">
+      <h3>컴파일러의 파일 탐색 순서 (Rust Reference)</h3>
+      <div class="note box">
+        <div class="box-t">📌 mod garden; 을 만났을 때</div>
+        <ol>
+          <li>인라인: <code>mod garden { /* 코드 */ }</code></li>
+          <li>같은 디렉토리: <code>src/garden.rs</code></li>
+          <li>디렉토리 안의 mod.rs: <code>src/garden/mod.rs</code> (구버전)</li>
+        </ol>
+        <p style="margin-top:6px"><code>garden.rs</code>와 <code>garden/mod.rs</code>를 동시에 두면 컴파일 에러!</p>
+      </div>
+    </div>
+
+    <div class="subsec">
+      <h3>자주 하는 실수 & 해결책</h3>
+      <div class="grid2">
+        <div class="gc">
+          <div class="gc-hd er">❌ 실수</div>
+          <pre><code class="language-rust">// 1. mod만 pub, 함수는 private
+pub mod hosting {
+    fn add_to_waitlist() {} // 에러!
+}
+
+// 2. struct pub, 필드는 private
+pub struct Config {
+    host: String,  // 에러!
+}
+// Config { host: ... } 리터럴 불가
+
+// 3. use 스코프 착각
+use std::collections::HashMap;
+mod child {
+    fn use_it() {
+        HashMap::new(); // 에러!
+        // use가 이 스코프에 없음
+    }
+}
+
+// 4. main.rs에서 lib의 pub(crate) 접근
+// [lib.rs] pub(crate) fn internal() {}
+// [main.rs] my_app::internal() // 에러!</code></pre>
+        </div>
+        <div class="gc">
+          <div class="gc-hd ok">✅ 해결</div>
+          <pre><code class="language-rust">// 1. 함수에도 pub 붙이기
+pub mod hosting {
+    pub fn add_to_waitlist() {} // OK
+}
+
+// 2. 필드도 pub 또는 생성자 제공
+pub struct Config {
+    pub host: String,  // pub 지정
+}
+// 또는
+impl Config {
+    pub fn new(host: &str) -> Self { ... }
+}
+
+// 3. child 안에서 use 재선언
+mod child {
+    use std::collections::HashMap; // 여기서 선언
+    fn use_it() {
+        HashMap::new(); // OK
+    }
+}
+
+// 4. pub(crate) → pub으로 변경
+// 또는 함수를 lib 내부에서만 사용</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsec">
+      <h3>실전 치트시트</h3>
+      <table class="tbl">
+        <tr><th>상황</th><th>해결책</th></tr>
+        <tr><td>모듈을 파일로 분리</td><td><code>mod utils;</code> 선언 + <code>src/utils.rs</code> 생성 (2018+)</td></tr>
+        <tr><td>하위 모듈 추가</td><td><code>utils.rs</code>에 <code>pub mod helper;</code> + <code>src/utils/helper.rs</code></td></tr>
+        <tr><td>파일 위치 커스텀</td><td><code>#[path = "경로.rs"] mod 이름;</code></td></tr>
+        <tr><td>플랫폼별 구현 분리</td><td><code>#[cfg(target_os = "...")] #[path = "..."] mod platform;</code></td></tr>
+        <tr><td>테스트 작성</td><td><code>#[cfg(test)] mod tests { use super::*; }</code></td></tr>
+        <tr><td>깔끔한 공개 API</td><td>lib.rs에서 <code>pub use 내부경로::항목;</code></td></tr>
+        <tr><td>crate 내부 공유</td><td><code>pub(crate) fn ...</code></td></tr>
+        <tr><td>부모 모듈까지만</td><td><code>pub(super) fn ...</code></td></tr>
+        <tr><td>특정 모듈 범위</td><td><code>pub(in crate::outer) fn ...</code></td></tr>
+        <tr><td>이름 충돌 해결</td><td><code>use std::io::Result as IoResult;</code></td></tr>
+        <tr><td>여러 항목 한번에</td><td><code>use std::{'{'}io::{'{'}self, Write{'}'}, collections::HashMap{'}'}</code></td></tr>
+        <tr><td>모듈 자체도 가져오기</td><td><code>use std::io::{'{'}self, Write{'}'}</code> — self = io 모듈 자체</td></tr>
+        <tr><td>절대경로 (안정적)</td><td><code>crate::module::function()</code> (Rust Book 권장)</td></tr>
+        <tr><td>부모 모듈 참조</td><td><code>super::function()</code> — 파일시스템 ".."과 같음</td></tr>
+        <tr><td>여러 단계 올라가기</td><td><code>super::super::function()</code> (3단계 이상은 crate:: 권장)</td></tr>
+        <tr><td>struct private 필드 보호</td><td>필드는 private, <code>pub fn new()</code> 생성자 제공</td></tr>
+        <tr><td>외부 crate 사용</td><td>Cargo.toml [dependencies] 추가 → <code>use crate_name::...</code></td></tr>
+      </table>
+    </div>
+
+    <div class="good box">
+      <div class="box-t">✅ Rust Book 최종 정리 — 모듈 시스템의 핵심 원칙</div>
+      <ul>
+        <li><strong>기본은 private</strong>: 모든 항목은 기본적으로 private. pub을 명시해야 공개</li>
+        <li><strong>자식은 부모를 알지만, 부모는 자식을 모른다</strong>: 자식 모듈은 ancestor의 private에 접근 가능</li>
+        <li><strong>모듈 공개 ≠ 내용 공개</strong>: <code>pub mod hosting</code>이어도 내부 함수는 별도로 pub 필요</li>
+        <li><strong>struct와 enum의 pub 차이</strong>: struct는 필드별 지정, enum은 전체 자동 공개</li>
+        <li><strong>use는 스코프에 귀속</strong>: 선언된 모듈/함수/블록 스코프에서만 유효</li>
+        <li><strong>절대경로 권장</strong>: Rust Book은 코드 이동 안정성을 위해 crate:: 절대경로를 선호</li>
+        <li><strong>pub use로 API 설계</strong>: 내부 구조와 공개 API를 분리해 사용자 편의 제공</li>
+      </ul>
+    </div>
+  </div>
+
+  </div></div>
+</div>
+
+<script>
+(function(){
+  hljs.highlightAll();
+
+  // 탭 전환
+  document.querySelectorAll('.tbtn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var g = this.dataset.g, t = this.dataset.t;
+      var tabs = this.closest('.tabs');
+      tabs.querySelectorAll('.tbtn').forEach(function(b){ b.classList.remove('on'); });
+      tabs.querySelectorAll('.tpane').forEach(function(p){ p.classList.remove('on'); });
+      this.classList.add('on');
+      var pane = document.getElementById(g+'-'+t);
+      if(pane) pane.classList.add('on');
+    });
+  });
+
+  // 다크모드 (시스템 설정 감지)
+  if(window.matchMedia('(prefers-color-scheme: dark)').matches){
+    document.body.classList.add('dark');
+  }
+  var dtoggle = document.getElementById('dtoggle');
+  function updateToggleLabel(){
+    dtoggle.textContent = document.body.classList.contains('dark') ? '☀️ 라이트' : '🌙 다크';
+  }
+  updateToggleLabel();
+  dtoggle.addEventListener('click', function(){
+    document.body.classList.toggle('dark');
+    updateToggleLabel();
+  });
+
+  // 사이드바 메뉴 클릭
+  var scroll = document.getElementById('scroll');
+  document.querySelectorAll('.sb-it').forEach(function(item){
+    item.addEventListener('click', function(){
+      var id = this.dataset.sec;
+      var target = document.getElementById(id);
+      if(!target) return;
+      scroll.scrollTop = target.offsetTop - 16;
+      document.querySelectorAll('.sb-it').forEach(function(i){ i.classList.remove('on'); });
+      this.classList.add('on');
+    });
+  });
+
+  // 스크롤 → 메뉴 연동
+  var secs = ['intro','pkg','mod','path','super','self','use','pubuse','visibility','realworld','external','summary'];
+  scroll.addEventListener('scroll', function(){
+    var top = this.scrollTop + 60;
+    var cur = secs[0];
+    secs.forEach(function(id){
+      var el = document.getElementById(id);
+      if(el && el.offsetTop <= top) cur = id;
+    });
+    document.querySelectorAll('.sb-it').forEach(function(item){
+      item.classList.toggle('on', item.dataset.sec === cur);
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rust 패턴 매칭 & Entry API 완전 가이드</title>
+<style>
+/* ══ 테마 변수 ═══════════════════════════════════════════ */
+:root {
+  --bg:       #f8f8f6;
+  --bg2:      #ffffff;
+  --bg3:      #efefed;
+  --border:   #ddddd8;
+  --text:     #1c1c1c;
+  --text2:    #5a5a56;
+  --accent:   #0066cc;
+  --sb-w:     232px;
+  --info-bg:  #e8f2ff; --info-bd: #3b82f6; --info-tx: #1e40af;
+  --warn-bg:  #fffbeb; --warn-bd: #f59e0b; --warn-tx: #92400e;
+  --ok-bg:    #f0fdf4; --ok-bd:   #22c55e; --ok-tx:   #166534;
+  --tag-bg:   #eff6ff; --tag-tx:  #1d4ed8;
+}
+[data-theme=dark] {
+  --bg:      #111113; --bg2: #1a1a1d; --bg3: #252528;
+  --border:  #333336; --text: #e2e2e0; --text2: #88887f;
+  --accent:  #60a5fa;
+  --info-bg: #1e293b; --info-bd: #3b82f6; --info-tx: #93c5fd;
+  --warn-bg: #1c1207; --warn-bd: #d97706; --warn-tx: #fcd34d;
+  --ok-bg:   #052e16; --ok-bd:   #16a34a; --ok-tx:   #86efac;
+  --tag-bg:  #1e3a5f; --tag-tx:  #93c5fd;
+}
+
+/* ══ 리셋 & 베이스 ═══════════════════════════════════════ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
+  background: var(--bg); color: var(--text);
+  line-height: 1.75; font-size: 15px;
+  transition: background .2s, color .2s;
+}
+
+/* ══ 레이아웃 ════════════════════════════════════════════ */
+.layout { display: flex; min-height: 100vh; }
+
+/* ══ 사이드바 ════════════════════════════════════════════ */
+.sidebar {
+  width: var(--sb-w); flex-shrink: 0;
+  background: var(--bg2); border-right: 1px solid var(--border);
+  position: fixed; top: 0; left: 0; height: 100vh;
+  overflow-y: auto; overflow-x: hidden;
+  padding: 0 0 2rem; transition: background .2s;
+}
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.sb-logo {
+  padding: .75rem 1rem;
+  font-size: .88rem; font-weight: 700; color: var(--accent);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2); position: sticky; top: 0; z-index: 1;
+}
+.sb-group { margin-top: .2rem; }
+.sb-cat {
+  padding: .4rem 1rem .2rem;
+  font-size: .7rem; font-weight: 700; color: var(--text2);
+  letter-spacing: .08em; text-transform: uppercase;
+}
+.sb-a {
+  display: block; padding: .3rem 1rem .3rem 1.5rem;
+  font-size: .82rem; color: var(--text2);
+  text-decoration: none; border-left: 2px solid transparent;
+  transition: all .15s;
+}
+.sb-a:hover { color: var(--accent); background: var(--bg3); }
+.sb-a.on {
+  color: var(--accent); font-weight: 600;
+  border-left-color: var(--accent); background: var(--info-bg);
+}
+
+/* ══ 탑바 ════════════════════════════════════════════════ */
+.topbar {
+  position: fixed; top: 0; left: var(--sb-w); right: 0;
+  height: 46px; z-index: 50;
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 1.5rem; transition: background .2s;
+}
+.topbar-t { font-size: .88rem; font-weight: 600; color: var(--text2); }
+.theme-btn {
+  cursor: pointer; border: 1px solid var(--border);
+  background: var(--bg3); color: var(--text);
+  padding: .28rem .8rem; border-radius: 6px;
+  font-size: .82rem; transition: all .18s;
+}
+.theme-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ══ 메인 ════════════════════════════════════════════════ */
+.main {
+  margin-left: var(--sb-w);
+  padding: 62px 2.5rem 5rem;
+  max-width: 880px; width: 100%;
+}
+
+/* ══ 챕터 / 섹션 제목 ════════════════════════════════════ */
+.ch-title {
+  font-size: 1.4rem; font-weight: 800; color: var(--accent);
+  margin: 2.5rem 0 1.2rem;
+  padding-bottom: .5rem; border-bottom: 2px solid var(--accent);
+}
+.sec-title {
+  font-size: 1.05rem; font-weight: 700; color: var(--text);
+  margin: 2rem 0 .7rem;
+  padding-left: .75rem; border-left: 3px solid var(--accent);
+}
+
+/* ══ 개념 / 경고 박스 ════════════════════════════════════ */
+.box {
+  border-radius: 0 8px 8px 0;
+  padding: .8rem 1.1rem; margin: .5rem 0 .8rem;
+  font-size: .9rem; line-height: 1.65;
+}
+.bi { background: var(--info-bg); border-left: 4px solid var(--info-bd); color: var(--info-tx); }
+.bw { background: var(--warn-bg); border-left: 4px solid var(--warn-bd); color: var(--warn-tx); }
+.bo { background: var(--ok-bg);   border-left: 4px solid var(--ok-bd);   color: var(--ok-tx); }
+.box strong { font-weight: 700; }
+.box code {
+  font-family: 'JetBrains Mono','Fira Code',monospace;
+  font-size: .81rem; background: rgba(0,0,0,.08);
+  padding: .05rem .32rem; border-radius: 3px;
+}
+
+/* ══ 출처 링크 ═══════════════════════════════════════════ */
+.ref {
+  font-size: .75rem; color: var(--text2);
+  display: flex; flex-wrap: wrap; gap: .4rem; align-items: center;
+  margin: .1rem 0 .6rem;
+}
+.ref a { color: var(--accent); text-decoration: none; border-bottom: 1px dotted var(--accent); }
+.ref a:hover { opacity: .75; }
+
+/* ══ 태그 ════════════════════════════════════════════════ */
+.tag {
+  display: inline-block; background: var(--tag-bg); color: var(--tag-tx);
+  border-radius: 4px; padding: .06rem .42rem;
+  font-size: .73rem; font-weight: 700; margin: .1rem .1rem;
+}
+
+/* ══ VS Code Dark Modern 에디터 ══════════════════════════ */
+.vscode {
+  border-radius: 5px; overflow: hidden;
+  border: 1px solid #3c3c3c;
+  margin: .6rem 0 .3rem;
+  box-shadow: 0 6px 28px rgba(0,0,0,.35);
+}
+
+/* 파일 헤더 */
+.vsc-header {
+  background: #1e1e1e;
+  border-bottom: 1px solid #3c3c3c;
+  display: flex; align-items: center; gap: 7px;
+  padding: 0 14px; height: 34px;
+}
+.vsc-icon {
+  width: 14px; height: 14px; background: #519aba;
+  border-radius: 2px; font-size: 7px; font-weight: 700;
+  color: #fff; display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0;
+}
+.vsc-fname {
+  font-size: 13px; color: #cccccc;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* 에디터 본체 */
+.vsc-body {
+  background: #1e1e1e;
+  overflow-x: auto;
+  padding: 8px 0;
+  counter-reset: ln;
+}
+
+/* 한 줄 */
+.ln {
+  display: flex;
+  align-items: baseline;
+  min-height: 22px;
+  line-height: 22px;
+  font-family: 'JetBrains Mono','Fira Code','Cascadia Code','Consolas',monospace;
+  font-size: 13.5px;
+}
+.ln:hover { background: rgba(255,255,255,.04); }
+
+/* 라인번호 — CSS counter 자동 증가 */
+.ln::before {
+  counter-increment: ln;
+  content: counter(ln);
+  display: inline-block;
+  min-width: 16px;
+  text-align: right;
+  padding-right: 20px;    /* ← 번호와 코드 사이 여백 */
+  padding-left: 14px;
+  color: #5a5a5a;
+  user-select: none;
+  flex-shrink: 0;
+  font-size: 12.5px;
+  line-height: 22px;
+}
+.ln:hover::before { color: #858585; }
+
+/* 코드 텍스트 */
+.ln > span {
+  flex: 1;
+  padding-right: 24px;
+  white-space: pre;
+  color: #d4d4d4;
+}
+
+/* VS Code Dark Modern 토큰 */
+.kw { color: #569cd6; }
+.tp { color: #4ec9b0; }
+.fn { color: #dcdcaa; }
+.st { color: #ce9178; }
+.cm { color: #6a9955; font-style: italic; }
+.nm { color: #b5cea8; }
+.at { color: #c586c0; }
+.id { color: #9cdcfe; }
+
+/* 상태바 */
+.vsc-status {
+  background: #007acc; height: 22px;
+  display: flex; align-items: center;
+  padding: 0 10px; gap: 14px;
+  font-size: 12px; color: #fff;
+  font-family: 'Segoe UI', sans-serif;
+}
+.vsc-status span { opacity: .9; }
+
+/* ══ 출력 결과 ═══════════════════════════════════════════ */
+.out-label {
+  font-size: .73rem; color: var(--text2);
+  font-weight: 700; letter-spacing: .06em;
+  margin: .25rem 0 .2rem;
+}
+.out {
+  background: #0d0d0f; border: 1px solid #2a2a2a;
+  border-radius: 6px; padding: .6rem 1.1rem;
+  font-family: 'JetBrains Mono',monospace;
+  font-size: .82rem; color: #9cdcfe;
+  white-space: pre; overflow-x: auto;
+  margin-bottom: 1.4rem;
+}
+
+/* ══ 메서드 비교표 ═══════════════════════════════════════ */
+.tbl { overflow-x: auto; margin: .75rem 0; }
+table { border-collapse: collapse; width: 100%; font-size: .86rem; }
+th {
+  background: var(--bg3); color: var(--text);
+  padding: .5rem .9rem; text-align: left;
+  border: 1px solid var(--border); font-weight: 700;
+}
+td {
+  padding: .45rem .9rem; border: 1px solid var(--border);
+  color: var(--text2); vertical-align: top;
+}
+td code {
+  font-family: 'JetBrains Mono',monospace; font-size: .8rem;
+  color: #569cd6; background: var(--bg3);
+  padding: .05rem .3rem; border-radius: 3px;
+}
+tr:nth-child(even) td { background: var(--bg3); }
+
+/* ══ 인라인 코드 / 기타 ══════════════════════════════════ */
+p { margin: .45rem 0; }
+p code, li code, .box code {
+  font-family: 'JetBrains Mono',monospace; font-size: .81rem;
+  background: var(--bg3); padding: .05rem .35rem;
+  border-radius: 3px; color: #569cd6;
+}
+ul { padding-left: 1.4rem; } li { margin: .25rem 0; }
+hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+.section { margin-bottom: 2.8rem; }
+</style>
+</head>
+<body>
+
+<!-- ══ 사이드바 ══════════════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="sb-logo">🦀 Rust 패턴 완전 가이드</div>
+  <div class="sb-group">
+    <div class="sb-cat">1. Pattern Matching</div>
+    <a class="sb-a" href="#s11">match 기본 구조</a>
+    <a class="sb-a" href="#s12">Option&lt;T&gt;</a>
+    <a class="sb-a" href="#s13">Result&lt;T,E&gt;</a>
+    <a class="sb-a" href="#s14">구조 분해</a>
+    <a class="sb-a" href="#s15">enum 매칭</a>
+    <a class="sb-a" href="#s16">가드 (Guard)</a>
+    <a class="sb-a" href="#s17">@ 바인딩</a>
+    <a class="sb-a" href="#s18">matches! 매크로</a>
+  </div>
+  <div class="sb-group">
+    <div class="sb-cat">2. Entry API</div>
+    <a class="sb-a" href="#s21">Entry란?</a>
+    <a class="sb-a" href="#s22">Vacant Entry</a>
+    <a class="sb-a" href="#s23">Occupied Entry</a>
+    <a class="sb-a" href="#s24">공통 편의 메서드</a>
+    <a class="sb-a" href="#s25">메서드 비교표</a>
+  </div>
+  <div class="sb-group">
+    <div class="sb-cat">3. 실전 패턴</div>
+    <a class="sb-a" href="#s31">카운팅</a>
+    <a class="sb-a" href="#s32">그룹핑</a>
+    <a class="sb-a" href="#s33">수정 / 초기화</a>
+    <a class="sb-a" href="#s34">지연 초기화</a>
+    <a class="sb-a" href="#s35">조건부 삭제</a>
+  </div>
+</nav>
+
+<!-- ══ 탑바 ══════════════════════════════════════════════ -->
+<div class="topbar">
+  <span class="topbar-t">Rust 패턴 매칭 &amp; Entry API 완전 가이드</span>
+  <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙 Dark</button>
+</div>
+
+<!-- ══ 메인 ══════════════════════════════════════════════ -->
+<div class="layout">
+<main class="main">
+
+<!-- ████████████████████████████████████████████████████
+     Chapter 1 — Pattern Matching
+████████████████████████████████████████████████████ -->
+<div class="ch-title" id="s11">Chapter 1 — Pattern Matching</div>
+
+<!-- ── 1-1 match 기본 ── -->
+<div class="section">
+<div class="sec-title">1-1. match 표현식 — 기본 구조</div>
+
+<div class="box bi">
+  <strong>match는 표현식(expression)입니다.</strong> 각 arm은 <code>패턴 =&gt; 표현식</code> 형태이며
+  match 자체가 값을 반환합니다. 모든 arm의 반환 타입은 동일해야 합니다.<br><br>
+  <strong>완전성 검사(exhaustiveness check)</strong> — 빠뜨린 케이스가 있으면
+  런타임 오류가 아닌 <em>컴파일 에러</em>가 발생합니다.
+</div>
+<div class="ref">📖
+  <a href="https://doc.rust-lang.org/book/ch19-01-all-the-places-for-patterns.html">The Rust Book §19.1</a>
+  <a href="https://doc.rust-lang.org/reference/expressions/match-expr.html">Rust Reference — match-expr</a>
+</div>
+
+<div class="vscode">
+  <div class="vsc-header"><div class="vsc-icon">rs</div><span class="vsc-fname">ex01_match_basic.rs</span></div>
+  <div class="vsc-body">
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">classify</span>(n: <span class="tp">i32</span>) -> &amp;<span class="kw">'static</span> <span class="tp">str</span> {</span></div>
+    <div class="ln"><span>    <span class="cm">// match는 표현식 — 반환값을 변수에 바인딩 가능</span></span></div>
+    <div class="ln"><span>    <span class="kw">match</span> n {</span></div>
+    <div class="ln"><span>        <span class="tp">i32</span>::MIN..=<span class="nm">-1</span> => <span class="st">"음수"</span>,</span></div>
+    <div class="ln"><span>        <span class="nm">0</span>              => <span class="st">"영"</span>,</span></div>
+    <div class="ln"><span>        <span class="nm">1</span> | <span class="nm">2</span> | <span class="nm">3</span>      => <span class="st">"작은 양수"</span>,    <span class="cm">// OR 패턴</span></span></div>
+    <div class="ln"><span>        <span class="nm">4</span>..=<span class="nm">9</span>          => <span class="st">"한 자리 양수"</span>,  <span class="cm">// 범위 패턴</span></span></div>
+    <div class="ln"><span>        <span class="nm">10</span>..=<span class="nm">99</span>        => <span class="st">"두 자리"</span>,</span></div>
+    <div class="ln"><span>        _              => <span class="st">"세 자리 이상"</span>,  <span class="cm">// 와일드카드</span></span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span>}</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+    <div class="ln"><span>    <span class="kw">for</span> n <span class="kw">in</span> [<span class="nm">-3</span>, <span class="nm">0</span>, <span class="nm">2</span>, <span class="nm">7</span>, <span class="nm">42</span>, <span class="nm">999</span>] {</span></div>
+    <div class="ln"><span>        <span class="at">println!</span>(<span class="st">"{:&gt;4} → {}"</span>, n, <span class="fn">classify</span>(n));</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span>}</span></div>
+  </div>
+  <div class="vsc-status"><span>Rust</span><span>UTF-8</span><span>LF</span></div>
+</div>
+<div class="out-label">▶ 출력</div>
+<div class="out">  -3 → 음수
+   0 → 영
+   2 → 작은 양수
+   7 → 한 자리 양수
+  42 → 두 자리
+ 999 → 세 자리 이상</div>
+</div>
+
+<!-- ── 1-2 Option ── -->
+<div class="section" id="s12">
+<div class="sec-title">1-2. Option&lt;T&gt; 매칭</div>
+
+<div class="box bi">
+  <strong>Option&lt;T&gt;</strong>는 <code>Some(T)</code> 또는 <code>None</code>인 열거형입니다.
+  Rust에는 null이 없고, 값의 부재를 타입 시스템으로 표현합니다.
+  match로 처리할 때 두 케이스를 모두 처리해야 컴파일됩니다.
+</div>
+<div class="box bw">
+  ⚠️ <strong>if let / while let은 exhaustiveness를 검사하지 않습니다.</strong>
+  빠뜨린 케이스가 있어도 컴파일러가 경고하지 않으므로, 모든 케이스 처리가 필요하면 <code>match</code>를 사용하세요.
+</div>
+<div class="ref">📖
+  <a href="https://doc.rust-lang.org/std/option/enum.Option.html">std::option::Option</a>
+  <a href="https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html">The Rust Book §6.1</a>
+</div>
+
+<div class="vscode">
+  <div class="vsc-header"><div class="vsc-icon">rs</div><span class="vsc-fname">ex02_option.rs</span></div>
+  <div class="vsc-body">
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">find_user</span>(id: <span class="tp">u32</span>) -> <span class="tp">Option</span>&lt;<span class="tp">String</span>&gt; {</span></div>
+    <div class="ln"><span>    <span class="kw">match</span> id {</span></div>
+    <div class="ln"><span>        <span class="nm">1</span> => <span class="tp">Some</span>(<span class="st">"Alice"</span>.<span class="fn">to_string</span>()),</span></div>
+    <div class="ln"><span>        <span class="nm">2</span> => <span class="tp">Some</span>(<span class="st">"Bob"</span>.<span class="fn">to_string</span>()),</span></div>
+    <div class="ln"><span>        _ => <span class="tp">None</span>,</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span>}</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+    <div class="ln"><span>    <span class="cm">// 1) 완전한 match — 두 케이스 모두 처리</span></span></div>
+    <div class="ln"><span>    <span class="kw">match</span> <span class="fn">find_user</span>(<span class="nm">1</span>) {</span></div>
+    <div class="ln"><span>        <span class="tp">Some</span>(name) => <span class="at">println!</span>(<span class="st">"찾음: {}"</span>, name),</span></div>
+    <div class="ln"><span>        <span class="tp">None</span>       => <span class="at">println!</span>(<span class="st">"없음"</span>),</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// 2) if let — 한 패턴만 관심 있을 때 (exhaustiveness 검사 없음)</span></span></div>
+    <div class="ln"><span>    <span class="kw">if</span> <span class="kw">let</span> <span class="tp">Some</span>(name) = <span class="fn">find_user</span>(<span class="nm">2</span>) {</span></div>
+    <div class="ln"><span>        <span class="at">println!</span>(<span class="st">"if let: {}"</span>, name);</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// 3) while let — 조건이 맞는 동안 반복</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="kw">mut</span> stack = <span class="at">vec!</span>[<span class="nm">10</span>, <span class="nm">20</span>, <span class="nm">30</span>];</span></div>
+    <div class="ln"><span>    <span class="kw">while</span> <span class="kw">let</span> <span class="tp">Some</span>(top) = stack.<span class="fn">pop</span>() {</span></div>
+    <div class="ln"><span>        <span class="at">print!</span>(<span class="st">"{} "</span>, top);</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span>    <span class="at">println!</span>();</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// 4) 메서드 체인 — match 없이 간결하게</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> result = <span class="fn">find_user</span>(<span class="nm">99</span>)</span></div>
+    <div class="ln"><span>        .<span class="fn">map</span>(|s| s.<span class="fn">to_uppercase</span>())</span></div>
+    <div class="ln"><span>        .<span class="fn">unwrap_or</span>(<span class="st">"UNKNOWN"</span>.<span class="fn">to_string</span>());</span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"결과: {}"</span>, result);</span></div>
+    <div class="ln"><span>}</span></div>
+  </div>
+  <div class="vsc-status"><span>Rust</span><span>UTF-8</span><span>LF</span></div>
+</div>
+<div class="out-label">▶ 출력</div>
+<div class="out">찾음: Alice
+if let: Bob
+30 20 10
+결과: UNKNOWN</div>
+</div>
+
+<!-- ── 1-3 Result ── -->
+<div class="section" id="s13">
+<div class="sec-title">1-3. Result&lt;T, E&gt; 매칭</div>
+
+<div class="box bi">
+  <strong>Result&lt;T, E&gt;</strong>는 <code>Ok(T)</code> 또는 <code>Err(E)</code>인 열거형입니다.
+  에러 처리의 핵심 타입이며 두 케이스를 모두 처리해야 합니다.
+  <code>?</code> 연산자는 <code>Err</code>일 때 즉시 호출자에게 전파하는 문법 설탕입니다.
+</div>
+<div class="ref">📖
+  <a href="https://doc.rust-lang.org/std/result/enum.Result.html">std::result::Result</a>
+  <a href="https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html">The Rust Book §9.2</a>
+</div>
+
+<div class="vscode">
+  <div class="vsc-header"><div class="vsc-icon">rs</div><span class="vsc-fname">ex03_result.rs</span></div>
+  <div class="vsc-body">
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">parse_positive</span>(s: &amp;<span class="tp">str</span>) -> <span class="tp">Result</span>&lt;<span class="tp">u32</span>, <span class="tp">String</span>&gt; {</span></div>
+    <div class="ln"><span>    <span class="kw">match</span> s.<span class="fn">trim</span>().<span class="fn">parse</span>::&lt;<span class="tp">i32</span>&gt;() {</span></div>
+    <div class="ln"><span>        <span class="tp">Ok</span>(n) <span class="kw">if</span> n >= <span class="nm">0</span> => <span class="tp">Ok</span>(n <span class="kw">as</span> <span class="tp">u32</span>),</span></div>
+    <div class="ln"><span>        <span class="tp">Ok</span>(_)           => <span class="tp">Err</span>(<span class="st">"음수 불허"</span>.<span class="fn">to_string</span>()),</span></div>
+    <div class="ln"><span>        <span class="tp">Err</span>(e)          => <span class="tp">Err</span>(<span class="at">format!</span>(<span class="st">"파싱 실패: {}"</span>, e)),</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span>}</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="cm">// ? 연산자 — Err이면 호출자에게 즉시 전파</span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">doubled</span>(s: &amp;<span class="tp">str</span>) -> <span class="tp">Result</span>&lt;<span class="tp">u32</span>, <span class="tp">String</span>&gt; {</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> n = <span class="fn">parse_positive</span>(s)?;</span></div>
+    <div class="ln"><span>    <span class="tp">Ok</span>(n * <span class="nm">2</span>)</span></div>
+    <div class="ln"><span>}</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+    <div class="ln"><span>    <span class="kw">for</span> s <span class="kw">in</span> [<span class="st">"42"</span>, <span class="st">"-5"</span>, <span class="st">"abc"</span>, <span class="st">"  7  "</span>] {</span></div>
+    <div class="ln"><span>        <span class="kw">match</span> <span class="fn">doubled</span>(s) {</span></div>
+    <div class="ln"><span>            <span class="tp">Ok</span>(v)  => <span class="at">println!</span>(<span class="st">"{:&gt;7} → Ok({})"</span>,  s.<span class="fn">trim</span>(), v),</span></div>
+    <div class="ln"><span>            <span class="tp">Err</span>(e) => <span class="at">println!</span>(<span class="st">"{:&gt;7} → Err({})"</span>, s.<span class="fn">trim</span>(), e),</span></div>
+    <div class="ln"><span>        }</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span>}</span></div>
+  </div>
+  <div class="vsc-status"><span>Rust</span><span>UTF-8</span><span>LF</span></div>
+</div>
+<div class="out-label">▶ 출력</div>
+<div class="out">     42 → Ok(84)
+     -5 → Err(음수 불허)
+    abc → Err(파싱 실패: invalid digit found in string)
+      7 → Ok(14)</div>
+</div>
+
+<!-- ── 1-4 구조 분해 ── -->
+<div class="section" id="s14">
+<div class="sec-title">1-4. 구조 분해 (Destructuring)</div>
+
+<div class="box bi">
+  복합 타입(튜플, 구조체, 열거형, 슬라이스)의 내부 값을 패턴으로 분리해 바인딩합니다.
+  <code>..</code>로 나머지 필드를 한꺼번에 무시할 수 있고, 중첩 구조도 한 번에 분해할 수 있습니다.
+</div>
+<div class="ref">📖
+  <a href="https://doc.rust-lang.org/book/ch19-03-pattern-syntax.html#destructuring-to-break-apart-values">The Rust Book §19.3 — Destructuring</a>
+</div>
+
+<div class="vscode">
+  <div class="vsc-header"><div class="vsc-icon">rs</div><span class="vsc-fname">ex04_destructure.rs</span></div>
+  <div class="vsc-body">
+    <div class="ln"><span><span class="at">#[derive(Debug)]</span></span></div>
+    <div class="ln"><span><span class="kw">struct</span> <span class="tp">Point</span> { x: <span class="tp">i32</span>, y: <span class="tp">i32</span> }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="at">#[derive(Debug)]</span></span></div>
+    <div class="ln"><span><span class="kw">enum</span> <span class="tp">Shape</span> {</span></div>
+    <div class="ln"><span>    Circle  { center: <span class="tp">Point</span>, radius: <span class="tp">f64</span> },</span></div>
+    <div class="ln"><span>    Line(<span class="tp">Point</span>, <span class="tp">Point</span>),</span></div>
+    <div class="ln"><span>}</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+    <div class="ln"><span>    <span class="cm">// 튜플 분해</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> (a, b, _) = (<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>);</span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"a={} b={}"</span>, a, b);</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// 구조체 분해 — .. 로 나머지 무시</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> p = <span class="tp">Point</span> { x: <span class="nm">10</span>, y: <span class="nm">20</span> };</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="tp">Point</span> { x, .. } = p;</span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"x={}"</span>, x);</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// enum 분해</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> shapes = <span class="at">vec!</span>[</span></div>
+    <div class="ln"><span>        <span class="tp">Shape</span>::Circle { center: <span class="tp">Point</span> { x: <span class="nm">0</span>, y: <span class="nm">0</span> }, radius: <span class="nm">5.0</span> },</span></div>
+    <div class="ln"><span>        <span class="tp">Shape</span>::Line(<span class="tp">Point</span> { x: <span class="nm">0</span>, y: <span class="nm">0</span> }, <span class="tp">Point</span> { x: <span class="nm">3</span>, y: <span class="nm">4</span> }),</span></div>
+    <div class="ln"><span>    ];</span></div>
+    <div class="ln"><span>    <span class="kw">for</span> s <span class="kw">in</span> &amp;shapes {</span></div>
+    <div class="ln"><span>        <span class="kw">match</span> s {</span></div>
+    <div class="ln"><span>            <span class="tp">Shape</span>::Circle { center: <span class="tp">Point</span> { x, y }, radius } =></span></div>
+    <div class="ln"><span>                <span class="at">println!</span>(<span class="st">"원: 중심({},{}) r={}"</span>, x, y, radius),</span></div>
+    <div class="ln"><span>            <span class="tp">Shape</span>::Line(<span class="tp">Point</span> { x: x1, y: y1 }, <span class="tp">Point</span> { x: x2, y: y2 }) =></span></div>
+    <div class="ln"><span>                <span class="at">println!</span>(<span class="st">"선: ({},{})→({},{})"</span>, x1, y1, x2, y2),</span></div>
+    <div class="ln"><span>        }</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// 슬라이스 분해</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> nums = [<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>, <span class="nm">4</span>, <span class="nm">5</span>];</span></div>
+    <div class="ln"><span>    <span class="kw">if</span> <span class="kw">let</span> [first, .., last] = nums {</span></div>
+    <div class="ln"><span>        <span class="at">println!</span>(<span class="st">"첫={} 마지막={}"</span>, first, last);</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span>}</span></div>
+  </div>
+  <div class="vsc-status"><span>Rust</span><span>UTF-8</span><span>LF</span></div>
+</div>
+<div class="out-label">▶ 출력</div>
+<div class="out">a=1 b=2
+x=10
+원: 중심(0,0) r=5
+선: (0,0)→(3,4)
+첫=1 마지막=5</div>
+</div>
+
+<!-- ── 1-5 enum 매칭 ── -->
+<div class="section" id="s15">
+<div class="sec-title">1-5. 열거형(enum) 매칭</div>
+
+<div class="box bi">
+  Rust의 enum은 <strong>태그 유니언(tagged union)</strong>입니다. 각 variant가 서로 다른 데이터를 담을 수 있습니다.
+  새 variant를 추가하면 match가 있는 모든 곳에서 컴파일 에러가 발생해 누락을 방지합니다.
+</div>
+<div class="ref">📖 <a href="https://doc.rust-lang.org/book/ch06-02-match.html">The Rust Book §6.2</a></div>
+
+<div class="vscode">
+  <div class="vsc-header"><div class="vsc-icon">rs</div><span class="vsc-fname">ex05_enum_match.rs</span></div>
+  <div class="vsc-body">
+    <div class="ln"><span><span class="at">#[derive(Debug)]</span></span></div>
+    <div class="ln"><span><span class="kw">enum</span> <span class="tp">Command</span> {</span></div>
+    <div class="ln"><span>    Quit,                        <span class="cm">// unit variant</span></span></div>
+    <div class="ln"><span>    Move { x: <span class="tp">i32</span>, y: <span class="tp">i32</span> },  <span class="cm">// struct variant</span></span></div>
+    <div class="ln"><span>    Write(<span class="tp">String</span>),               <span class="cm">// tuple variant</span></span></div>
+    <div class="ln"><span>    ChangeColor(<span class="tp">u8</span>, <span class="tp">u8</span>, <span class="tp">u8</span>),   <span class="cm">// tuple variant (RGB)</span></span></div>
+    <div class="ln"><span>}</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">execute</span>(cmd: &amp;<span class="tp">Command</span>) {</span></div>
+    <div class="ln"><span>    <span class="kw">match</span> cmd {</span></div>
+    <div class="ln"><span>        <span class="tp">Command</span>::Quit =></span></div>
+    <div class="ln"><span>            <span class="at">println!</span>(<span class="st">"[종료]"</span>),</span></div>
+    <div class="ln"><span>        <span class="tp">Command</span>::Move { x, y } =></span></div>
+    <div class="ln"><span>            <span class="at">println!</span>(<span class="st">"[이동] x={} y={}"</span>, x, y),</span></div>
+    <div class="ln"><span>        <span class="tp">Command</span>::Write(msg) =></span></div>
+    <div class="ln"><span>            <span class="at">println!</span>(<span class="st">"[출력] {}"</span>, msg),</span></div>
+    <div class="ln"><span>        <span class="tp">Command</span>::ChangeColor(r, g, b) =></span></div>
+    <div class="ln"><span>            <span class="at">println!</span>(<span class="st">"[색상] rgb({},{},{})"</span>, r, g, b),</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span>}</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> cmds = <span class="at">vec!</span>[</span></div>
+    <div class="ln"><span>        <span class="tp">Command</span>::Move { x: <span class="nm">10</span>, y: <span class="nm">-5</span> },</span></div>
+    <div class="ln"><span>        <span class="tp">Command</span>::Write(<span class="st">"Hello Rust"</span>.<span class="fn">to_string</span>()),</span></div>
+    <div class="ln"><span>        <span class="tp">Command</span>::ChangeColor(<span class="nm">255</span>, <span class="nm">128</span>, <span class="nm">0</span>),</span></div>
+    <div class="ln"><span>        <span class="tp">Command</span>::Quit,</span></div>
+    <div class="ln"><span>    ];</span></div>
+    <div class="ln"><span>    <span class="kw">for</span> cmd <span class="kw">in</span> &amp;cmds { <span class="fn">execute</span>(cmd); }</span></div>
+    <div class="ln"><span>}</span></div>
+  </div>
+  <div class="vsc-status"><span>Rust</span><span>UTF-8</span><span>LF</span></div>
+</div>
+<div class="out-label">▶ 출력</div>
+<div class="out">[이동] x=10 y=-5
+[출력] Hello Rust
+[색상] rgb(255,128,0)
+[종료]</div>
+</div>
+
+<!-- ── 1-6 가드 ── -->
+<div class="section" id="s16">
+<div class="sec-title">1-6. 가드 (Match Guard)</div>
+
+<div class="box bi">
+  <strong>가드</strong>는 패턴 뒤에 붙이는 추가 <code>if</code> 조건입니다.
+  가드 평가 전에 scrutinee의 해당 부분에 공유 참조가 먼저 생성되고,
+  가드가 <code>true</code>일 때만 실제로 이동/복사가 일어납니다.
+</div>
+<div class="box bw">
+  ⚠️ <strong>가드가 있는 arm은 exhaustiveness 검사에서 카운트되지 않습니다.</strong>
+  <code>Some(x) if x &gt; 0</code> 하나만으로는 완전성이 인정되지 않아 추가 arm이 필요합니다.
+  또한 가드는 <code>match</code>에서만 사용 가능하며 <code>if let</code> / <code>while let</code>에서는 사용할 수 없습니다.
+</div>
+<div class="ref">📖
+  <a href="https://doc.rust-lang.org/book/ch19-03-pattern-syntax.html#extra-conditionals-with-match-guards">The Rust Book §19.3 — Match Guards</a>
+  <a href="https://doc.rust-lang.org/reference/expressions/match-expr.html#match-guards">Rust Reference — Match Guards</a>
+</div>
+
+<div class="vscode">
+  <div class="vsc-header"><div class="vsc-icon">rs</div><span class="vsc-fname">ex06_guard.rs</span></div>
+  <div class="vsc-body">
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+    <div class="ln"><span>    <span class="cm">// 기본 가드</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> num = <span class="tp">Some</span>(<span class="nm">7</span>);</span></div>
+    <div class="ln"><span>    <span class="kw">match</span> num {</span></div>
+    <div class="ln"><span>        <span class="tp">Some</span>(x) <span class="kw">if</span> x &lt; <span class="nm">5</span>  => <span class="at">println!</span>(<span class="st">"5 미만: {}"</span>, x),</span></div>
+    <div class="ln"><span>        <span class="tp">Some</span>(x) <span class="kw">if</span> x &lt; <span class="nm">10</span> => <span class="at">println!</span>(<span class="st">"5~9: {}"</span>, x),</span></div>
+    <div class="ln"><span>        <span class="tp">Some</span>(x)           => <span class="at">println!</span>(<span class="st">"10 이상: {}"</span>, x),</span></div>
+    <div class="ln"><span>        <span class="tp">None</span>              => <span class="at">println!</span>(<span class="st">"없음"</span>),</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// 외부 변수 참조 — 가드 안에서 가능</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> threshold = <span class="nm">10</span>;</span></div>
+    <div class="ln"><span>    <span class="kw">for</span> v <span class="kw">in</span> [<span class="tp">Some</span>(<span class="nm">3</span>), <span class="tp">Some</span>(<span class="nm">15</span>), <span class="tp">None</span>] {</span></div>
+    <div class="ln"><span>        <span class="kw">match</span> v {</span></div>
+    <div class="ln"><span>            <span class="tp">Some</span>(n) <span class="kw">if</span> n &lt; threshold => <span class="at">println!</span>(<span class="st">"{} &lt; {}"</span>, n, threshold),</span></div>
+    <div class="ln"><span>            <span class="tp">Some</span>(n)                  => <span class="at">println!</span>(<span class="st">"{} >= {}"</span>, n, threshold),</span></div>
+    <div class="ln"><span>            <span class="tp">None</span>                     => <span class="at">println!</span>(<span class="st">"없음"</span>),</span></div>
+    <div class="ln"><span>        }</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// OR 패턴 + 가드 — 가드는 OR 패턴 전체에 적용</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> (x, y) = (<span class="nm">5</span>, <span class="nm">0</span>);</span></div>
+    <div class="ln"><span>    <span class="kw">match</span> (x, y) {</span></div>
+    <div class="ln"><span>        (<span class="nm">4</span> | <span class="nm">5</span> | <span class="nm">6</span>, n) <span class="kw">if</span> n == <span class="nm">0</span> => <span class="at">println!</span>(<span class="st">"x=4|5|6 이고 y=0"</span>),</span></div>
+    <div class="ln"><span>        (x, _)                    => <span class="at">println!</span>(<span class="st">"기타 x={}"</span>, x),</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span>}</span></div>
+  </div>
+  <div class="vsc-status"><span>Rust</span><span>UTF-8</span><span>LF</span></div>
+</div>
+<div class="out-label">▶ 출력</div>
+<div class="out">5~9: 7
+3 &lt; 10
+15 &gt;= 10
+없음
+x=4|5|6 이고 y=0</div>
+</div>
+
+<!-- ── 1-7 @ 바인딩 ── -->
+<div class="section" id="s17">
+<div class="sec-title">1-7. @ 바인딩</div>
+
+<div class="box bi">
+  <strong>@ 연산자</strong>는 패턴 검사와 값 캡처를 동시에 수행합니다.
+  <code>n @ 1..=10</code>은 "1~10 범위인지 검사하고, 그 값을 <code>n</code>에 바인딩"합니다.
+  가드 없이도 조건을 만족하는 값을 변수에 담을 수 있습니다.
+</div>
+<div class="ref">📖 <a href="https://doc.rust-lang.org/book/ch19-03-pattern-syntax.html#-bindings">The Rust Book §19.3 — @ Bindings</a></div>
+
+<div class="vscode">
+  <div class="vsc-header"><div class="vsc-icon">rs</div><span class="vsc-fname">ex07_at_binding.rs</span></div>
+  <div class="vsc-body">
+    <div class="ln"><span><span class="at">#[derive(Debug)]</span></span></div>
+    <div class="ln"><span><span class="kw">enum</span> <span class="tp">Message</span> { Hello { id: <span class="tp">i32</span> } }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+    <div class="ln"><span>    <span class="cm">// @ 바인딩 기본</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> x = <span class="nm">7</span>;</span></div>
+    <div class="ln"><span>    <span class="kw">match</span> x {</span></div>
+    <div class="ln"><span>        n @ <span class="nm">1</span>..=<span class="nm">5</span>  => <span class="at">println!</span>(<span class="st">"1~5: {}"</span>, n),</span></div>
+    <div class="ln"><span>        n @ <span class="nm">6</span>..=<span class="nm">10</span> => <span class="at">println!</span>(<span class="st">"6~10: {}"</span>, n),</span></div>
+    <div class="ln"><span>        n           => <span class="at">println!</span>(<span class="st">"범위 밖: {}"</span>, n),</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// 구조체 필드에 @ 적용</span></span></div>
+    <div class="ln"><span>    <span class="kw">match</span> (<span class="tp">Message</span>::Hello { id: <span class="nm">5</span> }) {</span></div>
+    <div class="ln"><span>        <span class="tp">Message</span>::Hello { id: v @ <span class="nm">3</span>..=<span class="nm">7</span> } =></span></div>
+    <div class="ln"><span>            <span class="at">println!</span>(<span class="st">"id {} 는 3~7"</span>, v),</span></div>
+    <div class="ln"><span>        <span class="tp">Message</span>::Hello { id } =></span></div>
+    <div class="ln"><span>            <span class="at">println!</span>(<span class="st">"기타 id: {}"</span>, id),</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// Option 내부 + outer 동시 캡처</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> opt = <span class="tp">Some</span>(<span class="nm">42</span>);</span></div>
+    <div class="ln"><span>    <span class="kw">match</span> opt {</span></div>
+    <div class="ln"><span>        outer @ <span class="tp">Some</span>(inner) =></span></div>
+    <div class="ln"><span>            <span class="at">println!</span>(<span class="st">"outer={:?} inner={}"</span>, outer, inner),</span></div>
+    <div class="ln"><span>        <span class="tp">None</span> => <span class="at">println!</span>(<span class="st">"없음"</span>),</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// 점수 등급 — @ 없이는 값 재사용 불가</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> grade = <span class="kw">match</span> <span class="nm">87_u32</span> {</span></div>
+    <div class="ln"><span>        s @ <span class="nm">90</span>..=<span class="nm">100</span> => <span class="at">format!</span>(<span class="st">"A ({}점)"</span>, s),</span></div>
+    <div class="ln"><span>        s @ <span class="nm">80</span>..=<span class="nm">89</span>  => <span class="at">format!</span>(<span class="st">"B ({}점)"</span>, s),</span></div>
+    <div class="ln"><span>        s @ <span class="nm">70</span>..=<span class="nm">79</span>  => <span class="at">format!</span>(<span class="st">"C ({}점)"</span>, s),</span></div>
+    <div class="ln"><span>        s             => <span class="at">format!</span>(<span class="st">"F ({}점)"</span>, s),</span></div>
+    <div class="ln"><span>    };</span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"등급: {}"</span>, grade);</span></div>
+    <div class="ln"><span>}</span></div>
+  </div>
+  <div class="vsc-status"><span>Rust</span><span>UTF-8</span><span>LF</span></div>
+</div>
+<div class="out-label">▶ 출력</div>
+<div class="out">6~10: 7
+id 5 는 3~7
+outer=Some(42) inner=42
+등급: B (87점)</div>
+</div>
+
+<!-- ── 1-8 matches! ── -->
+<div class="section" id="s18">
+<div class="sec-title">1-8. matches! 매크로</div>
+
+<div class="box bi">
+  <code>matches!(expr, pattern)</code>는 패턴이 일치하면 <code>true</code>, 아니면 <code>false</code>를 반환합니다.
+  가드도 함께 사용할 수 있습니다: <code>matches!(v, Some(x) if x &gt; 0)</code>
+</div>
+<div class="ref">📖 <a href="https://doc.rust-lang.org/std/macro.matches.html">std::matches!</a></div>
+
+<div class="vscode">
+  <div class="vsc-header"><div class="vsc-icon">rs</div><span class="vsc-fname">ex08_matches.rs</span></div>
+  <div class="vsc-body">
+    <div class="ln"><span><span class="at">#[derive(Debug)]</span></span></div>
+    <div class="ln"><span><span class="kw">enum</span> <span class="tp">Status</span> { Active, Inactive, Pending(<span class="tp">u32</span>) }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> s = <span class="tp">Status</span>::Pending(<span class="nm">42</span>);</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// 기본 사용</span></span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"Pending? {}"</span>, <span class="at">matches!</span>(s, <span class="tp">Status</span>::Pending(_)));</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// 가드 포함</span></span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"n>10? {}"</span>, <span class="at">matches!</span>(s, <span class="tp">Status</span>::Pending(n) <span class="kw">if</span> n &gt; <span class="nm">10</span>));</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// 필터링에 활용</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> list = <span class="at">vec!</span>[</span></div>
+    <div class="ln"><span>        <span class="tp">Status</span>::Active, <span class="tp">Status</span>::Pending(<span class="nm">5</span>),</span></div>
+    <div class="ln"><span>        <span class="tp">Status</span>::Inactive, <span class="tp">Status</span>::Pending(<span class="nm">99</span>), <span class="tp">Status</span>::Active,</span></div>
+    <div class="ln"><span>    ];</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> active = list.<span class="fn">iter</span>()</span></div>
+    <div class="ln"><span>        .<span class="fn">filter</span>(|s| <span class="at">matches!</span>(s, <span class="tp">Status</span>::Active))</span></div>
+    <div class="ln"><span>        .<span class="fn">count</span>();</span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"Active 개수: {}"</span>, active);</span></div>
+    <div class="ln"><span>}</span></div>
+  </div>
+  <div class="vsc-status"><span>Rust</span><span>UTF-8</span><span>LF</span></div>
+</div>
+<div class="out-label">▶ 출력</div>
+<div class="out">Pending? true
+n>10? true
+Active 개수: 2</div>
+</div>
+
+<hr>
+
+<!-- ████████████████████████████████████████████████████
+     Chapter 2 — Entry API
+████████████████████████████████████████████████████ -->
+<div class="ch-title" id="s21">Chapter 2 — Entry API</div>
+
+<!-- ── 2-1 Entry란? ── -->
+<div class="section">
+<div class="sec-title">2-1. Entry란?</div>
+
+<div class="box bi">
+  <strong>Entry</strong>는 HashMap / BTreeMap에서 특정 키에 대한 <em>자리(slot) 핸들</em>입니다.
+  <code>entry(key)</code>를 호출하면 해시 탐색을 <strong>1회</strong>만 수행한 뒤,
+  키가 있으면 <code>Occupied</code>, 없으면 <code>Vacant</code>를 반환합니다.<br><br>
+  <strong>공식 정의:</strong><br>
+  <code>pub enum Entry&lt;'a, K, V&gt; {</code><br>
+  <code>&nbsp;&nbsp;Occupied(OccupiedEntry&lt;'a, K, V&gt;),</code><br>
+  <code>&nbsp;&nbsp;Vacant(VacantEntry&lt;'a, K, V&gt;),</code><br>
+  <code>}</code><br><br>
+  라이프타임 <code>'a</code>는 Entry가 맵을 빌리는 기간입니다. Entry가 살아있는 동안 맵에 대한 다른 가변 참조를 가질 수 없습니다.
+</div>
+<div class="ref">📖
+  <a href="https://doc.rust-lang.org/std/collections/hash_map/enum.Entry.html">std::collections::hash_map::Entry</a>
+  <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html">std::collections::HashMap</a>
+</div>
+
+<div class="vscode">
+  <div class="vsc-header"><div class="vsc-icon">rs</div><span class="vsc-fname">ex09_entry_intro.rs</span></div>
+  <div class="vsc-body">
+    <div class="ln"><span><span class="kw">use</span> <span class="tp">std</span>::collections::<span class="tp">HashMap</span>;</span></div>
+    <div class="ln"><span><span class="kw">use</span> <span class="tp">std</span>::collections::hash_map::<span class="tp">Entry</span>;</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="kw">mut</span> map: <span class="tp">HashMap</span>&lt;&amp;<span class="tp">str</span>, <span class="tp">u32</span>&gt; = <span class="tp">HashMap</span>::<span class="fn">new</span>();</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// ❌ 이중 탐색 — contains_key + insert = 해시 탐색 2회</span></span></div>
+    <div class="ln"><span>    <span class="kw">if</span> !map.<span class="fn">contains_key</span>(<span class="st">"score"</span>) {</span></div>
+    <div class="ln"><span>        map.<span class="fn">insert</span>(<span class="st">"score"</span>, <span class="nm">0</span>);</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// ✅ Entry API — 해시 탐색 1회</span></span></div>
+    <div class="ln"><span>    map.<span class="fn">entry</span>(<span class="st">"score"</span>).<span class="fn">or_insert</span>(<span class="nm">0</span>);</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// entry()가 반환하는 타입 직접 확인</span></span></div>
+    <div class="ln"><span>    <span class="kw">match</span> map.<span class="fn">entry</span>(<span class="st">"score"</span>) {</span></div>
+    <div class="ln"><span>        <span class="tp">Entry</span>::Occupied(o) =></span></div>
+    <div class="ln"><span>            <span class="at">println!</span>(<span class="st">"Occupied: 현재값={}"</span>, o.<span class="fn">get</span>()),</span></div>
+    <div class="ln"><span>        <span class="tp">Entry</span>::Vacant(v) =></span></div>
+    <div class="ln"><span>            <span class="at">println!</span>(<span class="st">"Vacant: 키={}"</span>, v.<span class="fn">key</span>()),</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span>    <span class="kw">match</span> map.<span class="fn">entry</span>(<span class="st">"new_key"</span>) {</span></div>
+    <div class="ln"><span>        <span class="tp">Entry</span>::Occupied(o) =></span></div>
+    <div class="ln"><span>            <span class="at">println!</span>(<span class="st">"Occupied: {}"</span>, o.<span class="fn">get</span>()),</span></div>
+    <div class="ln"><span>        <span class="tp">Entry</span>::Vacant(v) =></span></div>
+    <div class="ln"><span>            <span class="at">println!</span>(<span class="st">"Vacant: 키={}"</span>, v.<span class="fn">key</span>()),</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span>}</span></div>
+  </div>
+  <div class="vsc-status"><span>Rust</span><span>UTF-8</span><span>LF</span></div>
+</div>
+<div class="out-label">▶ 출력</div>
+<div class="out">Occupied: 현재값=0
+Vacant: 키=new_key</div>
+</div>
+
+<!-- ── 2-2 Vacant ── -->
+<div class="section" id="s22">
+<div class="sec-title">2-2. VacantEntry — 키가 없을 때</div>
+
+<div class="box bi">
+  • <code>v.key()</code> → <code>&amp;K</code> — 삽입될 키 참조<br>
+  • <code>v.insert(value)</code> → <code>&amp;mut V</code> — 값 삽입 후 가변 참조 반환 (삽입 직후 바로 수정 가능)<br>
+  • <code>v.into_key()</code> → <code>K</code> — 삽입 포기하고 키 소유권만 회수
+</div>
+<div class="ref">📖 <a href="https://doc.rust-lang.org/std/collections/hash_map/struct.VacantEntry.html">std::collections::hash_map::VacantEntry</a></div>
+
+<div class="vscode">
+  <div class="vsc-header"><div class="vsc-icon">rs</div><span class="vsc-fname">ex10_vacant.rs</span></div>
+  <div class="vsc-body">
+    <div class="ln"><span><span class="kw">use</span> <span class="tp">std</span>::collections::<span class="tp">HashMap</span>;</span></div>
+    <div class="ln"><span><span class="kw">use</span> <span class="tp">std</span>::collections::hash_map::<span class="tp">Entry</span>;</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="kw">mut</span> map: <span class="tp">HashMap</span>&lt;&amp;<span class="tp">str</span>, <span class="tp">u32</span>&gt; = <span class="tp">HashMap</span>::<span class="fn">new</span>();</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// v.key() — 삽입 전에 키 이름 확인 (공식 문서 예제)</span></span></div>
+    <div class="ln"><span>    <span class="kw">if</span> <span class="kw">let</span> <span class="tp">Entry</span>::Vacant(v) = map.<span class="fn">entry</span>(<span class="st">"poneyland"</span>) {</span></div>
+    <div class="ln"><span>        <span class="at">println!</span>(<span class="st">"삽입할 키: {}"</span>, v.<span class="fn">key</span>());</span></div>
+    <div class="ln"><span>        v.<span class="fn">insert</span>(<span class="nm">37</span>);</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span>    <span class="at">assert_eq!</span>(map[<span class="st">"poneyland"</span>], <span class="nm">37</span>);</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// v.insert() 반환값 = &amp;mut V — 삽입 직후 즉시 수정</span></span></div>
+    <div class="ln"><span>    <span class="kw">if</span> <span class="kw">let</span> <span class="tp">Entry</span>::Vacant(v) = map.<span class="fn">entry</span>(<span class="st">"score"</span>) {</span></div>
+    <div class="ln"><span>        <span class="kw">let</span> val = v.<span class="fn">insert</span>(<span class="nm">100</span>);</span></div>
+    <div class="ln"><span>        *val += <span class="nm">50</span>;  <span class="cm">// 삽입 직후 바로 수정 가능</span></span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"score: {}"</span>, map[<span class="st">"score"</span>]);</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// v.into_key() — 삽입 포기, 키만 회수</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> key = <span class="kw">match</span> map.<span class="fn">entry</span>(<span class="st">"temp"</span>) {</span></div>
+    <div class="ln"><span>        <span class="tp">Entry</span>::Vacant(v)   => v.<span class="fn">into_key</span>(),</span></div>
+    <div class="ln"><span>        <span class="tp">Entry</span>::Occupied(o) => o.<span class="fn">key</span>(),</span></div>
+    <div class="ln"><span>    };</span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"회수된 키: {}, temp 존재: {}"</span>,</span></div>
+    <div class="ln"><span>             key, map.<span class="fn">contains_key</span>(<span class="st">"temp"</span>));</span></div>
+    <div class="ln"><span>}</span></div>
+  </div>
+  <div class="vsc-status"><span>Rust</span><span>UTF-8</span><span>LF</span></div>
+</div>
+<div class="out-label">▶ 출력</div>
+<div class="out">삽입할 키: poneyland
+score: 150
+회수된 키: temp, temp 존재: false</div>
+</div>
+
+<!-- ── 2-3 Occupied ── -->
+<div class="section" id="s23">
+<div class="sec-title">2-3. OccupiedEntry — 키가 있을 때</div>
+
+<div class="box bi">
+  • <code>o.get()</code> → <code>&amp;V</code> — 불변 참조<br>
+  • <code>o.get_mut()</code> → <code>&amp;mut V</code> — 가변 참조 (여러 번 호출 가능)<br>
+  • <code>o.into_mut()</code> → <code>&amp;mut V</code> — Entry를 소비하고 <em>맵 자체</em>의 라이프타임에 바인딩된 가변 참조<br>
+  • <code>o.insert(v)</code> → <code>V</code> — 값 교체, 이전 값 반환<br>
+  • <code>o.remove()</code> → <code>V</code> — 제거 후 값 반환<br>
+  • <code>o.remove_entry()</code> → <code>(K, V)</code> — 키+값 모두 반환
+</div>
+<div class="box bw">
+  <code>get_mut()</code>은 Entry가 살아있는 동안만 참조가 유효하고,
+  <code>into_mut()</code>은 Entry를 소비하므로 맵의 라이프타임에 바인딩된 더 오래 사는 참조를 반환합니다.
+</div>
+<div class="ref">📖 <a href="https://doc.rust-lang.org/std/collections/hash_map/struct.OccupiedEntry.html">std::collections::hash_map::OccupiedEntry</a></div>
+
+<div class="vscode">
+  <div class="vsc-header"><div class="vsc-icon">rs</div><span class="vsc-fname">ex11_occupied.rs</span></div>
+  <div class="vsc-body">
+    <div class="ln"><span><span class="kw">use</span> <span class="tp">std</span>::collections::<span class="tp">HashMap</span>;</span></div>
+    <div class="ln"><span><span class="kw">use</span> <span class="tp">std</span>::collections::hash_map::<span class="tp">Entry</span>;</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="kw">mut</span> map = <span class="tp">HashMap</span>::<span class="fn">from</span>([</span></div>
+    <div class="ln"><span>        (<span class="st">"hp"</span>, <span class="nm">100_u32</span>), (<span class="st">"mp"</span>, <span class="nm">50_u32</span>), (<span class="st">"level"</span>, <span class="nm">1_u32</span>),</span></div>
+    <div class="ln"><span>    ]);</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// o.get_mut() — 여러 번 호출 가능</span></span></div>
+    <div class="ln"><span>    <span class="kw">if</span> <span class="kw">let</span> <span class="tp">Entry</span>::Occupied(<span class="kw">mut</span> o) = map.<span class="fn">entry</span>(<span class="st">"hp"</span>) {</span></div>
+    <div class="ln"><span>        *o.<span class="fn">get_mut</span>() -= <span class="nm">30</span>;</span></div>
+    <div class="ln"><span>        *o.<span class="fn">get_mut</span>() -= <span class="nm">20</span>;</span></div>
+    <div class="ln"><span>        <span class="at">println!</span>(<span class="st">"hp: {}"</span>, o.<span class="fn">get</span>());</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// o.insert() — 값 교체, 이전 값 반환</span></span></div>
+    <div class="ln"><span>    <span class="kw">if</span> <span class="kw">let</span> <span class="tp">Entry</span>::Occupied(<span class="kw">mut</span> o) = map.<span class="fn">entry</span>(<span class="st">"level"</span>) {</span></div>
+    <div class="ln"><span>        <span class="kw">let</span> old = o.<span class="fn">insert</span>(<span class="nm">5</span>);</span></div>
+    <div class="ln"><span>        <span class="at">println!</span>(<span class="st">"레벨: {} → {}"</span>, old, o.<span class="fn">get</span>());</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// o.remove_entry() — 키+값 모두 반환</span></span></div>
+    <div class="ln"><span>    <span class="kw">if</span> <span class="kw">let</span> <span class="tp">Entry</span>::Occupied(o) = map.<span class="fn">entry</span>(<span class="st">"mp"</span>) {</span></div>
+    <div class="ln"><span>        <span class="kw">let</span> (k, v) = o.<span class="fn">remove_entry</span>();</span></div>
+    <div class="ln"><span>        <span class="at">println!</span>(<span class="st">"제거: 키={} 값={}"</span>, k, v);</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// into_mut() — Entry 소비 후 맵 라이프타임 바인딩</span></span></div>
+    <div class="ln"><span>    map.<span class="fn">insert</span>(<span class="st">"gold"</span>, <span class="nm">0</span>);</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> gold = <span class="kw">match</span> map.<span class="fn">entry</span>(<span class="st">"gold"</span>) {</span></div>
+    <div class="ln"><span>        <span class="tp">Entry</span>::Occupied(o) => o.<span class="fn">into_mut</span>(),</span></div>
+    <div class="ln"><span>        <span class="tp">Entry</span>::Vacant(v)   => v.<span class="fn">insert</span>(<span class="nm">0</span>),</span></div>
+    <div class="ln"><span>    };</span></div>
+    <div class="ln"><span>    *gold += <span class="nm">500</span>;</span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"gold: {}"</span>, map[<span class="st">"gold"</span>]);</span></div>
+    <div class="ln"><span>}</span></div>
+  </div>
+  <div class="vsc-status"><span>Rust</span><span>UTF-8</span><span>LF</span></div>
+</div>
+<div class="out-label">▶ 출력</div>
+<div class="out">hp: 50
+레벨: 1 → 5
+제거: 키=mp 값=50
+gold: 500</div>
+</div>
+
+<!-- ── 2-4 공통 편의 메서드 ── -->
+<div class="section" id="s24">
+<div class="sec-title">2-4. 공통 편의 메서드</div>
+
+<div class="box bi">
+  • <code>or_insert(v)</code> — 없으면 <code>v</code> 삽입. <strong>인자는 항상 평가됨</strong><br>
+  • <code>or_insert_with(f)</code> — 없으면 <code>f()</code> 실행. <strong>Vacant일 때만 클로저 실행 (지연 평가)</strong><br>
+  • <code>or_insert_with_key(f)</code> — 없으면 <code>f(&amp;key)</code> 실행<br>
+  • <code>or_default()</code> — 없으면 <code>Default::default()</code> 삽입<br>
+  • <code>and_modify(f)</code> — 있으면 <code>f(&amp;mut V)</code> 실행. 체이닝 가능
+</div>
+<div class="box bw">
+  ⚠️ <code>or_insert(expensive_fn())</code>는 키가 있어도 <strong>항상</strong> <code>expensive_fn()</code>을 호출합니다.
+  비용이 큰 초기화는 반드시 <code>or_insert_with(|| expensive_fn())</code>를 사용하세요.
+</div>
+<div class="ref">📖 <a href="https://doc.rust-lang.org/std/collections/hash_map/enum.Entry.html">std::collections::hash_map::Entry — methods</a></div>
+
+<div class="vscode">
+  <div class="vsc-header"><div class="vsc-icon">rs</div><span class="vsc-fname">ex12_convenience.rs</span></div>
+  <div class="vsc-body">
+    <div class="ln"><span><span class="kw">use</span> <span class="tp">std</span>::collections::<span class="tp">HashMap</span>;</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="kw">mut</span> map: <span class="tp">HashMap</span>&lt;&amp;<span class="tp">str</span>, <span class="tp">u32</span>&gt; = <span class="tp">HashMap</span>::<span class="fn">new</span>();</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// or_insert — 공식 문서 예제</span></span></div>
+    <div class="ln"><span>    map.<span class="fn">entry</span>(<span class="st">"poneyland"</span>).<span class="fn">or_insert</span>(<span class="nm">3</span>);</span></div>
+    <div class="ln"><span>    <span class="at">assert_eq!</span>(map[<span class="st">"poneyland"</span>], <span class="nm">3</span>);</span></div>
+    <div class="ln"><span>    *map.<span class="fn">entry</span>(<span class="st">"poneyland"</span>).<span class="fn">or_insert</span>(<span class="nm">10</span>) *= <span class="nm">2</span>;</span></div>
+    <div class="ln"><span>    <span class="at">assert_eq!</span>(map[<span class="st">"poneyland"</span>], <span class="nm">6</span>); <span class="cm">// 이미 있으므로 10 무시, 3*2=6</span></span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"or_insert: {}"</span>, map[<span class="st">"poneyland"</span>]);</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// or_insert_with — Vacant일 때만 클로저 실행</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> s = <span class="st">"hoho"</span>.<span class="fn">to_string</span>();</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="kw">mut</span> map2: <span class="tp">HashMap</span>&lt;&amp;<span class="tp">str</span>, <span class="tp">String</span>&gt; = <span class="tp">HashMap</span>::<span class="fn">new</span>();</span></div>
+    <div class="ln"><span>    map2.<span class="fn">entry</span>(<span class="st">"poneyland"</span>).<span class="fn">or_insert_with</span>(|| s.<span class="fn">clone</span>());</span></div>
+    <div class="ln"><span>    <span class="at">assert_eq!</span>(map2[<span class="st">"poneyland"</span>], <span class="st">"hoho"</span>);</span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"or_insert_with: {}"</span>, map2[<span class="st">"poneyland"</span>]);</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// or_default — Option의 Default = None</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="kw">mut</span> map3: <span class="tp">HashMap</span>&lt;&amp;<span class="tp">str</span>, <span class="tp">Option</span>&lt;<span class="tp">u32</span>&gt;&gt; = <span class="tp">HashMap</span>::<span class="fn">new</span>();</span></div>
+    <div class="ln"><span>    map3.<span class="fn">entry</span>(<span class="st">"poneyland"</span>).<span class="fn">or_default</span>();</span></div>
+    <div class="ln"><span>    <span class="at">assert_eq!</span>(map3[<span class="st">"poneyland"</span>], <span class="tp">None</span>);</span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"or_default: {:?}"</span>, map3[<span class="st">"poneyland"</span>]);</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// and_modify + or_insert 체이닝 — 공식 문서 예제</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="kw">mut</span> map4: <span class="tp">HashMap</span>&lt;&amp;<span class="tp">str</span>, <span class="tp">u32</span>&gt; = <span class="tp">HashMap</span>::<span class="fn">new</span>();</span></div>
+    <div class="ln"><span>    map4.<span class="fn">entry</span>(<span class="st">"poneyland"</span>).<span class="fn">and_modify</span>(|e| *e += <span class="nm">1</span>).<span class="fn">or_insert</span>(<span class="nm">42</span>);</span></div>
+    <div class="ln"><span>    <span class="at">assert_eq!</span>(map4[<span class="st">"poneyland"</span>], <span class="nm">42</span>); <span class="cm">// 없었으므로 42</span></span></div>
+    <div class="ln"><span>    map4.<span class="fn">entry</span>(<span class="st">"poneyland"</span>).<span class="fn">and_modify</span>(|e| *e += <span class="nm">1</span>).<span class="fn">or_insert</span>(<span class="nm">42</span>);</span></div>
+    <div class="ln"><span>    <span class="at">assert_eq!</span>(map4[<span class="st">"poneyland"</span>], <span class="nm">43</span>); <span class="cm">// 있었으므로 42+1=43</span></span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"and_modify: {}"</span>, map4[<span class="st">"poneyland"</span>]);</span></div>
+    <div class="ln"><span>}</span></div>
+  </div>
+  <div class="vsc-status"><span>Rust</span><span>UTF-8</span><span>LF</span></div>
+</div>
+<div class="out-label">▶ 출력</div>
+<div class="out">or_insert: 6
+or_insert_with: hoho
+or_default: None
+and_modify: 43</div>
+</div>
+
+<!-- ── 2-5 비교표 ── -->
+<div class="section" id="s25">
+<div class="sec-title">2-5. 전체 메서드 비교표</div>
+<div class="tbl">
+<table>
+  <tr><th>대상</th><th>메서드</th><th>반환</th><th>설명</th></tr>
+  <tr><td><span class="tag">Entry</span></td><td><code>or_insert(v)</code></td><td><code>&amp;mut V</code></td><td>없으면 v 삽입 (인자 항상 평가)</td></tr>
+  <tr><td><span class="tag">Entry</span></td><td><code>or_insert_with(f)</code></td><td><code>&amp;mut V</code></td><td>없으면 f() 실행 후 삽입 (지연 평가)</td></tr>
+  <tr><td><span class="tag">Entry</span></td><td><code>or_insert_with_key(f)</code></td><td><code>&amp;mut V</code></td><td>없으면 f(&amp;key) 실행 후 삽입</td></tr>
+  <tr><td><span class="tag">Entry</span></td><td><code>or_default()</code></td><td><code>&amp;mut V</code></td><td>없으면 Default::default() 삽입</td></tr>
+  <tr><td><span class="tag">Entry</span></td><td><code>and_modify(f)</code></td><td><code>Entry</code></td><td>있으면 f(&amp;mut V) 실행, 체이닝 가능</td></tr>
+  <tr><td><span class="tag">Vacant</span></td><td><code>v.key()</code></td><td><code>&amp;K</code></td><td>삽입될 키 참조</td></tr>
+  <tr><td><span class="tag">Vacant</span></td><td><code>v.insert(val)</code></td><td><code>&amp;mut V</code></td><td>값 삽입 후 가변 참조 반환</td></tr>
+  <tr><td><span class="tag">Vacant</span></td><td><code>v.into_key()</code></td><td><code>K</code></td><td>삽입 포기, 키 소유권 반환</td></tr>
+  <tr><td><span class="tag">Occupied</span></td><td><code>o.key()</code></td><td><code>&amp;K</code></td><td>키 참조</td></tr>
+  <tr><td><span class="tag">Occupied</span></td><td><code>o.get()</code></td><td><code>&amp;V</code></td><td>값 불변 참조</td></tr>
+  <tr><td><span class="tag">Occupied</span></td><td><code>o.get_mut()</code></td><td><code>&amp;mut V</code></td><td>값 가변 참조 (여러 번 호출 가능)</td></tr>
+  <tr><td><span class="tag">Occupied</span></td><td><code>o.into_mut()</code></td><td><code>&amp;mut V</code></td><td>Entry 소비, 맵 라이프타임 바인딩</td></tr>
+  <tr><td><span class="tag">Occupied</span></td><td><code>o.insert(v)</code></td><td><code>V</code></td><td>값 교체, 이전 값 반환</td></tr>
+  <tr><td><span class="tag">Occupied</span></td><td><code>o.remove()</code></td><td><code>V</code></td><td>제거, 값 반환</td></tr>
+  <tr><td><span class="tag">Occupied</span></td><td><code>o.remove_entry()</code></td><td><code>(K, V)</code></td><td>제거, 키+값 모두 반환</td></tr>
+</table>
+</div>
+</div>
+
+<hr>
+
+<!-- ████████████████████████████████████████████████████
+     Chapter 3 — 실전 패턴
+████████████████████████████████████████████████████ -->
+<div class="ch-title" id="s31">Chapter 3 — 실전 패턴 5가지</div>
+
+<!-- ── 3-1 카운팅 ── -->
+<div class="section">
+<div class="sec-title">3-1. 카운팅</div>
+<div class="box bi">
+  <code>*map.entry(key).or_insert(0) += 1</code> — <code>or_insert(0)</code>이 반환하는 <code>&amp;mut u32</code>를 역참조해 바로 증가시킵니다.
+</div>
+
+<div class="vscode">
+  <div class="vsc-header"><div class="vsc-icon">rs</div><span class="vsc-fname">ex13_counting.rs</span></div>
+  <div class="vsc-body">
+    <div class="ln"><span><span class="kw">use</span> <span class="tp">std</span>::collections::<span class="tp">HashMap</span>;</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> text = <span class="st">"the quick brown fox jumps over the lazy dog the fox"</span>;</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="kw">mut</span> freq: <span class="tp">HashMap</span>&lt;&amp;<span class="tp">str</span>, <span class="tp">u32</span>&gt; = <span class="tp">HashMap</span>::<span class="fn">new</span>();</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="kw">for</span> word <span class="kw">in</span> text.<span class="fn">split_whitespace</span>() {</span></div>
+    <div class="ln"><span>        *freq.<span class="fn">entry</span>(word).<span class="fn">or_insert</span>(<span class="nm">0</span>) += <span class="nm">1</span>;</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="kw">mut</span> pairs: <span class="tp">Vec</span>&lt;_&gt; = freq.<span class="fn">iter</span>().<span class="fn">collect</span>();</span></div>
+    <div class="ln"><span>    pairs.<span class="fn">sort_by</span>(|a, b| b.<span class="nm">1</span>.<span class="fn">cmp</span>(a.<span class="nm">1</span>).<span class="fn">then</span>(a.<span class="nm">0</span>.<span class="fn">cmp</span>(b.<span class="nm">0</span>)));</span></div>
+    <div class="ln"><span>    <span class="kw">for</span> (w, c) <span class="kw">in</span> &amp;pairs {</span></div>
+    <div class="ln"><span>        <span class="at">println!</span>(<span class="st">"{:&lt;8} : {}회"</span>, w, c);</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span>}</span></div>
+  </div>
+  <div class="vsc-status"><span>Rust</span><span>UTF-8</span><span>LF</span></div>
+</div>
+<div class="out-label">▶ 출력</div>
+<div class="out">the      : 3회
+fox      : 2회
+brown    : 1회
+dog      : 1회
+jumps    : 1회
+lazy     : 1회
+over     : 1회
+quick    : 1회</div>
+</div>
+
+<!-- ── 3-2 그룹핑 ── -->
+<div class="section" id="s32">
+<div class="sec-title">3-2. 그룹핑</div>
+<div class="box bi">
+  <code>map.entry(key).or_default().push(value)</code> — <code>or_default()</code>는 Vec의 경우 빈 Vec을 삽입합니다.
+</div>
+
+<div class="vscode">
+  <div class="vsc-header"><div class="vsc-icon">rs</div><span class="vsc-fname">ex14_grouping.rs</span></div>
+  <div class="vsc-body">
+    <div class="ln"><span><span class="kw">use</span> <span class="tp">std</span>::collections::<span class="tp">HashMap</span>;</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> students = <span class="at">vec!</span>[</span></div>
+    <div class="ln"><span>        (<span class="st">"Alice"</span>, <span class="st">'A'</span>, <span class="nm">95_u32</span>), (<span class="st">"Bob"</span>, <span class="st">'B'</span>, <span class="nm">82</span>),</span></div>
+    <div class="ln"><span>        (<span class="st">"Carol"</span>, <span class="st">'A'</span>, <span class="nm">91</span>),   (<span class="st">"Dave"</span>, <span class="st">'C'</span>, <span class="nm">74</span>),</span></div>
+    <div class="ln"><span>        (<span class="st">"Eve"</span>, <span class="st">'B'</span>, <span class="nm">88</span>),     (<span class="st">"Frank"</span>, <span class="st">'A'</span>, <span class="nm">97</span>),</span></div>
+    <div class="ln"><span>    ];</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="kw">mut</span> by_grade: <span class="tp">HashMap</span>&lt;<span class="tp">char</span>, <span class="tp">Vec</span>&lt;&amp;<span class="tp">str</span>&gt;&gt; = <span class="tp">HashMap</span>::<span class="fn">new</span>();</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="kw">mut</span> scores:   <span class="tp">HashMap</span>&lt;<span class="tp">char</span>, <span class="tp">Vec</span>&lt;<span class="tp">u32</span>&gt;&gt;  = <span class="tp">HashMap</span>::<span class="fn">new</span>();</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="kw">for</span> &amp;(name, grade, score) <span class="kw">in</span> &amp;students {</span></div>
+    <div class="ln"><span>        by_grade.<span class="fn">entry</span>(grade).<span class="fn">or_default</span>().<span class="fn">push</span>(name);</span></div>
+    <div class="ln"><span>        scores.<span class="fn">entry</span>(grade).<span class="fn">or_default</span>().<span class="fn">push</span>(score);</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="kw">mut</span> grades: <span class="tp">Vec</span>&lt;<span class="tp">char</span>&gt; = by_grade.<span class="fn">keys</span>().<span class="fn">copied</span>().<span class="fn">collect</span>();</span></div>
+    <div class="ln"><span>    grades.<span class="fn">sort</span>();</span></div>
+    <div class="ln"><span>    <span class="kw">for</span> g <span class="kw">in</span> grades {</span></div>
+    <div class="ln"><span>        <span class="kw">let</span> avg = scores[&amp;g].<span class="fn">iter</span>().<span class="fn">sum</span>::&lt;<span class="tp">u32</span>&gt;() <span class="kw">as</span> <span class="tp">f64</span></span></div>
+    <div class="ln"><span>                  / scores[&amp;g].<span class="fn">len</span>() <span class="kw">as</span> <span class="tp">f64</span>;</span></div>
+    <div class="ln"><span>        <span class="at">println!</span>(<span class="st">"{}반 | 평균 {:.1}점 | {:?}"</span>, g, avg, by_grade[&amp;g]);</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span>}</span></div>
+  </div>
+  <div class="vsc-status"><span>Rust</span><span>UTF-8</span><span>LF</span></div>
+</div>
+<div class="out-label">▶ 출력</div>
+<div class="out">A반 | 평균 94.3점 | ["Alice", "Carol", "Frank"]
+B반 | 평균 85.0점 | ["Bob", "Eve"]
+C반 | 평균 72.0점 | ["Dave"]</div>
+</div>
+
+<!-- ── 3-3 수정/초기화 ── -->
+<div class="section" id="s33">
+<div class="sec-title">3-3. 수정 / 초기화</div>
+<div class="box bi">
+  <code>.and_modify(f).or_insert(v)</code> 체이닝 — 있으면 수정, 없으면 초기화합니다.
+  <code>and_modify</code>는 Rust 1.26부터 안정화된 API입니다.
+</div>
+
+<div class="vscode">
+  <div class="vsc-header"><div class="vsc-icon">rs</div><span class="vsc-fname">ex15_modify_or_init.rs</span></div>
+  <div class="vsc-body">
+    <div class="ln"><span><span class="kw">use</span> <span class="tp">std</span>::collections::<span class="tp">HashMap</span>;</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="kw">mut</span> exp: <span class="tp">HashMap</span>&lt;&amp;<span class="tp">str</span>, <span class="tp">u32</span>&gt; = <span class="tp">HashMap</span>::<span class="fn">new</span>();</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="cm">// 몬스터 처치 — 첫 처치=100, 이후=2배씩</span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> kills = [</span></div>
+    <div class="ln"><span>        <span class="st">"고블린"</span>, <span class="st">"오크"</span>, <span class="st">"고블린"</span>, <span class="st">"드래곤"</span>,</span></div>
+    <div class="ln"><span>        <span class="st">"오크"</span>, <span class="st">"오크"</span>, <span class="st">"드래곤"</span>, <span class="st">"고블린"</span>,</span></div>
+    <div class="ln"><span>    ];</span></div>
+    <div class="ln"><span>    <span class="kw">for</span> m <span class="kw">in</span> kills {</span></div>
+    <div class="ln"><span>        exp.<span class="fn">entry</span>(m)</span></div>
+    <div class="ln"><span>            .<span class="fn">and_modify</span>(|e| *e *= <span class="nm">2</span>)  <span class="cm">// 있으면 2배</span></span></div>
+    <div class="ln"><span>            .<span class="fn">or_insert</span>(<span class="nm">100</span>);          <span class="cm">// 없으면 100 시작</span></span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="kw">mut</span> v: <span class="tp">Vec</span>&lt;_&gt; = exp.<span class="fn">iter</span>().<span class="fn">collect</span>();</span></div>
+    <div class="ln"><span>    v.<span class="fn">sort_by</span>(|a, b| b.<span class="nm">1</span>.<span class="fn">cmp</span>(a.<span class="nm">1</span>));</span></div>
+    <div class="ln"><span>    <span class="kw">for</span> (m, e) <span class="kw">in</span> &amp;v {</span></div>
+    <div class="ln"><span>        <span class="at">println!</span>(<span class="st">"{:&lt;8} : {} EXP"</span>, m, e);</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"총: {} EXP"</span>, v.<span class="fn">iter</span>().<span class="fn">map</span>(|(_, e)| *e).<span class="fn">sum</span>::&lt;<span class="tp">u32</span>&gt;());</span></div>
+    <div class="ln"><span>}</span></div>
+  </div>
+  <div class="vsc-status"><span>Rust</span><span>UTF-8</span><span>LF</span></div>
+</div>
+<div class="out-label">▶ 출력</div>
+<div class="out">고블린   : 400 EXP
+오크     : 400 EXP
+드래곤   : 200 EXP
+총: 1000 EXP</div>
+</div>
+
+<!-- ── 3-4 지연 초기화 ── -->
+<div class="section" id="s34">
+<div class="sec-title">3-4. 지연 초기화</div>
+<div class="box bi">
+  <code>or_insert_with(|| expensive_fn())</code> — 클로저는 Vacant일 때만 실행됩니다.
+  DB 조회, 파일 IO 등 비용이 큰 작업에 사용합니다.
+</div>
+
+<div class="vscode">
+  <div class="vsc-header"><div class="vsc-icon">rs</div><span class="vsc-fname">ex16_lazy_init.rs</span></div>
+  <div class="vsc-body">
+    <div class="ln"><span><span class="kw">use</span> <span class="tp">std</span>::collections::<span class="tp">HashMap</span>;</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">load_config</span>(svc: &amp;<span class="tp">str</span>) -> <span class="tp">Vec</span>&lt;<span class="tp">String</span>&gt; {</span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"  ⚙ [{}] 설정 로딩..."</span>, svc);</span></div>
+    <div class="ln"><span>    <span class="at">vec!</span>[<span class="at">format!</span>(<span class="st">"host={}.server.com"</span>, svc), <span class="st">"port=8080"</span>.<span class="fn">into</span>()]</span></div>
+    <div class="ln"><span>}</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="kw">mut</span> cache: <span class="tp">HashMap</span>&lt;<span class="tp">String</span>, <span class="tp">Vec</span>&lt;<span class="tp">String</span>&gt;&gt; = <span class="tp">HashMap</span>::<span class="fn">new</span>();</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> reqs = [<span class="st">"auth"</span>, <span class="st">"payment"</span>, <span class="st">"auth"</span>, <span class="st">"payment"</span>, <span class="st">"auth"</span>];</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="kw">for</span> svc <span class="kw">in</span> reqs {</span></div>
+    <div class="ln"><span>        <span class="kw">let</span> cfg = cache</span></div>
+    <div class="ln"><span>            .<span class="fn">entry</span>(svc.<span class="fn">to_string</span>())</span></div>
+    <div class="ln"><span>            .<span class="fn">or_insert_with</span>(|| <span class="fn">load_config</span>(svc)); <span class="cm">// Vacant일 때만 호출</span></span></div>
+    <div class="ln"><span>        <span class="at">println!</span>(<span class="st">"  {} → {}개 설정"</span>, svc, cfg.<span class="fn">len</span>());</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"요청 {}회 / 실제 로딩 {}회"</span>, reqs.<span class="fn">len</span>(), cache.<span class="fn">len</span>());</span></div>
+    <div class="ln"><span>}</span></div>
+  </div>
+  <div class="vsc-status"><span>Rust</span><span>UTF-8</span><span>LF</span></div>
+</div>
+<div class="out-label">▶ 출력</div>
+<div class="out">  ⚙ [auth] 설정 로딩...
+  auth → 2개 설정
+  ⚙ [payment] 설정 로딩...
+  payment → 2개 설정
+  auth → 2개 설정       ← 재로딩 없음
+  payment → 2개 설정    ← 재로딩 없음
+  auth → 2개 설정       ← 재로딩 없음
+요청 5회 / 실제 로딩 2회</div>
+</div>
+
+<!-- ── 3-5 조건부 삭제 ── -->
+<div class="section" id="s35">
+<div class="sec-title">3-5. 조건부 삭제</div>
+<div class="box bi">
+  <code>Occupied(o)</code>를 명시적으로 매칭한 뒤 조건 검사 후 <code>o.remove()</code> 또는 <code>o.remove_entry()</code>로 제거합니다.
+</div>
+
+<div class="vscode">
+  <div class="vsc-header"><div class="vsc-icon">rs</div><span class="vsc-fname">ex17_cond_remove.rs</span></div>
+  <div class="vsc-body">
+    <div class="ln"><span><span class="kw">use</span> <span class="tp">std</span>::collections::<span class="tp">HashMap</span>;</span></div>
+    <div class="ln"><span><span class="kw">use</span> <span class="tp">std</span>::collections::hash_map::<span class="tp">Entry</span>;</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> <span class="kw">mut</span> stock: <span class="tp">HashMap</span>&lt;&amp;<span class="tp">str</span>, <span class="tp">u32</span>&gt; = <span class="tp">HashMap</span>::<span class="fn">from</span>([</span></div>
+    <div class="ln"><span>        (<span class="st">"사과"</span>, <span class="nm">0</span>), (<span class="st">"바나나"</span>, <span class="nm">5</span>), (<span class="st">"포도"</span>, <span class="nm">50</span>),</span></div>
+    <div class="ln"><span>        (<span class="st">"망고"</span>, <span class="nm">0</span>), (<span class="st">"딸기"</span>, <span class="nm">20</span>),</span></div>
+    <div class="ln"><span>    ]);</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="kw">let</span> keys: <span class="tp">Vec</span>&lt;&amp;<span class="tp">str</span>&gt; = stock.<span class="fn">keys</span>().<span class="fn">copied</span>().<span class="fn">collect</span>();</span></div>
+    <div class="ln"><span>    <span class="kw">let</span> (mut removed, mut kept) = (<span class="at">vec!</span>[], <span class="at">vec!</span>[]);</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    <span class="kw">for</span> key <span class="kw">in</span> keys {</span></div>
+    <div class="ln"><span>        <span class="kw">match</span> stock.<span class="fn">entry</span>(key) {</span></div>
+    <div class="ln"><span>            <span class="tp">Entry</span>::Occupied(o) <span class="kw">if</span> *o.<span class="fn">get</span>() == <span class="nm">0</span> => {</span></div>
+    <div class="ln"><span>                removed.<span class="fn">push</span>(key); o.<span class="fn">remove</span>();</span></div>
+    <div class="ln"><span>            }</span></div>
+    <div class="ln"><span>            <span class="tp">Entry</span>::Occupied(_) => kept.<span class="fn">push</span>(key),</span></div>
+    <div class="ln"><span>            <span class="tp">Entry</span>::Vacant(_)   => {}</span></div>
+    <div class="ln"><span>        }</span></div>
+    <div class="ln"><span>    }</span></div>
+    <div class="ln"><span></span></div>
+    <div class="ln"><span>    removed.<span class="fn">sort</span>(); kept.<span class="fn">sort</span>();</span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"❌ 제거: {:?}"</span>, removed);</span></div>
+    <div class="ln"><span>    <span class="at">println!</span>(<span class="st">"✅ 유지: {:?}"</span>, kept);</span></div>
+    <div class="ln"><span>}</span></div>
+  </div>
+  <div class="vsc-status"><span>Rust</span><span>UTF-8</span><span>LF</span></div>
+</div>
+<div class="out-label">▶ 출력</div>
+<div class="out">❌ 제거: ["망고", "사과"]
+✅ 유지: ["딸기", "바나나", "포도"]</div>
+</div>
+
+</main>
+</div>
+
+<script>
+/* 테마 토글 */
+const btn = document.getElementById('themeBtn');
+function toggleTheme() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? '' : 'dark');
+  btn.textContent = dark ? '🌙 Dark' : '☀️ Light';
+  localStorage.setItem('theme', dark ? 'light' : 'dark');
+}
+(function(){
+  if (localStorage.getItem('theme') === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    btn.textContent = '☀️ Light';
+  }
+})();
+
+/* 스크롤 스파이 */
+const links = document.querySelectorAll('.sb-a');
+const targets = [];
+links.forEach(a => {
+  const id = a.getAttribute('href').slice(1);
+  const el = document.getElementById(id);
+  if (el) targets.push({ a, el });
+});
+function spy() {
+  const top = window.scrollY + 90;
+  let cur = targets[0];
+  for (const t of targets) { if (t.el.offsetTop <= top) cur = t; }
+  links.forEach(l => l.classList.remove('on'));
+  if (cur) cur.a.classList.add('on');
+}
+window.addEventListener('scroll', spy, { passive: true });
+spy();
+</script>
+</body>
+</html>

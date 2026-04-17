@@ -1,0 +1,1629 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rust 해시맵과 Entry API 학습</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ── Theme Variables ─────────────────────────────── */
+:root {
+  --bg:       #1e1e1e;
+  --bg2:      #252526;
+  --bg3:      #2d2d30;
+  --bg4:      #3c3c3c;
+  --border:   #3e3e42;
+  --text:     #d4d4d4;
+  --text2:    #9d9d9d;
+  --text3:    #6a6a6a;
+  --accent:   #569cd6;
+  --accent2:  #9cdcfe;
+  --teal:     #4ec9b0;
+  --purple:   #c586c0;
+  --yellow:   #dcdcaa;
+  --green:    #6a9955;
+  --green2:   #b5cea8;
+  --orange:   #ce9178;
+  --red:      #f44747;
+  --nav-bg:   #252526;
+  --card-bg:  #252526;
+  --output-bg:#1e1e1e;
+  --tip-bg:   rgba(78,201,176,0.08);
+  --warn-bg:  rgba(220,220,170,0.08);
+  --info-bg:  rgba(86,156,214,0.08);
+  --err-bg:   rgba(244,71,71,0.08);
+  --shadow:   0 2px 12px rgba(0,0,0,0.4);
+  /* VS Code Dark Modern syntax */
+  --s-kw:    #569cd6;
+  --s-type:  #4ec9b0;
+  --s-fn:    #dcdcaa;
+  --s-str:   #ce9178;
+  --s-num:   #b5cea8;
+  --s-cmt:   #6a9955;
+  --s-mac:   #c586c0;
+  --s-attr:  #c586c0;
+  --s-self:  #9cdcfe;
+  --s-op:    #d4d4d4;
+  --s-life:  #569cd6;
+  --s-var:   #9cdcfe;
+  --s-ok:    #4ec9b0;
+}
+[data-theme="light"] {
+  --bg:       #ffffff;
+  --bg2:      #f5f5f5;
+  --bg3:      #ebebeb;
+  --bg4:      #dcdcdc;
+  --border:   #cccccc;
+  --text:     #1e1e1e;
+  --text2:    #555555;
+  --text3:    #999999;
+  --accent:   #0070c1;
+  --accent2:  #001080;
+  --teal:     #006060;
+  --purple:   #800080;
+  --yellow:   #795e26;
+  --green:    #008000;
+  --green2:   #005b00;
+  --orange:   #a31515;
+  --red:      #cd3131;
+  --nav-bg:   #f3f3f3;
+  --card-bg:  #ffffff;
+  --output-bg:#f5f5f5;
+  --tip-bg:   rgba(0,96,96,0.06);
+  --warn-bg:  rgba(121,94,38,0.06);
+  --info-bg:  rgba(0,112,193,0.06);
+  --err-bg:   rgba(205,49,49,0.06);
+  --shadow:   0 2px 12px rgba(0,0,0,0.1);
+  --s-kw:    #0000ff;
+  --s-type:  #267f99;
+  --s-fn:    #795e26;
+  --s-str:   #a31515;
+  --s-num:   #098658;
+  --s-cmt:   #008000;
+  --s-mac:   #800080;
+  --s-attr:  #800080;
+  --s-self:  #001080;
+  --s-op:    #1e1e1e;
+  --s-life:  #0000ff;
+  --s-var:   #001080;
+  --s-ok:    #267f99;
+}
+
+/* ── Reset & Base ───────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 15px;
+  line-height: 1.8;
+  transition: background 0.25s, color 0.25s;
+}
+
+/* ── Header ─────────────────────────────────────── */
+header {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 52px 32px 44px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 80% at 50% -10%, rgba(86,156,214,0.12), transparent);
+  pointer-events: none;
+}
+.header-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: 16px;
+}
+header h1 {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 10px;
+  position: relative;
+  z-index: 1;
+}
+header h1 em { color: var(--accent); font-style: normal; }
+header p { color: var(--text2); font-size: 14px; position: relative; z-index: 1; }
+
+/* ── Theme Toggle ───────────────────────────────── */
+#theme-toggle {
+  position: fixed;
+  top: 16px; right: 20px;
+  z-index: 999;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 6px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: background 0.2s, color 0.2s;
+}
+#theme-toggle:hover { background: var(--bg4); color: var(--text); }
+#theme-toggle .icon { font-size: 14px; }
+
+/* ── Sticky Nav ─────────────────────────────────── */
+nav {
+  background: var(--nav-bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  scrollbar-width: none;
+}
+nav::-webkit-scrollbar { display: none; }
+nav a {
+  color: var(--text2);
+  text-decoration: none;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 13px 18px;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: color 0.2s, border-color 0.2s;
+}
+nav a:hover { color: var(--accent2); border-bottom-color: var(--accent); }
+
+/* ── Layout ─────────────────────────────────────── */
+.container { max-width: 880px; margin: 0 auto; padding: 56px 32px; }
+
+/* ── Section ────────────────────────────────────── */
+section { margin-bottom: 80px; }
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 36px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.sec-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  background: rgba(86,156,214,0.1);
+  border: 1px solid rgba(86,156,214,0.25);
+  padding: 3px 9px;
+  border-radius: 4px;
+}
+section h2 { font-size: 22px; font-weight: 700; }
+
+/* ── Headings inside sections ───────────────────── */
+h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--teal);
+  margin: 36px 0 14px;
+  padding-left: 12px;
+  border-left: 3px solid var(--teal);
+}
+h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent2);
+  margin: 24px 0 10px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Prose ──────────────────────────────────────── */
+p { color: var(--text2); margin-bottom: 14px; line-height: 1.9; }
+strong { color: var(--text); font-weight: 600; }
+ul, ol { color: var(--text2); padding-left: 24px; margin-bottom: 14px; }
+li { margin-bottom: 6px; line-height: 1.8; }
+
+/* ── Inline code ────────────────────────────────── */
+p code, li code, td code, h3 code, h4 code {
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--accent2);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 13px;
+}
+
+/* ── Code Block ─────────────────────────────────── */
+.code-wrap { margin: 14px 0 24px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+.code-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  padding: 7px 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 0.5px;
+}
+.code-label span { color: var(--teal); }
+pre {
+  background: var(--bg2);
+  padding: 20px 24px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13.5px;
+  line-height: 1.75;
+  tab-size: 4;
+}
+pre code { background: none; border: none; padding: 0; color: var(--text); font-size: inherit; }
+
+/* VS Code Dark Modern syntax colours */
+.kw   { color: var(--s-kw); }
+.tp   { color: var(--s-type); }
+.fn   { color: var(--s-fn); }
+.st   { color: var(--s-str); }
+.nm   { color: var(--s-num); }
+.cm   { color: var(--s-cmt); font-style: italic; }
+.mac  { color: var(--s-mac); }
+.at   { color: var(--s-attr); }
+.slf  { color: var(--s-self); }
+.op   { color: var(--s-op); }
+.lf   { color: var(--s-life); }
+.var  { color: var(--s-var); }
+.ok   { color: var(--s-ok); }
+.err  { color: var(--red); }
+
+/* ── Output Block ───────────────────────────────── */
+.output-wrap { margin: -16px 0 24px; border-radius: 0 0 8px 8px; overflow: hidden; border: 1px solid var(--border); border-top: none; }
+.output-label {
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  padding: 5px 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.output {
+  background: var(--output-bg);
+  padding: 14px 24px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--teal);
+  line-height: 1.7;
+  white-space: pre;
+}
+
+/* ── Callout ────────────────────────────────────── */
+.callout {
+  border-radius: 6px;
+  padding: 16px 20px;
+  margin: 20px 0;
+  border-left: 3px solid;
+  font-size: 14px;
+}
+.callout p { margin: 0; font-size: 14px; }
+.callout-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.tip  { background: var(--tip-bg);  border-color: var(--teal);   }
+.tip  .callout-title { color: var(--teal); }
+.info { background: var(--info-bg); border-color: var(--accent);  }
+.info .callout-title { color: var(--accent); }
+.warn { background: var(--warn-bg); border-color: var(--yellow);  }
+.warn .callout-title { color: var(--yellow); }
+.danger { background: var(--err-bg); border-color: var(--red); }
+.danger .callout-title { color: var(--red); }
+
+/* ── Tables ─────────────────────────────────────── */
+.tbl-wrap { overflow-x: auto; margin: 16px 0 28px; border-radius: 8px; border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+thead tr { background: var(--bg3); }
+th {
+  text-align: left; padding: 11px 16px;
+  color: var(--text2); font-size: 11px; font-weight: 600;
+  letter-spacing: 0.8px; text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+}
+td { padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text2); vertical-align: top; }
+td:first-child { font-family: 'JetBrains Mono', monospace; color: var(--accent2); font-size: 13px; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* ── Example label ──────────────────────────────── */
+.ex-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(220,220,170,0.1);
+  border: 1px solid rgba(220,220,170,0.25);
+  color: var(--yellow);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+.official-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(78,201,176,0.08);
+  border: 1px solid rgba(78,201,176,0.2);
+  color: var(--teal);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  text-decoration: none;
+}
+.official-link::before { content: '✓ '; }
+
+/* ── Entry Flow Diagram ─────────────────────────── */
+.entry-diagram {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px 24px;
+  margin: 20px 0;
+  font-family: 'JetBrains Mono', monospace;
+}
+.ed-title { color: var(--accent2); font-size: 13px; margin-bottom: 20px; text-align: center; }
+.ed-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.ed-box {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 16px;
+  font-size: 13px;
+  text-align: center;
+  min-width: 120px;
+}
+.ed-box.hl   { border-color: var(--accent);  color: var(--accent2); }
+.ed-box.occ  { border-color: var(--teal);    color: var(--teal); }
+.ed-box.vac  { border-color: var(--purple);  color: var(--purple); }
+.ed-sub { font-size: 11px; color: var(--text3); text-align: center; margin-top: 4px; }
+.ed-arrow { color: var(--text3); font-size: 16px; }
+.ed-sep { color: var(--text3); font-size: 20px; padding: 0 4px; }
+
+/* ── SVG container ──────────────────────────────── */
+.svg-wrap {
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: 16px;
+  margin: 20px 0;
+  overflow-x: auto;
+}
+[data-theme="light"] .svg-wrap { border-color: #cccccc; }
+
+/* ── Source badge ───────────────────────────────── */
+.src { font-size: 11px; color: var(--text3); font-family: 'JetBrains Mono', monospace; margin-bottom: 4px; }
+.src a { color: var(--text3); }
+
+/* ── Footer ─────────────────────────────────────── */
+footer {
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  padding: 28px 32px;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text3);
+}
+footer a { color: var(--accent); text-decoration: none; }
+
+@media (max-width: 640px) {
+  header h1 { font-size: 24px; }
+  .container { padding: 32px 16px; }
+  pre { font-size: 12px; }
+  #theme-toggle { top: 10px; right: 10px; }
+}
+</style>
+</head>
+<body>
+
+<button id="theme-toggle" onclick="toggleTheme()">
+  <span class="icon" id="theme-icon">☀️</span>
+  <span id="theme-label">Light</span>
+</button>
+
+<header>
+  <div class="header-eyebrow">Rust Learning Notes · 공식 문서 기반</div>
+  <h1>Rust <em>해시맵</em>과 Entry API 학습</h1>
+  <p>HashMap · Entry API · Occupied / Vacant · 이중 참조(&&) 완전 정복</p>
+</header>
+
+<nav>
+  <a href="#s-hashmap">HashMap 기본</a>
+  <a href="#s-create">생성 방법</a>
+  <a href="#s-ops">기본 연산</a>
+  <a href="#s-iter">순회</a>
+  <a href="#s-custom-key">커스텀 키</a>
+  <a href="#s-hash-algo">해시 알고리즘</a>
+  <a href="#s-entry">Entry API</a>
+  <a href="#s-entry-methods">Entry 메서드</a>
+  <a href="#s-occupied">Occupied</a>
+  <a href="#s-vacant">Vacant</a>
+  <a href="#s-examples">예제 모음</a>
+  <a href="#s-double-ref">&&i32 참조</a>
+</nav>
+
+<div class="container">
+
+<!-- ══════════════════════════════════════════════
+     01. HashMap 기본
+══════════════════════════════════════════════ -->
+<section id="s-hashmap">
+  <div class="section-header">
+    <span class="sec-num">01</span>
+    <h2>HashMap 이란?</h2>
+  </div>
+
+  <p class="src">출처: <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html">doc.rust-lang.org/std/collections/struct.HashMap.html</a></p>
+
+  <p><strong>HashMap&lt;K, V&gt;</strong>은 키(K)와 값(V)을 쌍으로 저장하는 컬렉션입니다. 해시 함수를 이용해 키를 "버킷"에 매핑하므로, 평균 O(1)으로 조회·삽입·삭제가 가능합니다.</p>
+
+  <p>Rust의 HashMap은 <code>std::collections</code>에 속하며 프리뷰에 자동 포함되지 않으므로 반드시 <code>use</code>로 가져와야 합니다.</p>
+
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — use 선언</div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;</code></pre>
+  </div>
+
+  <h3>핵심 특징</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>특징</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>키 고유성</td><td>같은 키로 삽입하면 기존 값이 덮어써지고 <code>Some(이전값)</code>이 반환됨</td></tr>
+        <tr><td>순서 없음</td><td>삽입 순서가 보장되지 않음. 순서가 필요하면 <code>BTreeMap</code> 사용</td></tr>
+        <tr><td>소유권 이동</td><td>삽입 시 키와 값 모두 HashMap이 소유권을 가져감 (Copy 타입은 복사됨)</td></tr>
+        <tr><td>동적 크기</td><td>필요에 따라 자동으로 늘어남. 용량을 미리 알면 <code>with_capacity</code> 권장</td></tr>
+        <tr><td>Key 조건</td><td><code>Eq + Hash</code> 트레잇을 구현해야 키로 사용 가능</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout warn">
+    <div class="callout-title">⚠ 소유권 주의</div>
+    <p><code>String</code>처럼 <code>Copy</code>를 구현하지 않은 타입은 <code>insert()</code> 시 소유권이 이동됩니다. 삽입 후 원래 변수는 사용할 수 없습니다. 참조를 삽입하려면 라이프타임이 HashMap보다 길어야 합니다.</p>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — 소유권 이동 예시</div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+
+<span class="kw">let</span> <span class="var">key</span>   = String::from(<span class="st">"hello"</span>);
+<span class="kw">let</span> <span class="var">value</span> = String::from(<span class="st">"world"</span>);
+<span class="kw">let mut</span> <span class="var">map</span> = HashMap::new();
+
+<span class="var">map</span>.<span class="fn">insert</span>(<span class="var">key</span>, <span class="var">value</span>);
+
+<span class="cm">// ❌ 컴파일 에러: key, value는 이미 map이 소유함</span>
+<span class="cm">// println!("{}", key);</span>
+
+<span class="cm">// ✅ map을 통해 접근</span>
+<span class="fn">println!</span>(<span class="st">"{:?}"</span>, <span class="var">map</span>);</code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     02. 생성 방법
+══════════════════════════════════════════════ -->
+<section id="s-create">
+  <div class="section-header">
+    <span class="sec-num">02</span>
+    <h2>HashMap 생성 방법 4가지</h2>
+  </div>
+
+  <p class="src">출처: <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html">doc.rust-lang.org/std/collections/struct.HashMap.html</a></p>
+
+  <h3>① new() — 빈 맵 생성 (가장 일반적)</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span></div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+
+<span class="cm">// 타입을 명시하거나 나중에 추론되게 둘 수 있음</span>
+<span class="kw">let mut</span> <span class="var">map</span>: HashMap&lt;<span class="tp">String</span>, <span class="tp">i32</span>&gt; = HashMap::new();
+<span class="var">map</span>.<span class="fn">insert</span>(String::from(<span class="st">"one"</span>), <span class="nm">1</span>);</code></pre>
+  </div>
+
+  <h3>② with_capacity(n) — 초기 용량 지정</h3>
+  <p>삽입할 항목 수를 미리 알고 있을 때 사용합니다. 내부 재할당 횟수를 줄여 성능을 개선합니다. 실제 용량은 요청보다 클 수 있습니다.</p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span></div>
+    <pre><code><span class="kw">let mut</span> <span class="var">map</span> = HashMap::with_capacity(<span class="nm">100</span>);
+<span class="var">map</span>.<span class="fn">insert</span>(<span class="nm">1</span>, <span class="st">"one"</span>);
+<span class="fn">println!</span>(<span class="st">"capacity: {}"</span>, <span class="var">map</span>.<span class="fn">capacity</span>()); <span class="cm">// 100 이상</span></code></pre>
+  </div>
+
+  <h3>③ HashMap::from([...]) — 배열 리터럴에서 생성</h3>
+  <p class="src">출처: <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html">공식 문서 예제</a></p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span></div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+
+<span class="kw">let</span> <span class="var">solar_distance</span> = HashMap::from([
+    (<span class="st">"Mercury"</span>, <span class="nm">0.4</span>),
+    (<span class="st">"Venus"</span>,   <span class="nm">0.7</span>),
+    (<span class="st">"Earth"</span>,   <span class="nm">1.0</span>),
+    (<span class="st">"Mars"</span>,    <span class="nm">1.5</span>),
+]);
+<span class="fn">println!</span>(<span class="st">"{:?}"</span>, <span class="var">solar_distance</span>[<span class="st">"Earth"</span>]); <span class="cm">// 1.0</span></code></pre>
+  </div>
+
+  <h3>④ Iterator::collect() — 이터레이터에서 수집</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span></div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+
+<span class="kw">let</span> <span class="var">pairs</span> = <span class="fn">vec!</span>[(<span class="st">"a"</span>, <span class="nm">1</span>), (<span class="st">"b"</span>, <span class="nm">2</span>), (<span class="st">"c"</span>, <span class="nm">3</span>)];
+<span class="kw">let</span> <span class="var">map</span>: HashMap&lt;&amp;<span class="tp">str</span>, <span class="tp">i32</span>&gt; = <span class="var">pairs</span>.<span class="fn">into_iter</span>().<span class="fn">collect</span>();
+<span class="fn">println!</span>(<span class="st">"{:?}"</span>, <span class="var">map</span>);</code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     03. 기본 연산
+══════════════════════════════════════════════ -->
+<section id="s-ops">
+  <div class="section-header">
+    <span class="sec-num">03</span>
+    <h2>기본 연산 — 삽입 · 조회 · 수정 · 삭제</h2>
+  </div>
+
+  <h3>insert() — 삽입 / 덮어쓰기</h3>
+  <p>키가 없으면 <code>None</code> 반환, 키가 이미 있으면 기존 값을 교체하고 <code>Some(이전값)</code> 반환합니다.</p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — 공식 문서 예제</div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+<span class="kw">let mut</span> <span class="var">map</span> = HashMap::new();
+
+<span class="kw">assert_eq!</span>(<span class="var">map</span>.<span class="fn">insert</span>(<span class="nm">37</span>, <span class="st">"a"</span>), <span class="ok">None</span>);       <span class="cm">// 처음 삽입 → None</span>
+<span class="kw">assert_eq!</span>(<span class="var">map</span>.<span class="fn">is_empty</span>(), <span class="kw">false</span>);
+
+<span class="var">map</span>.<span class="fn">insert</span>(<span class="nm">37</span>, <span class="st">"b"</span>);
+<span class="kw">assert_eq!</span>(<span class="var">map</span>.<span class="fn">insert</span>(<span class="nm">37</span>, <span class="st">"c"</span>), <span class="ok">Some</span>(<span class="st">"b"</span>)); <span class="cm">// 덮어씀 → Some("b")</span>
+<span class="kw">assert_eq!</span>(<span class="var">map</span>[&amp;<span class="nm">37</span>], <span class="st">"c"</span>);</code></pre>
+  </div>
+
+  <h3>get() / get_mut() — 조회</h3>
+  <p><code>get()</code>은 <code>Option&lt;&amp;V&gt;</code>를 반환합니다. 키가 없으면 <code>None</code>이므로 안전하게 처리할 수 있습니다.</p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span></div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+<span class="kw">let mut</span> <span class="var">map</span> = HashMap::from([(<span class="st">"Alice"</span>, <span class="nm">90</span>), (<span class="st">"Bob"</span>, <span class="nm">85</span>)]);
+
+<span class="cm">// get() → Option&lt;&amp;V&gt;</span>
+<span class="kw">match</span> <span class="var">map</span>.<span class="fn">get</span>(<span class="st">"Alice"</span>) {
+    <span class="ok">Some</span>(<span class="var">score</span>) =&gt; <span class="fn">println!</span>(<span class="st">"Alice: {}"</span>, <span class="var">score</span>),  <span class="cm">// Alice: 90</span>
+    <span class="ok">None</span>        =&gt; <span class="fn">println!</span>(<span class="st">"없음"</span>),
+}
+
+<span class="cm">// get_mut() → Option&lt;&amp;mut V&gt; : 값 직접 수정</span>
+<span class="kw">if let</span> <span class="ok">Some</span>(<span class="var">score</span>) = <span class="var">map</span>.<span class="fn">get_mut</span>(<span class="st">"Bob"</span>) {
+    *<span class="var">score</span> += <span class="nm">5</span>;  <span class="cm">// Bob: 85 → 90</span>
+}
+
+<span class="cm">// 인덱스 연산자 [] — 키가 없으면 panic!</span>
+<span class="fn">println!</span>(<span class="st">"Bob: {}"</span>, <span class="var">map</span>[<span class="st">"Bob"</span>]);  <span class="cm">// Bob: 90</span></code></pre>
+  </div>
+
+  <div class="callout danger">
+    <div class="callout-title">⛔ [] 연산자 주의</div>
+    <p><code>map["key"]</code>는 키가 없으면 <strong>panic</strong>합니다. 키의 존재가 불확실하면 반드시 <code>get()</code>을 사용하세요.</p>
+  </div>
+
+  <h3>contains_key() — 키 존재 확인</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span></div>
+    <pre><code><span class="kw">if</span> <span class="var">map</span>.<span class="fn">contains_key</span>(<span class="st">"Alice"</span>) {
+    <span class="fn">println!</span>(<span class="st">"Alice 데이터 있음"</span>);
+}</code></pre>
+  </div>
+
+  <h3>remove() — 삭제</h3>
+  <p>키를 제거하고 <code>Option&lt;V&gt;</code>를 반환합니다. 키가 없으면 <code>None</code>.</p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span></div>
+    <pre><code><span class="kw">let</span> <span class="var">removed</span> = <span class="var">map</span>.<span class="fn">remove</span>(<span class="st">"Alice"</span>);
+<span class="fn">println!</span>(<span class="st">"{:?}"</span>, <span class="var">removed</span>);  <span class="cm">// Some(90)</span>
+
+<span class="kw">let</span> <span class="var">none</span> = <span class="var">map</span>.<span class="fn">remove</span>(<span class="st">"없는키"</span>);
+<span class="fn">println!</span>(<span class="st">"{:?}"</span>, <span class="var">none</span>);     <span class="cm">// None</span></code></pre>
+  </div>
+
+  <h3>len() / is_empty() — 크기 확인</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span></div>
+    <pre><code><span class="fn">println!</span>(<span class="st">"항목 수: {}"</span>, <span class="var">map</span>.<span class="fn">len</span>());
+<span class="fn">println!</span>(<span class="st">"비어있나: {}"</span>, <span class="var">map</span>.<span class="fn">is_empty</span>());</code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     04. 순회
+══════════════════════════════════════════════ -->
+<section id="s-iter">
+  <div class="section-header">
+    <span class="sec-num">04</span>
+    <h2>HashMap 순회 방법 3가지</h2>
+  </div>
+
+  <p>공식 문서에는 HashMap을 순회하는 3가지 방법이 있습니다. 소유권에 따라 구분됩니다.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>방법</th><th>키 타입</th><th>값 타입</th><th>소유권</th></tr></thead>
+      <tbody>
+        <tr><td>iter() / &amp;map</td><td>&amp;K</td><td>&amp;V</td><td>빌림 — map 재사용 가능</td></tr>
+        <tr><td>iter_mut()</td><td>&amp;K</td><td>&amp;mut V</td><td>가변 빌림 — 값 수정 가능</td></tr>
+        <tr><td>into_iter()</td><td>K</td><td>V</td><td>소유권 이동 — map 소비됨</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — 3가지 순회 비교</div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+
+<span class="kw">let mut</span> <span class="var">map</span> = HashMap::from([
+    (<span class="st">"a"</span>, <span class="nm">1</span>), (<span class="st">"b"</span>, <span class="nm">2</span>), (<span class="st">"c"</span>, <span class="nm">3</span>)
+]);
+
+<span class="cm">// ① iter() — 불변 참조 순회 (&amp;K, &amp;V)</span>
+<span class="kw">for</span> (<span class="var">key</span>, <span class="var">val</span>) <span class="kw">in</span> &amp;<span class="var">map</span> {  <span class="cm">// = map.iter()</span>
+    <span class="fn">println!</span>(<span class="st">"key={} val={}"</span>, <span class="var">key</span>, <span class="var">val</span>);
+}
+
+<span class="cm">// ② iter_mut() — 가변 참조 순회 (&amp;K, &amp;mut V)</span>
+<span class="cm">// 공식 문서 예제: 모든 값을 2배로</span>
+<span class="kw">for</span> (<span class="var">_</span>, <span class="var">val</span>) <span class="kw">in</span> <span class="var">map</span>.<span class="fn">iter_mut</span>() {
+    *<span class="var">val</span> *= <span class="nm">2</span>;
+}
+<span class="cm">// map은 이제 {"a":2, "b":4, "c":6}</span>
+
+<span class="cm">// ③ into_iter() — 소유권 이동 (K, V)</span>
+<span class="kw">for</span> (<span class="var">key</span>, <span class="var">val</span>) <span class="kw">in</span> <span class="var">map</span> {  <span class="cm">// = map.into_iter()</span>
+    <span class="fn">println!</span>(<span class="st">"소유: {}={}"</span>, <span class="var">key</span>, <span class="var">val</span>);
+}
+<span class="cm">// map은 이 이후 사용 불가</span></code></pre>
+  </div>
+
+  <h3>keys() / values() — 키/값만 순회</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span></div>
+    <pre><code><span class="kw">let</span> <span class="var">map</span> = HashMap::from([(<span class="st">"x"</span>, <span class="nm">10</span>), (<span class="st">"y"</span>, <span class="nm">20</span>)]);
+
+<span class="kw">let</span> <span class="var">keys</span>: Vec&lt;_&gt;   = <span class="var">map</span>.<span class="fn">keys</span>().<span class="fn">collect</span>();
+<span class="kw">let</span> <span class="var">values</span>: Vec&lt;_&gt; = <span class="var">map</span>.<span class="fn">values</span>().<span class="fn">collect</span>();
+<span class="fn">println!</span>(<span class="st">"keys:   {:?}"</span>, <span class="var">keys</span>);
+<span class="fn">println!</span>(<span class="st">"values: {:?}"</span>, <span class="var">values</span>);</code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     05. 커스텀 키 타입
+══════════════════════════════════════════════ -->
+<section id="s-custom-key">
+  <div class="section-header">
+    <span class="sec-num">05</span>
+    <h2>커스텀 struct를 키로 사용하기</h2>
+  </div>
+
+  <p class="src">출처: <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html">공식 문서 — Viking 예제</a></p>
+  <p>HashMap의 키로 사용하려면 <strong><code>Hash + Eq + PartialEq</code></strong> 트레잇을 구현해야 합니다. <code>#[derive]</code>로 자동 구현하는 것이 가장 쉬운 방법입니다.</p>
+
+  <div class="callout info">
+    <div class="callout-title">왜 Hash + Eq + PartialEq 가 필요한가?</div>
+    <p><code>Hash</code>: 키를 해시 버킷에 배치할 때 사용. <code>Eq</code>: 같은 버킷 내에서 키가 동일한지 비교. <code>PartialEq</code>: <code>Eq</code>를 구현하려면 반드시 필요.</p>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — 공식 문서 Viking 예제</div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+
+<span class="at">#[derive(Hash, Eq, PartialEq, Debug)]</span>
+<span class="kw">struct</span> <span class="tp">Viking</span> {
+    <span class="var">name</span>:    <span class="tp">String</span>,
+    <span class="var">country</span>: <span class="tp">String</span>,
+}
+
+<span class="kw">impl</span> <span class="tp">Viking</span> {
+    <span class="kw">fn</span> <span class="fn">new</span>(<span class="var">name</span>: &amp;<span class="tp">str</span>, <span class="var">country</span>: &amp;<span class="tp">str</span>) -&gt; <span class="tp">Viking</span> {
+        <span class="tp">Viking</span> {
+            <span class="var">name</span>:    <span class="var">name</span>.<span class="fn">to_string</span>(),
+            <span class="var">country</span>: <span class="var">country</span>.<span class="fn">to_string</span>(),
+        }
+    }
+}
+
+<span class="kw">let mut</span> <span class="var">vikings</span> = HashMap::new();
+<span class="var">vikings</span>.<span class="fn">insert</span>(<span class="tp">Viking</span>::<span class="fn">new</span>(<span class="st">"Einar"</span>, <span class="st">"Norway"</span>),  <span class="nm">25</span>);
+<span class="var">vikings</span>.<span class="fn">insert</span>(<span class="tp">Viking</span>::<span class="fn">new</span>(<span class="st">"Olaf"</span>,  <span class="st">"Denmark"</span>), <span class="nm">24</span>);
+<span class="var">vikings</span>.<span class="fn">insert</span>(<span class="tp">Viking</span>::<span class="fn">new</span>(<span class="st">"Harald"</span>, <span class="st">"Iceland"</span>), <span class="nm">12</span>);
+
+<span class="kw">for</span> (<span class="var">viking</span>, <span class="var">health</span>) <span class="kw">in</span> &amp;<span class="var">vikings</span> {
+    <span class="kw">if</span> *<span class="var">health</span> &lt; <span class="nm">20</span> {
+        <span class="fn">println!</span>(<span class="st">"{} ({}) needs help!"</span>, <span class="var">viking</span>.<span class="var">name</span>, <span class="var">viking</span>.<span class="var">country</span>);
+    }
+}</code></pre>
+  </div>
+  <div class="output-wrap">
+    <div class="output-label">출력</div>
+    <div class="output">Harald (Iceland) needs help!</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     06. 해시 알고리즘
+══════════════════════════════════════════════ -->
+<section id="s-hash-algo">
+  <div class="section-header">
+    <span class="sec-num">06</span>
+    <h2>해시 알고리즘 — SipHash 1-3</h2>
+  </div>
+
+  <p class="src">출처: <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html">doc.rust-lang.org/std/collections/struct.HashMap.html</a></p>
+
+  <p>Rust의 HashMap은 기본적으로 <strong>SipHash 1-3</strong> 알고리즘을 사용합니다. 이는 HashDoS(해시 충돌 기반 서비스 거부) 공격에 저항하기 위해 설계되었습니다.</p>
+
+  <div class="callout info">
+    <div class="callout-title">공식 문서가 명시하는 SipHash 1-3 특징</div>
+    <p>
+      • 랜덤 시드를 사용해 매 실행마다 다른 해시값 생성 (예측 불가)<br>
+      • <strong>중간 크기 키</strong>에서 매우 경쟁력 있는 성능<br>
+      • 정수처럼 <strong>작은 키</strong>나 긴 문자열처럼 <strong>큰 키</strong>에서는 다른 알고리즘이 더 빠를 수 있음<br>
+      • 단, 다른 알고리즘들은 보통 HashDoS를 방어하지 않음
+    </p>
+  </div>
+
+  <h3>커스텀 Hasher 사용 (성능이 중요한 경우)</h3>
+  <p>성능이 매우 중요하고 신뢰할 수 있는 입력만 처리한다면 <code>BuildHasher</code> 트레잇을 구현한 서드파티 해셔(예: <code>FxHashMap</code>, <code>AHashMap</code>)를 쓸 수 있습니다.</p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — 커스텀 Hasher 구조 (개념)</div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+<span class="kw">use</span> std::hash::BuildHasherDefault;
+<span class="kw">use</span> std::collections::hash_map::DefaultHasher;
+
+<span class="cm">// 기본 hasher를 명시적으로 지정하는 방법 (개념 이해용)</span>
+<span class="kw">type</span> <span class="tp">MyMap</span>&lt;K, V&gt; = HashMap&lt;K, V, BuildHasherDefault&lt;DefaultHasher&gt;&gt;;</code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     07. Entry API 개념
+══════════════════════════════════════════════ -->
+<section id="s-entry">
+  <div class="section-header">
+    <span class="sec-num">07</span>
+    <h2>Entry API — 핵심 개념</h2>
+  </div>
+
+  <p class="src">출처: <a href="https://doc.rust-lang.org/std/collections/hash_map/enum.Entry.html">doc.rust-lang.org/std/collections/hash_map/enum.Entry.html</a></p>
+
+  <p><code>entry(key)</code>는 HashMap의 특정 키 위치에 대한 <strong>"뷰(view)"</strong>를 반환합니다. 이 뷰는 키가 있는지 없는지를 나타내는 열거형 <code>Entry</code>입니다.</p>
+
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — Entry 열거형 정의 (표준 라이브러리)</div>
+    <pre><code><span class="cm">// pub enum Entry&lt;'a, K, V&gt;</span>
+<span class="kw">pub enum</span> <span class="tp">Entry</span>&lt;<span class="lf">'a</span>, K, V&gt; {
+    <span class="ok">Occupied</span>(<span class="tp">OccupiedEntry</span>&lt;<span class="lf">'a</span>, K, V&gt;),  <span class="cm">// 키가 존재하는 뷰</span>
+    <span class="ok">Vacant</span>(<span class="tp">VacantEntry</span>&lt;<span class="lf">'a</span>, K, V&gt;),      <span class="cm">// 키가 없는 뷰</span>
+}</code></pre>
+  </div>
+
+  <div class="entry-diagram">
+    <div class="ed-title">entry(key) 호출 흐름</div>
+    <div class="ed-row">
+      <div>
+        <div class="ed-box hl">map.entry("key")</div>
+        <div class="ed-sub">HashMap 내부 탐색 (1회)</div>
+      </div>
+      <div class="ed-arrow">→</div>
+      <div>
+        <div class="ed-box hl">Entry (enum)</div>
+        <div class="ed-sub">키 위치에 대한 뷰</div>
+      </div>
+    </div>
+    <div class="ed-row">
+      <div>
+        <div class="ed-box occ">Occupied</div>
+        <div class="ed-sub">키가 이미 있음<br>기존 값 읽기/수정/삭제</div>
+      </div>
+      <div class="ed-sep">|</div>
+      <div>
+        <div class="ed-box vac">Vacant</div>
+        <div class="ed-sub">키가 없음<br>insert()로 새 값 삽입</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <div class="callout-title">왜 Entry API를 쓰는가? — 단 한 번의 탐색</div>
+    <p>Entry API를 사용하면 키를 <strong>한 번만 탐색</strong>합니다. <code>contains_key()</code>로 확인하고 <code>get_mut()</code>으로 다시 접근하면 두 번 탐색해 비효율적입니다.</p>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — Entry 없이 vs Entry 사용 비교</div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+<span class="kw">let mut</span> <span class="var">map</span>: HashMap&lt;&amp;<span class="tp">str</span>, <span class="tp">i32</span>&gt; = HashMap::new();
+
+<span class="cm">// ❌ Entry 없이 — 키를 최대 3번 탐색</span>
+<span class="kw">if</span> <span class="var">map</span>.<span class="fn">contains_key</span>(<span class="st">"score"</span>) {           <span class="cm">// 1번째 탐색</span>
+    <span class="kw">let</span> <span class="var">v</span> = <span class="var">map</span>.<span class="fn">get_mut</span>(<span class="st">"score"</span>).<span class="fn">unwrap</span>(); <span class="cm">// 2번째 탐색</span>
+    *<span class="var">v</span> += <span class="nm">1</span>;
+} <span class="kw">else</span> {
+    <span class="var">map</span>.<span class="fn">insert</span>(<span class="st">"score"</span>, <span class="nm">1</span>);               <span class="cm">// 3번째 탐색</span>
+}
+
+<span class="cm">// ✅ Entry 사용 — 키를 딱 한 번만 탐색</span>
+*<span class="var">map</span>.<span class="fn">entry</span>(<span class="st">"score"</span>).<span class="fn">or_insert</span>(<span class="nm">0</span>) += <span class="nm">1</span>;</code></pre>
+  </div>
+
+  <h3>공식 문서 player_stats 예제</h3>
+  <p class="src">출처: <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html">doc.rust-lang.org — Entry API 예제</a></p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — 공식 문서 그대로</div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+
+<span class="kw">let mut</span> <span class="var">player_stats</span> = HashMap::new();
+
+<span class="kw">fn</span> <span class="fn">random_stat_buff</span>() -&gt; <span class="tp">u8</span> { <span class="nm">42</span> }
+
+<span class="cm">// 키가 없을 때만 삽입</span>
+<span class="var">player_stats</span>.<span class="fn">entry</span>(<span class="st">"health"</span>).<span class="fn">or_insert</span>(<span class="nm">100</span>);
+
+<span class="cm">// 함수로 기본값 생성 — 키가 없을 때만 함수 호출</span>
+<span class="var">player_stats</span>.<span class="fn">entry</span>(<span class="st">"defence"</span>).<span class="fn">or_insert_with</span>(<span class="fn">random_stat_buff</span>);
+
+<span class="cm">// 키가 있든 없든 가변 참조를 받아 수정</span>
+<span class="kw">let</span> <span class="var">stat</span> = <span class="var">player_stats</span>.<span class="fn">entry</span>(<span class="st">"attack"</span>).<span class="fn">or_insert</span>(<span class="nm">100</span>);
+*<span class="var">stat</span> += <span class="fn">random_stat_buff</span>();
+
+<span class="fn">println!</span>(<span class="st">"{:?}"</span>, <span class="var">player_stats</span>);</code></pre>
+  </div>
+  <div class="output-wrap">
+    <div class="output-label">출력</div>
+    <div class="output">{"health": 100, "defence": 42, "attack": 142}</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     08. Entry 메서드 전체
+══════════════════════════════════════════════ -->
+<section id="s-entry-methods">
+  <div class="section-header">
+    <span class="sec-num">08</span>
+    <h2>Entry 메서드 완전 정리</h2>
+  </div>
+
+  <p class="src">출처: <a href="https://doc.rust-lang.org/std/collections/hash_map/enum.Entry.html">doc.rust-lang.org/std/collections/hash_map/enum.Entry.html</a></p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>메서드</th><th>반환 타입</th><th>동작</th><th>값 평가 시점</th></tr></thead>
+      <tbody>
+        <tr><td>or_insert(val)</td><td>&amp;mut V</td><td>없으면 val 삽입, 있으면 기존 값의 &amp;mut V 반환</td><td>항상 (즉시 평가)</td></tr>
+        <tr><td>or_insert_with(f)</td><td>&amp;mut V</td><td>없으면 f() 호출 후 삽입</td><td>없을 때만</td></tr>
+        <tr><td>or_insert_with_key(f)</td><td>&amp;mut V</td><td>없으면 f(&amp;key) 호출, 키를 복사 없이 전달</td><td>없을 때만</td></tr>
+        <tr><td>or_default()</td><td>&amp;mut V</td><td>없으면 Default::default() 삽입</td><td>없을 때만</td></tr>
+        <tr><td>and_modify(f)</td><td>Entry</td><td>있으면 f로 수정, Entry 자체 반환 (체이닝용)</td><td>있을 때만</td></tr>
+        <tr><td>key()</td><td>&amp;K</td><td>이 Entry의 키 참조 반환</td><td>—</td></tr>
+        <tr><td>insert_entry(val)</td><td>OccupiedEntry</td><td>값을 설정하고 OccupiedEntry 반환</td><td>항상</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>or_insert_with_key — 키 기반 기본값 생성</h3>
+  <p class="src">출처: <a href="https://doc.rust-lang.org/std/collections/hash_map/enum.Entry.html">공식 문서 예제</a></p>
+  <p><code>or_insert_with(|| ...)</code>와 달리, 클로저가 키에 대한 참조를 받습니다. 키를 복사하거나 클론하지 않고도 키를 기반으로 값을 생성할 수 있습니다.</p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — 공식 문서 예제</div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+
+<span class="kw">let mut</span> <span class="var">map</span>: HashMap&lt;&amp;<span class="tp">str</span>, <span class="tp">usize</span>&gt; = HashMap::new();
+
+<span class="cm">// 키가 없을 때, 키 자체를 클로저 인자로 받아 값 생성</span>
+<span class="var">map</span>.<span class="fn">entry</span>(<span class="st">"poneyland"</span>).<span class="fn">or_insert_with_key</span>(|<span class="var">key</span>| <span class="var">key</span>.<span class="fn">chars</span>().<span class="fn">count</span>());
+
+<span class="kw">assert_eq!</span>(<span class="var">map</span>[<span class="st">"poneyland"</span>], <span class="nm">9</span>); <span class="cm">// "poneyland".len() = 9</span></code></pre>
+  </div>
+
+  <h3>or_default — 타입 기본값 삽입</h3>
+  <p class="src">출처: <a href="https://doc.rust-lang.org/std/collections/hash_map/enum.Entry.html">공식 문서 예제</a></p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — 공식 문서 예제</div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+
+<span class="cm">// Option&lt;u32&gt;의 Default는 None</span>
+<span class="kw">let mut</span> <span class="var">map</span>: HashMap&lt;&amp;<span class="tp">str</span>, <span class="tp">Option</span>&lt;<span class="tp">u32</span>&gt;&gt; = HashMap::new();
+<span class="var">map</span>.<span class="fn">entry</span>(<span class="st">"poneyland"</span>).<span class="fn">or_default</span>();
+<span class="kw">assert_eq!</span>(<span class="var">map</span>[<span class="st">"poneyland"</span>], <span class="ok">None</span>);
+
+<span class="cm">// i32의 Default는 0, String의 Default는 ""</span>
+<span class="kw">let mut</span> <span class="var">counts</span>: HashMap&lt;&amp;<span class="tp">str</span>, <span class="tp">i32</span>&gt; = HashMap::new();
+*<span class="var">counts</span>.<span class="fn">entry</span>(<span class="st">"hits"</span>).<span class="fn">or_default</span>() += <span class="nm">1</span>; <span class="cm">// 0 + 1 = 1</span></code></pre>
+  </div>
+
+  <h3>and_modify + or_insert 체이닝</h3>
+  <p class="src">출처: <a href="https://doc.rust-lang.org/std/collections/hash_map/enum.Entry.html">공식 문서 예제</a></p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — 공식 문서 예제</div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+
+<span class="kw">let mut</span> <span class="var">map</span>: HashMap&lt;&amp;<span class="tp">str</span>, <span class="tp">u32</span>&gt; = HashMap::new();
+
+<span class="cm">// 있으면 +1, 없으면 42로 삽입</span>
+<span class="var">map</span>.<span class="fn">entry</span>(<span class="st">"poneyland"</span>)
+   .<span class="fn">and_modify</span>(|<span class="var">e</span>| { *<span class="var">e</span> += <span class="nm">1</span> })
+   .<span class="fn">or_insert</span>(<span class="nm">42</span>);
+<span class="kw">assert_eq!</span>(<span class="var">map</span>[<span class="st">"poneyland"</span>], <span class="nm">42</span>); <span class="cm">// 없었으므로 42 삽입</span>
+
+<span class="var">map</span>.<span class="fn">entry</span>(<span class="st">"poneyland"</span>)
+   .<span class="fn">and_modify</span>(|<span class="var">e</span>| { *<span class="var">e</span> += <span class="nm">1</span> })
+   .<span class="fn">or_insert</span>(<span class="nm">42</span>);
+<span class="kw">assert_eq!</span>(<span class="var">map</span>[<span class="st">"poneyland"</span>], <span class="nm">43</span>); <span class="cm">// 있었으므로 +1</span></code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     09. OccupiedEntry
+══════════════════════════════════════════════ -->
+<section id="s-occupied">
+  <div class="section-header">
+    <span class="sec-num">09</span>
+    <h2>OccupiedEntry — 키가 존재할 때</h2>
+  </div>
+
+  <p class="src">출처: <a href="https://doc.rust-lang.org/std/collections/hash_map/struct.OccupiedEntry.html">doc.rust-lang.org/std/collections/hash_map/struct.OccupiedEntry.html</a></p>
+  <p><code>OccupiedEntry</code>는 이미 존재하는 키-값 쌍에 대한 뷰입니다. 키를 다시 탐색하지 않고도 값을 읽고 수정하고 삭제할 수 있습니다.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>메서드</th><th>반환</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>key()</td><td>&amp;K</td><td>키에 대한 참조 반환</td></tr>
+        <tr><td>get()</td><td>&amp;V</td><td>값에 대한 불변 참조 반환</td></tr>
+        <tr><td>get_mut()</td><td>&amp;mut V</td><td>값에 대한 가변 참조 반환 (OccupiedEntry가 살아있는 동안)</td></tr>
+        <tr><td>into_mut()</td><td>&amp;'a mut V</td><td>값의 가변 참조를 map 수명에 바인딩해 반환 (OccupiedEntry 소비)</td></tr>
+        <tr><td>insert(val)</td><td>V</td><td>새 값으로 교체, 이전 값 반환</td></tr>
+        <tr><td>remove()</td><td>V</td><td>키-값 제거 후 값만 반환</td></tr>
+        <tr><td>remove_entry()</td><td>(K, V)</td><td>키-값 모두 제거 후 소유권과 함께 반환</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>get_mut() vs into_mut() 차이</h3>
+  <div class="callout info">
+    <div class="callout-title">공식 문서 설명</div>
+    <p><code>get_mut()</code>: OccupiedEntry에 대한 참조가 살아있는 동안만 유효한 가변 참조를 반환. <strong>Entry를 여러 번 재사용</strong>할 수 있음.<br>
+    <code>into_mut()</code>: OccupiedEntry를 소비(move)하여 map 자체 수명에 바인딩된 가변 참조 반환. <strong>Entry를 한 번만 사용</strong>하고 끝낼 때 적합.</p>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — 공식 문서 예제: get_mut() 재사용</div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+<span class="kw">use</span> std::collections::hash_map::Entry;
+
+<span class="kw">let mut</span> <span class="var">map</span>: HashMap&lt;&amp;<span class="tp">str</span>, <span class="tp">u32</span>&gt; = HashMap::new();
+<span class="var">map</span>.<span class="fn">entry</span>(<span class="st">"poneyland"</span>).<span class="fn">or_insert</span>(<span class="nm">12</span>);
+<span class="kw">assert_eq!</span>(<span class="var">map</span>[<span class="st">"poneyland"</span>], <span class="nm">12</span>);
+
+<span class="kw">if let</span> Entry::<span class="ok">Occupied</span>(<span class="kw">mut</span> <span class="var">o</span>) = <span class="var">map</span>.<span class="fn">entry</span>(<span class="st">"poneyland"</span>) {
+    *<span class="var">o</span>.<span class="fn">get_mut</span>() += <span class="nm">10</span>;
+    <span class="kw">assert_eq!</span>(*<span class="var">o</span>.<span class="fn">get</span>(), <span class="nm">22</span>);
+    <span class="cm">// OccupiedEntry를 여러 번 재사용 가능</span>
+    *<span class="var">o</span>.<span class="fn">get_mut</span>() += <span class="nm">2</span>;
+}
+<span class="kw">assert_eq!</span>(<span class="var">map</span>[<span class="st">"poneyland"</span>], <span class="nm">24</span>);</code></pre>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — 공식 문서 예제: into_mut()</div>
+    <pre><code><span class="kw">if let</span> Entry::<span class="ok">Occupied</span>(<span class="var">o</span>) = <span class="var">map</span>.<span class="fn">entry</span>(<span class="st">"poneyland"</span>) {
+    <span class="cm">// Entry 소비 → map 수명에 바인딩된 &amp;mut V 반환</span>
+    *<span class="var">o</span>.<span class="fn">into_mut</span>() += <span class="nm">10</span>;
+}
+<span class="kw">assert_eq!</span>(<span class="var">map</span>[<span class="st">"poneyland"</span>], <span class="nm">34</span>);</code></pre>
+  </div>
+
+  <h3>remove_entry() — 키와 값 모두 회수</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — 공식 문서 예제</div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+<span class="kw">use</span> std::collections::hash_map::Entry;
+
+<span class="kw">let mut</span> <span class="var">map</span>: HashMap&lt;&amp;<span class="tp">str</span>, <span class="tp">u32</span>&gt; = HashMap::new();
+<span class="var">map</span>.<span class="fn">entry</span>(<span class="st">"poneyland"</span>).<span class="fn">or_insert</span>(<span class="nm">12</span>);
+
+<span class="kw">if let</span> Entry::<span class="ok">Occupied</span>(<span class="var">o</span>) = <span class="var">map</span>.<span class="fn">entry</span>(<span class="st">"poneyland"</span>) {
+    <span class="cm">// (K, V) 튜플로 키와 값 모두 소유권 회수</span>
+    <span class="kw">let</span> (<span class="var">key</span>, <span class="var">val</span>) = <span class="var">o</span>.<span class="fn">remove_entry</span>();
+    <span class="fn">println!</span>(<span class="st">"제거됨: key={}, val={}"</span>, <span class="var">key</span>, <span class="var">val</span>);
+}
+<span class="kw">assert_eq!</span>(<span class="var">map</span>.<span class="fn">contains_key</span>(<span class="st">"poneyland"</span>), <span class="kw">false</span>);</code></pre>
+  </div>
+  <div class="output-wrap">
+    <div class="output-label">출력</div>
+    <div class="output">제거됨: key=poneyland, val=12</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     10. VacantEntry
+══════════════════════════════════════════════ -->
+<section id="s-vacant">
+  <div class="section-header">
+    <span class="sec-num">10</span>
+    <h2>VacantEntry — 키가 없을 때</h2>
+  </div>
+
+  <p class="src">출처: <a href="https://doc.rust-lang.org/std/collections/hash_map/struct.VacantEntry.html">doc.rust-lang.org/std/collections/hash_map/struct.VacantEntry.html</a></p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>메서드</th><th>반환</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>key()</td><td>&amp;K</td><td>삽입하려는 키의 참조 반환</td></tr>
+        <tr><td>into_key()</td><td>K</td><td>키의 소유권을 가져옴 (Entry 소비)</td></tr>
+        <tr><td>insert(val)</td><td>&amp;mut V</td><td>값을 삽입하고 가변 참조 반환</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — Occupied / Vacant 직접 분기</div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+<span class="kw">use</span> std::collections::hash_map::Entry;
+
+<span class="kw">let mut</span> <span class="var">map</span>: HashMap&lt;&amp;<span class="tp">str</span>, <span class="tp">i32</span>&gt; = HashMap::new();
+
+<span class="cm">// ── Vacant 분기 ────────────────────────────────</span>
+<span class="kw">match</span> <span class="var">map</span>.<span class="fn">entry</span>(<span class="st">"score"</span>) {
+    Entry::<span class="ok">Occupied</span>(<span class="kw">mut</span> <span class="var">occ</span>) =&gt; {
+        <span class="fn">println!</span>(<span class="st">"기존 값: {}"</span>, <span class="var">occ</span>.<span class="fn">get</span>());
+        *<span class="var">occ</span>.<span class="fn">get_mut</span>() += <span class="nm">1</span>;
+    }
+    Entry::<span class="ok">Vacant</span>(<span class="var">vac</span>) =&gt; {
+        <span class="fn">println!</span>(<span class="st">"없음, 삽입: key={}"</span>, <span class="var">vac</span>.<span class="fn">key</span>());
+        <span class="var">vac</span>.<span class="fn">insert</span>(<span class="nm">100</span>); <span class="cm">// 이 시점에 HashMap에 삽입됨</span>
+    }
+}
+<span class="fn">println!</span>(<span class="st">"{:?}"</span>, <span class="var">map</span>); <span class="cm">// {"score": 100}</span>
+
+<span class="cm">// ── Occupied 분기 ──────────────────────────────</span>
+<span class="kw">match</span> <span class="var">map</span>.<span class="fn">entry</span>(<span class="st">"score"</span>) {
+    Entry::<span class="ok">Occupied</span>(<span class="kw">mut</span> <span class="var">occ</span>) =&gt; {
+        <span class="fn">println!</span>(<span class="st">"기존 값: {}"</span>, <span class="var">occ</span>.<span class="fn">get</span>()); <span class="cm">// 100</span>
+        <span class="var">occ</span>.<span class="fn">insert</span>(<span class="nm">200</span>);                       <span class="cm">// 100 → 200</span>
+    }
+    Entry::<span class="ok">Vacant</span>(_) =&gt; {}
+}
+<span class="fn">println!</span>(<span class="st">"{:?}"</span>, <span class="var">map</span>); <span class="cm">// {"score": 200}</span></code></pre>
+  </div>
+  <div class="output-wrap">
+    <div class="output-label">출력</div>
+    <div class="output">없음, 삽입: key=score
+{"score": 100}
+기존 값: 100
+{"score": 200}</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     11. 예제 모음 (8개)
+══════════════════════════════════════════════ -->
+<section id="s-examples">
+  <div class="section-header">
+    <span class="sec-num">11</span>
+    <h2>실전 예제 모음 8가지</h2>
+  </div>
+
+  <!-- 예제 1 -->
+  <div class="ex-label">예제 01 — 단어 빈도 세기 (or_insert + 역참조)</div>
+  <p>가장 기본적인 Entry 패턴입니다. <code>or_insert(0)</code>은 <code>&amp;mut i32</code>를 반환하므로 <code>*count += 1</code>로 역참조해 값을 수정합니다.</p>
+  <p class="src">출처 패턴: <a href="https://doc.rust-lang.org/book/ch08-03-hash-maps.html">Rust Book ch08-03</a></p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span></div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> <span class="var">text</span> = <span class="st">"hello world wonderful world hello world"</span>;
+    <span class="kw">let mut</span> <span class="var">map</span>: HashMap&lt;&amp;<span class="tp">str</span>, <span class="tp">u32</span>&gt; = HashMap::new();
+
+    <span class="kw">for</span> <span class="var">word</span> <span class="kw">in</span> <span class="var">text</span>.<span class="fn">split_whitespace</span>() {
+        <span class="kw">let</span> <span class="var">count</span> = <span class="var">map</span>.<span class="fn">entry</span>(<span class="var">word</span>).<span class="fn">or_insert</span>(<span class="nm">0</span>);
+        <span class="cm">// or_insert는 &amp;mut u32 반환 → * 로 역참조해 수정</span>
+        *<span class="var">count</span> += <span class="nm">1</span>;
+    }
+
+    <span class="cm">// 결과 정렬 출력</span>
+    <span class="kw">let mut</span> <span class="var">pairs</span>: Vec&lt;_&gt; = <span class="var">map</span>.<span class="fn">iter</span>().<span class="fn">collect</span>();
+    <span class="var">pairs</span>.<span class="fn">sort_by_key</span>(|&amp;(<span class="var">k</span>, _)| *<span class="var">k</span>);
+    <span class="kw">for</span> (<span class="var">word</span>, <span class="var">count</span>) <span class="kw">in</span> <span class="var">pairs</span> {
+        <span class="fn">println!</span>(<span class="st">"{:&lt;12} : {}"</span>, <span class="var">word</span>, <span class="var">count</span>);
+    }
+}</code></pre>
+  </div>
+  <div class="output-wrap">
+    <div class="output-label">출력</div>
+    <div class="output">hello        : 2
+wonderful    : 1
+world        : 3</div>
+  </div>
+
+  <!-- 예제 2 -->
+  <div class="ex-label">예제 02 — 학생 점수 누적 (or_insert_with + Vec)</div>
+  <p><code>or_insert_with(Vec::new)</code>는 키가 없을 때만 <code>Vec::new()</code>를 호출합니다. <code>or_insert(vec![])</code>는 항상 빈 Vec을 만들어 넘기므로 불필요한 할당이 생깁니다.</p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span></div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let mut</span> <span class="var">scores</span>: HashMap&lt;<span class="tp">String</span>, Vec&lt;<span class="tp">i32</span>&gt;&gt; = HashMap::new();
+
+    <span class="kw">let</span> <span class="var">data</span> = <span class="fn">vec!</span>[
+        (<span class="st">"Alice"</span>, <span class="nm">95</span>), (<span class="st">"Bob"</span>, <span class="nm">80</span>), (<span class="st">"Alice"</span>, <span class="nm">88</span>),
+        (<span class="st">"Charlie"</span>, <span class="nm">75</span>), (<span class="st">"Bob"</span>, <span class="nm">92</span>), (<span class="st">"Alice"</span>, <span class="nm">79</span>),
+    ];
+
+    <span class="kw">for</span> (<span class="var">name</span>, <span class="var">score</span>) <span class="kw">in</span> <span class="var">data</span> {
+        <span class="var">scores</span>
+            .<span class="fn">entry</span>(<span class="var">name</span>.<span class="fn">to_string</span>())
+            .<span class="fn">or_insert_with</span>(Vec::new)  <span class="cm">// 없을 때만 Vec 생성</span>
+            .<span class="fn">push</span>(<span class="var">score</span>);
+    }
+
+    <span class="kw">let mut</span> <span class="var">names</span>: Vec&lt;_&gt; = <span class="var">scores</span>.<span class="fn">keys</span>().<span class="fn">collect</span>();
+    <span class="var">names</span>.<span class="fn">sort</span>();
+    <span class="kw">for</span> <span class="var">name</span> <span class="kw">in</span> <span class="var">names</span> {
+        <span class="kw">let</span> <span class="var">list</span> = &amp;<span class="var">scores</span>[<span class="var">name</span>];
+        <span class="kw">let</span> <span class="var">avg</span>: <span class="tp">f64</span> = <span class="var">list</span>.<span class="fn">iter</span>().<span class="fn">sum</span>::&lt;<span class="tp">i32</span>&gt;() <span class="kw">as</span> <span class="tp">f64</span> / <span class="var">list</span>.<span class="fn">len</span>() <span class="kw">as</span> <span class="tp">f64</span>;
+        <span class="fn">println!</span>(<span class="st">"{:&lt;8} {:?}  평균={:.1}"</span>, <span class="var">name</span>, <span class="var">list</span>, <span class="var">avg</span>);
+    }
+}</code></pre>
+  </div>
+  <div class="output-wrap">
+    <div class="output-label">출력</div>
+    <div class="output">Alice    [95, 88, 79]  평균=87.3
+Bob      [80, 92]      평균=86.0
+Charlie  [75]          평균=75.0</div>
+  </div>
+
+  <!-- 예제 3 -->
+  <div class="ex-label">예제 03 — 재고 관리 (and_modify + or_insert 체이닝)</div>
+  <p><code>and_modify()</code>는 키가 존재할 때만 실행하고 <code>Entry</code>를 그대로 반환합니다. 이어서 <code>or_insert()</code>를 체이닝하면 <strong>있으면 수정, 없으면 삽입</strong>을 원자적으로 처리합니다.</p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span></div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let mut</span> <span class="var">inventory</span>: HashMap&lt;&amp;<span class="tp">str</span>, <span class="tp">u32</span>&gt; = HashMap::new();
+
+    <span class="kw">let</span> <span class="var">orders</span> = <span class="fn">vec!</span>[
+        (<span class="st">"apple"</span>, <span class="nm">10</span>), (<span class="st">"banana"</span>, <span class="nm">5</span>),
+        (<span class="st">"apple"</span>, <span class="nm">3</span>),  (<span class="st">"orange"</span>, <span class="nm">8</span>),
+        (<span class="st">"banana"</span>, <span class="nm">2</span>), (<span class="st">"apple"</span>, <span class="nm">7</span>),
+    ];
+
+    <span class="kw">for</span> (<span class="var">item</span>, <span class="var">qty</span>) <span class="kw">in</span> <span class="var">orders</span> {
+        <span class="var">inventory</span>
+            .<span class="fn">entry</span>(<span class="var">item</span>)
+            .<span class="fn">and_modify</span>(|<span class="var">e</span>| *<span class="var">e</span> += <span class="var">qty</span>)  <span class="cm">// 있으면 누적</span>
+            .<span class="fn">or_insert</span>(<span class="var">qty</span>);              <span class="cm">// 없으면 신규 등록</span>
+    }
+
+    <span class="kw">let mut</span> <span class="var">items</span>: Vec&lt;_&gt; = <span class="var">inventory</span>.<span class="fn">iter</span>().<span class="fn">collect</span>();
+    <span class="var">items</span>.<span class="fn">sort_by_key</span>(|(<span class="var">k</span>, _)| *<span class="var">k</span>);
+    <span class="fn">println!</span>(<span class="st">"=== 최종 재고 ==="</span>);
+    <span class="kw">for</span> (<span class="var">item</span>, <span class="var">qty</span>) <span class="kw">in</span> <span class="var">items</span> {
+        <span class="fn">println!</span>(<span class="st">"{:&lt;8}: {}개"</span>, <span class="var">item</span>, <span class="var">qty</span>);
+    }
+}</code></pre>
+  </div>
+  <div class="output-wrap">
+    <div class="output-label">출력</div>
+    <div class="output">=== 최종 재고 ===
+apple   : 20개
+banana  : 7개
+orange  : 8개</div>
+  </div>
+
+  <!-- 예제 4 -->
+  <div class="ex-label">예제 04 — 그룹화 (or_default + Vec 누적)</div>
+  <p><code>or_default()</code>는 <code>Vec&lt;_&gt;</code>의 기본값인 빈 Vec을 자동으로 삽입합니다. 타입만 맞으면 작성이 간결합니다.</p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span></div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> <span class="var">students</span> = <span class="fn">vec!</span>[
+        (<span class="st">"Math"</span>,    <span class="st">"Alice"</span>),
+        (<span class="st">"Science"</span>, <span class="st">"Bob"</span>),
+        (<span class="st">"Math"</span>,    <span class="st">"Charlie"</span>),
+        (<span class="st">"Science"</span>, <span class="st">"Diana"</span>),
+        (<span class="st">"History"</span>, <span class="st">"Eve"</span>),
+        (<span class="st">"Math"</span>,    <span class="st">"Frank"</span>),
+    ];
+
+    <span class="kw">let mut</span> <span class="var">by_subject</span>: HashMap&lt;&amp;<span class="tp">str</span>, Vec&lt;&amp;<span class="tp">str</span>&gt;&gt; = HashMap::new();
+
+    <span class="kw">for</span> (<span class="var">subject</span>, <span class="var">student</span>) <span class="kw">in</span> <span class="var">students</span> {
+        <span class="cm">// Vec&lt;&amp;str&gt;의 Default = 빈 Vec → or_default()로 간결하게</span>
+        <span class="var">by_subject</span>.<span class="fn">entry</span>(<span class="var">subject</span>).<span class="fn">or_default</span>().<span class="fn">push</span>(<span class="var">student</span>);
+    }
+
+    <span class="kw">let mut</span> <span class="var">subjects</span>: Vec&lt;_&gt; = <span class="var">by_subject</span>.<span class="fn">keys</span>().<span class="fn">collect</span>();
+    <span class="var">subjects</span>.<span class="fn">sort</span>();
+    <span class="kw">for</span> <span class="var">subject</span> <span class="kw">in</span> <span class="var">subjects</span> {
+        <span class="fn">println!</span>(<span class="st">"{}: {:?}"</span>, <span class="var">subject</span>, <span class="var">by_subject</span>[<span class="var">subject</span>]);
+    }
+}</code></pre>
+  </div>
+  <div class="output-wrap">
+    <div class="output-label">출력</div>
+    <div class="output">History: ["Eve"]
+Math: ["Alice", "Charlie", "Frank"]
+Science: ["Bob", "Diana"]</div>
+  </div>
+
+  <!-- 예제 5 -->
+  <div class="ex-label">예제 05 — or_insert_with_key 활용</div>
+  <p class="src">출처 패턴: <a href="https://doc.rust-lang.org/std/collections/hash_map/enum.Entry.html">공식 문서 Entry::or_insert_with_key</a></p>
+  <p>키 자체를 복사하지 않고 키 기반으로 기본값을 생성합니다. 키 문자열 분석, 파싱 등에 유용합니다.</p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span></div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let mut</span> <span class="var">word_lengths</span>: HashMap&lt;&amp;<span class="tp">str</span>, <span class="tp">usize</span>&gt; = HashMap::new();
+
+    <span class="kw">let</span> <span class="var">words</span> = <span class="fn">vec!</span>[<span class="st">"rust"</span>, <span class="st">"programming"</span>, <span class="st">"hello"</span>, <span class="st">"rust"</span>, <span class="st">"world"</span>];
+
+    <span class="kw">for</span> <span class="var">word</span> <span class="kw">in</span> <span class="var">words</span> {
+        <span class="cm">// 키가 없으면 키 자체를 인자로 받아 글자 수를 기본값으로 저장</span>
+        <span class="var">word_lengths</span>
+            .<span class="fn">entry</span>(<span class="var">word</span>)
+            .<span class="fn">or_insert_with_key</span>(|<span class="var">k</span>| <span class="var">k</span>.<span class="fn">chars</span>().<span class="fn">count</span>());
+    }
+
+    <span class="kw">let mut</span> <span class="var">pairs</span>: Vec&lt;_&gt; = <span class="var">word_lengths</span>.<span class="fn">iter</span>().<span class="fn">collect</span>();
+    <span class="var">pairs</span>.<span class="fn">sort_by_key</span>(|(<span class="var">k</span>, _)| *<span class="var">k</span>);
+    <span class="kw">for</span> (<span class="var">word</span>, <span class="var">len</span>) <span class="kw">in</span> <span class="var">pairs</span> {
+        <span class="fn">println!</span>(<span class="st">"{:&lt;12} → 글자 수: {}"</span>, <span class="var">word</span>, <span class="var">len</span>);
+    }
+}</code></pre>
+  </div>
+  <div class="output-wrap">
+    <div class="output-label">출력</div>
+    <div class="output">hello        → 글자 수: 5
+programming  → 글자 수: 11
+rust         → 글자 수: 4
+world        → 글자 수: 5</div>
+  </div>
+
+  <!-- 예제 6 -->
+  <div class="ex-label">예제 06 — 조건부 삭제 (remove_entry)</div>
+  <p>값이 임계값 미만인 항목을 순회하며 제거하는 패턴입니다. <code>remove_entry()</code>는 키와 값을 모두 소유권과 함께 반환합니다.</p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span></div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+<span class="kw">use</span> std::collections::hash_map::Entry;
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let mut</span> <span class="var">scores</span>: HashMap&lt;<span class="tp">String</span>, <span class="tp">i32</span>&gt; = HashMap::from([
+        (<span class="st">"Alice"</span>.<span class="fn">to_string</span>(),   <span class="nm">95</span>),
+        (<span class="st">"Bob"</span>.<span class="fn">to_string</span>(),     <span class="nm">42</span>),
+        (<span class="st">"Charlie"</span>.<span class="fn">to_string</span>(), <span class="nm">38</span>),
+        (<span class="st">"Diana"</span>.<span class="fn">to_string</span>(),   <span class="nm">88</span>),
+    ]);
+
+    <span class="kw">let</span> <span class="var">threshold</span> = <span class="nm">50</span>;
+    <span class="kw">let</span> <span class="var">keys_to_check</span>: Vec&lt;<span class="tp">String</span>&gt; = <span class="var">scores</span>.<span class="fn">keys</span>().<span class="fn">cloned</span>().<span class="fn">collect</span>();
+    <span class="kw">let mut</span> <span class="var">removed</span> = <span class="fn">vec!</span>[];
+
+    <span class="kw">for</span> <span class="var">key</span> <span class="kw">in</span> <span class="var">keys_to_check</span> {
+        <span class="kw">if let</span> Entry::<span class="ok">Occupied</span>(<span class="var">o</span>) = <span class="var">scores</span>.<span class="fn">entry</span>(<span class="var">key</span>) {
+            <span class="kw">if</span> *<span class="var">o</span>.<span class="fn">get</span>() &lt; <span class="var">threshold</span> {
+                <span class="kw">let</span> (<span class="var">name</span>, <span class="var">score</span>) = <span class="var">o</span>.<span class="fn">remove_entry</span>(); <span class="cm">// (K, V) 반환</span>
+                <span class="var">removed</span>.<span class="fn">push</span>((<span class="var">name</span>, <span class="var">score</span>));
+            }
+        }
+    }
+
+    <span class="fn">println!</span>(<span class="st">"탈락자:"</span>);
+    <span class="kw">for</span> (<span class="var">name</span>, <span class="var">score</span>) <span class="kw">in</span> &amp;<span class="var">removed</span> {
+        <span class="fn">println!</span>(<span class="st">"  {} ({}점)"</span>, <span class="var">name</span>, <span class="var">score</span>);
+    }
+    <span class="fn">println!</span>(<span class="st">"잔여: {:?}"</span>, <span class="var">scores</span>);
+}</code></pre>
+  </div>
+  <div class="output-wrap">
+    <div class="output-label">출력</div>
+    <div class="output">탈락자:
+  Bob (42점)
+  Charlie (38점)
+잔여: {"Alice": 95, "Diana": 88}</div>
+  </div>
+
+  <!-- 예제 7 -->
+  <div class="ex-label">예제 07 — 커스텀 struct 키 활용</div>
+  <p><code>#[derive(Hash, Eq, PartialEq)]</code>를 붙인 struct를 키로 사용하는 패턴입니다.</p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span></div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+
+<span class="at">#[derive(Hash, Eq, PartialEq, Debug, Clone)]</span>
+<span class="kw">struct</span> <span class="tp">Point</span> { <span class="var">x</span>: <span class="tp">i32</span>, <span class="var">y</span>: <span class="tp">i32</span> }
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let mut</span> <span class="var">grid</span>: HashMap&lt;<span class="tp">Point</span>, &amp;<span class="tp">str</span>&gt; = HashMap::new();
+
+    <span class="var">grid</span>.<span class="fn">insert</span>(<span class="tp">Point</span> { <span class="var">x</span>: <span class="nm">0</span>, <span class="var">y</span>: <span class="nm">0</span> }, <span class="st">"origin"</span>);
+    <span class="var">grid</span>.<span class="fn">insert</span>(<span class="tp">Point</span> { <span class="var">x</span>: <span class="nm">1</span>, <span class="var">y</span>: <span class="nm">0</span> }, <span class="st">"east"</span>);
+    <span class="var">grid</span>.<span class="fn">insert</span>(<span class="tp">Point</span> { <span class="var">x</span>: <span class="nm">0</span>, <span class="var">y</span>: <span class="nm">1</span> }, <span class="st">"north"</span>);
+
+    <span class="cm">// Entry로 없으면 삽입</span>
+    <span class="var">grid</span>.<span class="fn">entry</span>(<span class="tp">Point</span> { <span class="var">x</span>: <span class="nm">0</span>, <span class="var">y</span>: <span class="nm">0</span> }).<span class="fn">or_insert</span>(<span class="st">"already set"</span>);
+    <span class="var">grid</span>.<span class="fn">entry</span>(<span class="tp">Point</span> { <span class="var">x</span>: <span class="nm">2</span>, <span class="var">y</span>: <span class="nm">2</span> }).<span class="fn">or_insert</span>(<span class="st">"diagonal"</span>);
+
+    <span class="kw">let</span> <span class="var">probe</span> = <span class="tp">Point</span> { <span class="var">x</span>: <span class="nm">0</span>, <span class="var">y</span>: <span class="nm">0</span> };
+    <span class="fn">println!</span>(<span class="st">"({},{}) = {:?}"</span>, <span class="var">probe</span>.<span class="var">x</span>, <span class="var">probe</span>.<span class="var">y</span>, <span class="var">grid</span>.<span class="fn">get</span>(&amp;<span class="var">probe</span>));
+
+    <span class="kw">for</span> (<span class="var">pt</span>, <span class="var">label</span>) <span class="kw">in</span> &amp;<span class="var">grid</span> {
+        <span class="fn">println!</span>(<span class="st">"({},{}) → {}"</span>, <span class="var">pt</span>.<span class="var">x</span>, <span class="var">pt</span>.<span class="var">y</span>, <span class="var">label</span>);
+    }
+}</code></pre>
+  </div>
+  <div class="output-wrap">
+    <div class="output-label">출력</div>
+    <div class="output">(0,0) = Some("origin")
+(0,0) → origin
+(1,0) → east
+(0,1) → north
+(2,2) → diagonal</div>
+  </div>
+
+  <!-- 예제 8 -->
+  <div class="ex-label">예제 08 — 중첩 HashMap (도시별 월별 기온)</div>
+  <p>HashMap의 값이 다시 HashMap인 중첩 구조입니다. <code>or_insert_with(HashMap::new)</code>로 내부 맵을 지연 생성합니다.</p>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span></div>
+    <pre><code><span class="kw">use</span> std::collections::HashMap;
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="cm">// HashMap&lt;도시, HashMap&lt;월, 기온&gt;&gt;</span>
+    <span class="kw">let mut</span> <span class="var">temp_db</span>: HashMap&lt;&amp;<span class="tp">str</span>, HashMap&lt;<span class="tp">u32</span>, <span class="tp">f32</span>&gt;&gt; = HashMap::new();
+
+    <span class="kw">let</span> <span class="var">records</span> = <span class="fn">vec!</span>[
+        (<span class="st">"Seoul"</span>, <span class="nm">1</span>,  <span class="nm">-2.5</span>),
+        (<span class="st">"Seoul"</span>, <span class="nm">7</span>,  <span class="nm">25.6</span>),
+        (<span class="st">"Busan"</span>, <span class="nm">1</span>,  <span class="nm">3.4</span>),
+        (<span class="st">"Busan"</span>, <span class="nm">7</span>,  <span class="nm">27.1</span>),
+        (<span class="st">"Seoul"</span>, <span class="nm">4</span>,  <span class="nm">13.2</span>),
+    ];
+
+    <span class="kw">for</span> (<span class="var">city</span>, <span class="var">month</span>, <span class="var">temp</span>) <span class="kw">in</span> <span class="var">records</span> {
+        <span class="var">temp_db</span>
+            .<span class="fn">entry</span>(<span class="var">city</span>)
+            .<span class="fn">or_insert_with</span>(HashMap::new)  <span class="cm">// 도시가 없으면 빈 맵 생성</span>
+            .<span class="fn">insert</span>(<span class="var">month</span>, <span class="var">temp</span>);         <span class="cm">// 내부 맵에 월별 기온 삽입</span>
+    }
+
+    <span class="kw">let mut</span> <span class="var">cities</span>: Vec&lt;_&gt; = <span class="var">temp_db</span>.<span class="fn">keys</span>().<span class="fn">collect</span>();
+    <span class="var">cities</span>.<span class="fn">sort</span>();
+    <span class="kw">for</span> <span class="var">city</span> <span class="kw">in</span> <span class="var">cities</span> {
+        <span class="kw">let</span> <span class="var">months</span> = &amp;<span class="var">temp_db</span>[<span class="var">city</span>];
+        <span class="kw">let mut</span> <span class="var">ms</span>: Vec&lt;_&gt; = <span class="var">months</span>.<span class="fn">iter</span>().<span class="fn">collect</span>();
+        <span class="var">ms</span>.<span class="fn">sort_by_key</span>(|(<span class="var">m</span>, _)| *<span class="var">m</span>);
+        <span class="fn">print!</span>(<span class="st">"{}:"</span>, <span class="var">city</span>);
+        <span class="kw">for</span> (<span class="var">month</span>, <span class="var">temp</span>) <span class="kw">in</span> <span class="var">ms</span> {
+            <span class="fn">print!</span>(<span class="st">"  {}월={:.1}°C"</span>, <span class="var">month</span>, <span class="var">temp</span>);
+        }
+        <span class="fn">println!</span>();
+    }
+}</code></pre>
+  </div>
+  <div class="output-wrap">
+    <div class="output-label">출력</div>
+    <div class="output">Busan:  1월=3.4°C  7월=27.1°C
+Seoul:  1월=-2.5°C  4월=13.2°C  7월=25.6°C</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     12. &&i32 이중 참조
+══════════════════════════════════════════════ -->
+<section id="s-double-ref">
+  <div class="section-header">
+    <span class="sec-num">12</span>
+    <h2>&amp;&amp;i32 — 이중 참조가 생기는 이유</h2>
+  </div>
+
+  <p class="src">출처: <a href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.filter">doc.rust-lang.org/std/iter/trait.Iterator.html#method.filter</a></p>
+
+  <p><code>filter()</code> 클로저 안에서 타입이 예상과 다르게 이중 참조(<code>&amp;&amp;i32</code>)가 되는 현상은 공식 문서가 직접 "possibly confusing situation"이라고 인정한 내용입니다.</p>
+
+  <h3>filter() 의 공식 시그니처</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — Iterator trait 공식 정의</div>
+    <pre><code><span class="kw">fn</span> <span class="fn">filter</span>&lt;P&gt;(<span class="slf">self</span>, predicate: P) -&gt; <span class="tp">Filter</span>&lt;Self, P&gt;
+<span class="kw">where</span>
+    P: FnMut(&amp;Self::Item) -&gt; <span class="tp">bool</span>
+<span class="cm">//          ^^^^^^^^^^^^</span>
+<span class="cm">//          클로저는 Self::Item 을 참조(&amp;)로 받는다</span></code></pre>
+  </div>
+
+  <div class="callout warn">
+    <div class="callout-title">공식 문서 원문 (doc.rust-lang.org)</div>
+    <p>"Because the closure passed to filter() takes a reference, and many iterators iterate over references, this leads to a possibly confusing situation, where the type of the closure is a <strong>double reference</strong>"</p>
+  </div>
+
+  <h3>참조가 두 겹이 되는 과정</h3>
+  <div class="svg-wrap">
+    <svg width="100%" viewBox="0 0 680 620" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#888780" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+        <style>
+          .svt  { font-family: Arial, sans-serif; font-size: 14px; font-weight: 500; fill: #2C2C2A; }
+          .svts { font-family: Arial, sans-serif; font-size: 12px; font-weight: 400; fill: #5F5E5A; }
+          .svm  { font-family: 'Courier New', monospace; font-size: 12px; fill: #2C2C2A; }
+        </style>
+      </defs>
+      <rect x="40"  y="30" width="130" height="44" rx="8" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="0.5"/>
+      <text class="svt"  x="105" y="52" text-anchor="middle" dominant-baseline="central">Vec&lt;i32&gt;</text>
+      <text class="svts" x="105" y="86" text-anchor="middle">원본 벡터</text>
+      <line x1="170" y1="52" x2="215" y2="52" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#arr2)"/>
+      <text class="svts" x="192" y="44" text-anchor="middle">.iter()</text>
+      <rect x="220" y="30" width="160" height="44" rx="8" fill="#9FE1CB" stroke="#0F6E56" stroke-width="0.5"/>
+      <text class="svt"  x="300" y="52" text-anchor="middle" dominant-baseline="central" fill="#085041">Iterator&lt;&amp;i32&gt;</text>
+      <text class="svts" x="300" y="86" text-anchor="middle">iter()가 &amp;i32 를 yield</text>
+      <line x1="380" y1="52" x2="425" y2="52" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#arr2)"/>
+      <text class="svts" x="403" y="44" text-anchor="middle">.filter()</text>
+      <rect x="430" y="30" width="210" height="44" rx="8" fill="#FAC775" stroke="#BA7517" stroke-width="0.5"/>
+      <text class="svt"  x="535" y="52" text-anchor="middle" dominant-baseline="central" fill="#633806">클로저 인자: &amp;&amp;i32</text>
+      <text class="svts" x="535" y="86" text-anchor="middle">filter가 &amp;Self::Item 전달</text>
+      <line x1="40" y1="110" x2="640" y2="110" stroke="#B4B2A9" stroke-width="0.5" stroke-dasharray="4 4"/>
+      <text class="svt"  x="40" y="138" dominant-baseline="central">왜 이중 참조(&amp;&amp;i32)가 되는가?</text>
+      <rect x="40" y="158" width="600" height="68" rx="8" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.5"/>
+      <text class="svts" x="60" y="180">공식 문서 filter 시그니처:</text>
+      <text class="svm"  x="60" y="200">fn filter&lt;P&gt;(self, predicate: P)  where  P: FnMut(&amp;Self::Item) -&gt; bool</text>
+      <text class="svm"  x="60" y="218">                                              ↑ 클로저는 &amp;Self::Item 을 받음</text>
+      <text class="svt"  x="40" y="256" dominant-baseline="central">참조가 쌓이는 과정</text>
+      <rect x="40"  y="272" width="280" height="52" rx="8" fill="#9FE1CB" stroke="#0F6E56" stroke-width="0.5"/>
+      <text class="svt"  x="180" y="291" text-anchor="middle" dominant-baseline="central" fill="#085041">Self::Item = &amp;i32</text>
+      <text class="svts" x="180" y="312" text-anchor="middle" dominant-baseline="central" fill="#085041">iter()가 벡터 원소를 &amp;i32 로 yield</text>
+      <text class="svt"  x="340" y="298" text-anchor="middle" dominant-baseline="central">+</text>
+      <rect x="360" y="272" width="280" height="52" rx="8" fill="#CECBF6" stroke="#534AB7" stroke-width="0.5"/>
+      <text class="svt"  x="500" y="291" text-anchor="middle" dominant-baseline="central" fill="#26215C">filter의 &amp;Self::Item</text>
+      <text class="svts" x="500" y="312" text-anchor="middle" dominant-baseline="central" fill="#26215C">filter가 한 번 더 &amp; 를 씌움</text>
+      <line x1="340" y1="344" x2="340" y2="374" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#arr2)"/>
+      <rect x="190" y="378" width="300" height="44" rx="8" fill="#F5C4B3" stroke="#993C1D" stroke-width="0.5"/>
+      <text class="svt"  x="340" y="400" text-anchor="middle" dominant-baseline="central" fill="#4A1B0C">클로저 인자 타입 = &amp;&amp;i32</text>
+      <line x1="40" y1="442" x2="640" y2="442" stroke="#B4B2A9" stroke-width="0.5" stroke-dasharray="4 4"/>
+      <text class="svt"  x="40" y="466" dominant-baseline="central">공식 문서가 제시하는 3가지 해결 방법</text>
+      <rect x="40"  y="486" width="180" height="100" rx="8" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.5"/>
+      <text class="svt"  x="130" y="506" text-anchor="middle">방법 1</text>
+      <text class="svm"  x="130" y="528" text-anchor="middle">|x| **x &gt; 1</text>
+      <text class="svts" x="130" y="548" text-anchor="middle">x = &amp;&amp;i32</text>
+      <text class="svts" x="130" y="566" text-anchor="middle">** 로 두 번 벗김</text>
+      <rect x="250" y="486" width="180" height="100" rx="8" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.5"/>
+      <text class="svt"  x="340" y="506" text-anchor="middle">방법 2</text>
+      <text class="svm"  x="340" y="528" text-anchor="middle">|&amp;x| *x &gt; 1</text>
+      <text class="svts" x="340" y="548" text-anchor="middle">패턴으로 한 겹 벗겨</text>
+      <text class="svts" x="340" y="566" text-anchor="middle">x = &amp;i32, * 로 비교</text>
+      <rect x="460" y="486" width="180" height="100" rx="8" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.5"/>
+      <text class="svt"  x="550" y="506" text-anchor="middle">방법 3</text>
+      <text class="svm"  x="550" y="528" text-anchor="middle">|&amp;&amp;x| x &gt; 1</text>
+      <text class="svts" x="550" y="548" text-anchor="middle">패턴으로 두 겹 벗겨</text>
+      <text class="svts" x="550" y="566" text-anchor="middle">x = i32, 바로 비교</text>
+      <text class="svts" x="340" y="606" text-anchor="middle">셋 다 공식 문서에 명시된 방법 — doc.rust-lang.org/std/iter/trait.Iterator.html</text>
+    </svg>
+  </div>
+
+  <h3>공식 문서 코드 예제 3가지</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span>rust</span> — 공식 문서 (std::iter::Iterator::filter) 그대로</div>
+    <pre><code><span class="kw">let</span> <span class="var">s</span> = &amp;[<span class="nm">0</span>, <span class="nm">1</span>, <span class="nm">2</span>];
+
+<span class="cm">// 방법 1: x = &&i32, ** 로 두 번 역참조 (공식 문서: "needs two *s!")</span>
+<span class="kw">let mut</span> <span class="var">iter</span> = <span class="var">s</span>.<span class="fn">iter</span>().<span class="fn">filter</span>(|<span class="var">x</span>| **<span class="var">x</span> &gt; <span class="nm">1</span>);
+<span class="kw">assert_eq!</span>(<span class="var">iter</span>.<span class="fn">next</span>(), <span class="ok">Some</span>(&amp;<span class="nm">2</span>));
+<span class="kw">assert_eq!</span>(<span class="var">iter</span>.<span class="fn">next</span>(), <span class="ok">None</span>);
+
+<span class="cm">// 방법 2: &amp;x 패턴으로 한 겹 벗기기 → x = &amp;i32</span>
+<span class="kw">let mut</span> <span class="var">iter</span> = <span class="var">s</span>.<span class="fn">iter</span>().<span class="fn">filter</span>(|&amp;<span class="var">x</span>| *<span class="var">x</span> &gt; <span class="nm">1</span>);
+<span class="kw">assert_eq!</span>(<span class="var">iter</span>.<span class="fn">next</span>(), <span class="ok">Some</span>(&amp;<span class="nm">2</span>));
+
+<span class="cm">// 방법 3: &&x 패턴으로 두 겹 모두 벗기기 → x = i32</span>
+<span class="kw">let mut</span> <span class="var">iter</span> = <span class="var">s</span>.<span class="fn">iter</span>().<span class="fn">filter</span>(|&amp;&amp;<span class="var">x</span>| <span class="var">x</span> &gt; <span class="nm">1</span>);
+<span class="kw">assert_eq!</span>(<span class="var">iter</span>.<span class="fn">next</span>(), <span class="ok">Some</span>(&amp;<span class="nm">2</span>));</code></pre>
+  </div>
+
+  <h3>클로저 인자의 &amp; 는 타입 선언이 아니라 패턴 분해</h3>
+  <div class="callout tip">
+    <div class="callout-title">핵심 정리</div>
+    <p><code>|&amp;x|</code> 또는 <code>|&amp;&amp;x|</code> 에서의 <code>&amp;</code>는 타입을 <em>선언</em>하는 것이 아니라 참조를 <em>분해(destructuring)</em>하는 패턴입니다. <code>|&amp;x| ...</code>는 <code>|x| { let &amp;x = x; ... }</code>와 동일합니다.</p>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>표현</th><th>클로저 x 타입</th><th>공식 문서 여부</th></tr></thead>
+      <tbody>
+        <tr><td>|x| **x &gt; 1</td><td>&amp;&amp;i32 → **로 두 번 역참조</td><td>✅ 공식 문서 예제</td></tr>
+        <tr><td>|&amp;x| *x &gt; 1</td><td>&amp;i32 (패턴 분해)</td><td>✅ 공식 문서 예제</td></tr>
+        <tr><td>|&amp;&amp;x| x &gt; 1</td><td>i32 (패턴 분해)</td><td>✅ 공식 문서 예제</td></tr>
+        <tr><td>|x| x &gt; &amp;1</td><td>컴파일 오류 (&amp;&amp;i32 vs &amp;i32 불일치)</td><td>❌ 공식 문서에 없음</td></tr>
+        <tr><td>|x| *x == &amp;1</td><td>PartialEq 우연히 동작, 비권장</td><td>❌ 공식 문서에 없음</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</div><!-- /container -->
+
+<footer>
+  Rust 해시맵과 Entry API 학습 &nbsp;·&nbsp;
+  <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html">HashMap 공식 문서</a> &nbsp;·&nbsp;
+  <a href="https://doc.rust-lang.org/std/collections/hash_map/enum.Entry.html">Entry 공식 문서</a> &nbsp;·&nbsp;
+  <a href="https://doc.rust-lang.org/book/ch08-03-hash-maps.html">Rust Book ch08-03</a>
+</footer>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const isLight = html.getAttribute('data-theme') === 'light';
+  if (isLight) {
+    html.removeAttribute('data-theme');
+    document.getElementById('theme-icon').textContent = '☀️';
+    document.getElementById('theme-label').textContent = 'Light';
+    localStorage.setItem('theme', 'dark');
+  } else {
+    html.setAttribute('data-theme', 'light');
+    document.getElementById('theme-icon').textContent = '🌙';
+    document.getElementById('theme-label').textContent = 'Dark';
+    localStorage.setItem('theme', 'light');
+  }
+}
+
+(function() {
+  const saved = localStorage.getItem('theme');
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.getElementById('theme-icon').textContent = '🌙';
+    document.getElementById('theme-label').textContent = 'Dark';
+  }
+})();
+</script>
+</body>
+</html>

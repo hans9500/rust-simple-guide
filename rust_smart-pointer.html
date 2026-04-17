@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rust 스마트 포인터와 소유권</title>
+<style>
+/* ── 테마 변수 ── */
+:root[data-theme="dark"] {
+  --bg:        #0f1117;
+  --bg2:       #161b27;
+  --bg3:       #1e2535;
+  --surface:   #232d42;
+  --border:    #2e3a52;
+  --text:      #e2e8f8;
+  --muted:     #7a8aaa;
+  --heading:   #ffffff;
+  --purple:    #a78bfa;
+  --teal:      #34d399;
+  --amber:     #fbbf24;
+  --coral:     #fb7185;
+  --blue:      #60a5fa;
+  --green:     #86efac;
+  --red:       #f87171;
+  --code-bg:   #1f1f1f;
+  --code-border:#333;
+  --tip-bg:    rgba(52,211,153,0.08);
+  --tip-text:  #9cf0d1;
+  --warn-bg:   rgba(251,191,36,0.08);
+  --warn-text: #fde68a;
+  --info-bg:   rgba(96,165,250,0.08);
+  --info-text: #bfdbfe;
+  --err-bg:    rgba(248,113,113,0.08);
+  --err-text:  #fecaca;
+  --tag-bg:    rgba(167,139,250,0.12);
+  --tag-text:  #a78bfa;
+  --svg-wrap:  #ffffff;
+  --table-head:#232d42;
+  --table-row: transparent;
+  --table-hover:rgba(255,255,255,0.025);
+  --scrollbar: #2e3a52;
+  --link:      #60a5fa;
+}
+:root[data-theme="light"] {
+  --bg:        #f8f9fc;
+  --bg2:       #ffffff;
+  --bg3:       #f0f2f8;
+  --surface:   #eef0f8;
+  --border:    #d8dce8;
+  --text:      #1e2535;
+  --muted:     #6b7494;
+  --heading:   #0f1117;
+  --purple:    #6d28d9;
+  --teal:      #059669;
+  --amber:     #d97706;
+  --coral:     #e11d48;
+  --blue:      #2563eb;
+  --green:     #16a34a;
+  --red:       #dc2626;
+  --code-bg:   #1f1f1f;
+  --code-border:#333;
+  --tip-bg:    #ecfdf5;
+  --tip-text:  #065f46;
+  --warn-bg:   #fffbeb;
+  --warn-text: #92400e;
+  --info-bg:   #eff6ff;
+  --info-text: #1e40af;
+  --err-bg:    #fef2f2;
+  --err-text:  #991b1b;
+  --tag-bg:    #ede9fe;
+  --tag-text:  #5b21b6;
+  --svg-wrap:  #ffffff;
+  --table-head:#f0f2f8;
+  --table-row: transparent;
+  --table-hover:#f8f9fc;
+  --scrollbar: #d8dce8;
+  --link:      #2563eb;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+
+body{
+  font-family:'Noto Sans KR',system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.8;
+  font-size:15px;
+  transition:background .2s,color .2s;
+}
+
+/* ── 레이아웃 ── */
+.layout{display:flex;min-height:100vh;}
+
+nav{
+  width:268px;flex-shrink:0;
+  background:var(--bg2);
+  border-right:1px solid var(--border);
+  position:fixed;top:0;left:0;bottom:0;
+  overflow-y:auto;padding:0 0 60px;
+  transition:background .2s,border-color .2s;
+}
+nav::-webkit-scrollbar{width:4px;}
+nav::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:2px;}
+
+.nav-header{
+  padding:22px 18px 18px;
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;
+  background:var(--bg2);z-index:10;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.nav-brand{flex:1;}
+.nav-brand-title{font-size:12px;font-weight:700;color:var(--purple);letter-spacing:.08em;text-transform:uppercase;}
+.nav-brand-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* 테마 토글 버튼 */
+.theme-btn{
+  width:32px;height:32px;border-radius:8px;
+  border:1px solid var(--border);
+  background:var(--bg3);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex-shrink:0;color:var(--muted);
+  transition:all .15s;
+}
+.theme-btn:hover{background:var(--surface);color:var(--text);}
+
+nav ul{list-style:none;padding:8px 0;}
+.nav-section{
+  font-size:10px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);
+  padding:14px 18px 4px;
+}
+nav a{
+  display:block;padding:6px 18px;
+  font-size:12.5px;color:var(--muted);
+  text-decoration:none;
+  border-left:2px solid transparent;
+  transition:all .12s;
+  line-height:1.4;
+}
+nav a:hover{color:var(--text);background:var(--bg3);border-left-color:var(--border);}
+nav a.active{color:var(--text);background:var(--bg3);border-left-color:var(--purple);font-weight:500;}
+
+main{
+  margin-left:268px;flex:1;
+  max-width:960px;
+  padding:56px 60px 120px;
+}
+
+/* ── 히어로 ── */
+.hero{margin-bottom:72px;padding-bottom:48px;border-bottom:1px solid var(--border);}
+.hero-tag{
+  display:inline-block;font-size:11px;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;
+  color:var(--tag-text);background:var(--tag-bg);
+  padding:4px 12px;border-radius:99px;margin-bottom:18px;
+}
+.hero h1{font-size:34px;font-weight:700;line-height:1.2;color:var(--heading);margin-bottom:14px;}
+.hero p{font-size:15px;color:var(--muted);max-width:620px;line-height:1.75;}
+.hero-meta{margin-top:20px;display:flex;gap:16px;flex-wrap:wrap;}
+.hero-meta a{
+  font-size:12px;color:var(--link);text-decoration:none;
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 12px;border-radius:6px;
+  border:1px solid var(--border);
+  transition:all .12s;
+}
+.hero-meta a:hover{background:var(--surface);border-color:var(--blue);}
+
+/* ── 섹션 ── */
+section{margin-bottom:80px;scroll-margin-top:28px;}
+h2{
+  font-size:22px;font-weight:700;color:var(--heading);
+  margin-bottom:6px;padding-top:2px;
+  display:flex;align-items:center;gap:10px;
+}
+.sec-num{
+  font-size:11px;font-weight:700;color:var(--purple);
+  background:var(--tag-bg);padding:2px 8px;
+  border-radius:4px;letter-spacing:.05em;flex-shrink:0;
+}
+.sec-ref{
+  font-size:11px;color:var(--link);text-decoration:none;
+  margin-left:auto;padding:2px 8px;border-radius:4px;
+  border:1px solid var(--border);transition:all .12s;flex-shrink:0;
+}
+.sec-ref:hover{background:var(--surface);}
+h3{font-size:17px;font-weight:600;color:var(--text);margin:32px 0 10px;}
+h4{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 8px;}
+p{margin-bottom:14px;color:var(--text);line-height:1.8;}
+.section-lead{font-size:14.5px;color:var(--muted);margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--border);line-height:1.75;}
+ul,ol{margin:8px 0 16px 22px;color:var(--text);}
+li{margin-bottom:6px;line-height:1.7;}
+
+/* ── SVG 래퍼 ── */
+.svg-wrap{
+  background:var(--svg-wrap);
+  border-radius:12px;padding:20px;
+  margin:20px 0 8px;overflow-x:auto;
+  border:1px solid var(--border);
+}
+.svg-wrap svg{display:block;max-width:100%;height:auto;}
+.svg-caption{text-align:center;font-size:12px;color:var(--muted);margin-bottom:28px;margin-top:6px;}
+
+/* ── VS Code Dark Modern 코드 블록 ── */
+.code-label{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.code-file{font-size:11px;color:var(--muted);margin-bottom:5px;display:flex;align-items:center;gap:5px;}
+.code-file span{color:#569cd6;}
+pre{
+  background:#1f1f1f;
+  border:1px solid #333;
+  border-radius:10px;
+  padding:18px 22px;
+  overflow-x:auto;
+  margin:10px 0 24px;
+  position:relative;
+}
+pre code{
+  font-family:'JetBrains Mono','Fira Code','Cascadia Code',monospace;
+  font-size:13px;line-height:1.75;color:#d4d4d4;
+}
+/* VS Code Dark Modern token colors */
+.kw  {color:#569cd6;}   /* keyword: let fn struct enum impl use pub */
+.kw2 {color:#c586c0;}   /* keyword2: if else match for while loop return */
+.ty  {color:#4ec9b0;}   /* type: i32 String Vec Box Rc */
+.fn_ {color:#dcdcaa;}   /* function call */
+.mc  {color:#dcdcaa;}   /* macro: println! vec! */
+.st  {color:#ce9178;}   /* string literal */
+.cm  {color:#6a9955;}   /* comment */
+.nm  {color:#b5cea8;}   /* number literal */
+.lt  {color:#569cd6;}   /* lifetime 'a */
+.at  {color:#9cdcfe;}   /* attribute / variable */
+.op  {color:#d4d4d4;}   /* operator */
+.ok_ {color:#4ec9b0;}   /* Ok variant */
+.err_{color:#f44747;}   /* Err/panic */
+.lbl {color:#c8c8c8;font-style:italic;} /* label comment */
+/* 에러 메시지 블록 */
+pre.error-block{background:#2d1b1b;border-color:#5a1d1d;}
+pre.error-block code{color:#f48771;}
+pre.ok-block{background:#1b2d1b;border-color:#1d5a1d;}
+pre.ok-block code{color:#89d185;}
+
+/* ── 콜아웃 ── */
+.callout{
+  border-radius:10px;padding:14px 18px;
+  margin:14px 0 22px;border-left:3px solid;
+  font-size:14px;line-height:1.7;
+}
+.callout b,.callout strong{font-weight:600;}
+.callout.tip {background:var(--tip-bg); border-color:var(--teal);  color:var(--tip-text);}
+.callout.warn{background:var(--warn-bg);border-color:var(--amber); color:var(--warn-text);}
+.callout.info{background:var(--info-bg);border-color:var(--blue);  color:var(--info-text);}
+.callout.err {background:var(--err-bg); border-color:var(--red);   color:var(--err-text);}
+
+/* ── 테이블 ── */
+.table-wrap{overflow-x:auto;margin:14px 0 28px;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{background:var(--table-head);color:var(--text);font-weight:600;padding:10px 14px;text-align:left;border-bottom:2px solid var(--border);}
+td{padding:9px 14px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top;}
+tr:hover td{background:var(--table-hover);}
+td.ok {color:var(--teal);}
+td.bad{color:var(--red);}
+td code,th code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:3px;}
+
+/* ── 인라인 코드 ── */
+p code,li code,h3 code{
+  font-family:'JetBrains Mono',monospace;
+  font-size:12.5px;background:var(--bg3);
+  padding:1px 6px;border-radius:4px;
+  border:1px solid var(--border);color:var(--text);
+}
+
+/* ── 배지 ── */
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:1px 8px;border-radius:99px;vertical-align:middle;margin-left:6px;}
+.badge-ok  {background:rgba(52,211,153,.15);color:var(--teal);}
+.badge-warn{background:rgba(251,191,36,.15); color:var(--amber);}
+.badge-err {background:rgba(248,113,113,.15);color:var(--red);}
+.badge-info{background:rgba(96,165,250,.15); color:var(--blue);}
+
+/* ── 비교 카드 그리드 ── */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:16px 0 28px;}
+.card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:10px;padding:16px 18px;
+}
+.card-title{font-size:14px;font-weight:600;color:var(--heading);margin-bottom:8px;}
+.card-sub{font-size:12px;color:var(--muted);margin-bottom:10px;}
+.card ul{margin:0;padding:0 0 0 16px;}
+.card li{font-size:12.5px;margin-bottom:4px;color:var(--text);}
+.card li.plus::marker{color:var(--teal);}
+.card li.minus::marker{color:var(--red);}
+
+/* ── 구분선 ── */
+hr{border:none;border-top:1px solid var(--border);margin:36px 0;}
+
+/* ── 스크롤바 ── */
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:var(--bg2);}
+::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:3px;}
+
+/* ── 반응형 ── */
+@media(max-width:820px){
+  nav{display:none;}
+  main{margin-left:0;padding:28px 20px 60px;}
+}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="layout">
+<!-- ════════════════════════════ NAV ════════════════════════════ -->
+<nav>
+  <div class="nav-header">
+    <div class="nav-brand">
+      <div class="nav-brand-title">🦀 Rust</div>
+      <div class="nav-brand-sub">스마트 포인터와 소유권</div>
+    </div>
+    <button class="theme-btn" id="themeBtn" title="테마 전환">🌙</button>
+  </div>
+  <ul>
+    <li class="nav-section">메모리 기초</li>
+    <li><a href="#memory">01. 스택과 힙</a></li>
+    <li><a href="#ownership">02. 소유권 핵심 규칙</a></li>
+    <li class="nav-section">스마트 포인터</li>
+    <li><a href="#box">03. Box&lt;T&gt; — 단독 소유</a></li>
+    <li><a href="#deref">04. Deref와 역참조 강제</a></li>
+    <li><a href="#drop">05. Drop 트레이트</a></li>
+    <li><a href="#rc">06. Rc&lt;T&gt; — 공유 소유</a></li>
+    <li><a href="#weak">07. Weak&lt;T&gt; — 순환 참조 해결</a></li>
+    <li><a href="#refcell">08. RefCell&lt;T&gt; — 내부 가변성</a></li>
+    <li><a href="#combination">09. Rc&lt;RefCell&lt;T&gt;&gt; 조합</a></li>
+    <li class="nav-section">메서드와 소유권</li>
+    <li><a href="#receivers">10. self / &amp;self / &amp;mut self</a></li>
+    <li><a href="#for-loop">11. for 루프와 이터레이터</a></li>
+    <li class="nav-section">빌림 규칙</li>
+    <li><a href="#borrow-rules">12. 빌림 규칙과 NLL</a></li>
+    <li><a href="#refcell-runtime">13. RefCell 런타임 검사</a></li>
+    <li><a href="#why-refcell">14. RefCell이 필요한 이유</a></li>
+    <li class="nav-section">실전 패턴</li>
+    <li><a href="#patterns">15. 실전 패턴 모음</a></li>
+    <li><a href="#summary">16. 핵심 요약표</a></li>
+  </ul>
+</nav>
+<!-- ════════════════════════════ MAIN ════════════════════════════ -->
+<main>
+
+<!-- ── 히어로 ── -->
+<div class="hero">
+  <div class="hero-tag">Rust Deep Dive · 공식 문서 기반</div>
+  <h1>Rust 스마트 포인터와 소유권</h1>
+  <p>Box&lt;T&gt;, Rc&lt;T&gt;, Weak&lt;T&gt;, RefCell&lt;T&gt;의 내부 동작 원리부터 실전 패턴까지. 스택·힙 메모리 구조, 소유권 이동, 빌림 규칙, NLL을 그림과 풍부한 예제로 완전히 이해합니다.</p>
+  <div class="hero-meta">
+    <a href="https://doc.rust-lang.org/book/ch15-00-smart-pointers.html" target="_blank">📖 The Rust Book Ch.15</a>
+    <a href="https://doc.rust-lang.org/std/cell/index.html" target="_blank">📖 std::cell 공식 문서</a>
+    <a href="https://doc.rust-lang.org/reference/memory-model.html" target="_blank">📖 Rust Reference</a>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     01. 스택과 힙
+══════════════════════════════════════════════════════════ -->
+<section id="memory">
+  <h2><span class="sec-num">01</span> 스택과 힙 메모리 <a class="sec-ref" href="https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html" target="_blank">공식 문서 →</a></h2>
+  <p class="section-lead">Rust의 모든 메모리 관리 개념은 스택과 힙의 차이에서 시작합니다. 어느 메모리 영역에 데이터가 있느냐가 소유권, 복사, 이동의 동작을 결정합니다.</p>
+
+  <div class="svg-wrap">
+    <svg width="680" height="520" viewBox="0 0 680 520" xmlns="http://www.w3.org/2000/svg">
+    <defs><marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#888780" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker><style>text{font-family:sans-serif;}.th{font-size:14px;font-weight:600;fill:#3C3489;}.ts{font-size:12px;fill:#534AB7;}.th-teal{font-size:14px;font-weight:600;fill:#085041;}.ts-teal{font-size:12px;fill:#0F6E56;}.th-gray{font-size:14px;font-weight:600;fill:#444441;}.ts-gray{font-size:12px;fill:#5F5E5A;}.lbl{font-size:12px;fill:#888780;}</style></defs>
+    <rect x="40" y="30" width="270" height="440" rx="14" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+    <text class="th" x="175" y="60" text-anchor="middle">Stack (스택)</text>
+    <text class="ts" x="175" y="78" text-anchor="middle">고정 크기 · 빠름 · LIFO</text>
+    <rect x="60" y="95" width="230" height="48" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+    <text class="th-gray" x="175" y="117" text-anchor="middle">main() 프레임</text>
+    <text class="ts-gray" x="175" y="133" text-anchor="middle">x: i32 = 5</text>
+    <rect x="60" y="155" width="230" height="60" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+    <text class="th" x="175" y="178" text-anchor="middle">foo() 프레임</text>
+    <text class="ts" x="175" y="196" text-anchor="middle">y: f64 = 3.14</text>
+    <text class="ts" x="175" y="210" text-anchor="middle">ptr → 힙 주소 0x1A2B</text>
+    <rect x="60" y="227" width="230" height="60" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+    <text class="th-teal" x="175" y="250" text-anchor="middle">bar() 프레임 ← TOP</text>
+    <text class="ts-teal" x="175" y="268" text-anchor="middle">z: bool = true</text>
+    <text class="ts-teal" x="175" y="282" text-anchor="middle">len: usize = 3</text>
+    <line x1="310" y1="227" x2="310" y2="155" stroke="#888780" stroke-width="1" marker-end="url(#a1)"/>
+    <text class="lbl" x="316" y="195">push/pop</text>
+    <rect x="60" y="299" width="230" height="155" rx="6" fill="none" stroke="#B4B2A9" stroke-width="0.5" stroke-dasharray="4 4"/>
+    <text class="lbl" x="175" y="385" text-anchor="middle" opacity="0.5">사용 가능 공간</text>
+    <rect x="370" y="30" width="270" height="440" rx="14" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+    <text class="th-teal" x="505" y="60" text-anchor="middle">Heap (힙)</text>
+    <text class="ts-teal" x="505" y="78" text-anchor="middle">가변 크기 · 느림 · 동적 할당</text>
+    <rect x="390" y="95" width="130" height="52" rx="6" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+    <text style="font-size:14px;font-weight:600;fill:#633806" x="455" y="117" text-anchor="middle">0x1A2B</text>
+    <text style="font-size:12px;fill:#633806" x="455" y="133" text-anchor="middle">Vec data [1,2,3]</text>
+    <rect x="530" y="160" width="90" height="52" rx="6" fill="#FAECE7" stroke="#993C1D" stroke-width="0.5"/>
+    <text style="font-size:14px;font-weight:600;fill:#712B13" x="575" y="182" text-anchor="middle">0x3C4D</text>
+    <text style="font-size:12px;fill:#993C1D" x="575" y="198" text-anchor="middle">String</text>
+    <rect x="390" y="230" width="110" height="52" rx="6" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+    <text style="font-size:14px;font-weight:600;fill:#27500A" x="445" y="252" text-anchor="middle">0x5E6F</text>
+    <text style="font-size:12px;fill:#3B6D11" x="445" y="268" text-anchor="middle">Box&lt;T&gt; data</text>
+    <rect x="390" y="298" width="230" height="155" rx="6" fill="none" stroke="#9FE1CB" stroke-width="0.5" stroke-dasharray="4 4"/>
+    <text class="lbl" x="505" y="375" text-anchor="middle" opacity="0.5">단편화된 여유 공간</text>
+    <path d="M290 210 Q330 210 368 195" fill="none" stroke="#EF9F27" stroke-width="1.5" marker-end="url(#a1)"/>
+    <text style="font-size:12px;fill:#EF9F27" x="320" y="205" text-anchor="middle">ptr</text>
+    <text class="lbl" x="175" y="490" text-anchor="middle">컴파일 타임에 크기 결정</text>
+    <text class="lbl" x="505" y="490" text-anchor="middle">런타임에 크기 결정 (allocator)</text>
+    </svg>
+  </div>
+  <p class="svg-caption">그림 1. 스택과 힙 — 스택 프레임은 LIFO로 쌓이고, 힙은 할당자가 동적으로 관리한다.</p>
+
+  <h3>스택(Stack)</h3>
+  <p>스택은 <strong>컴파일 타임에 크기가 알려진</strong> 데이터를 저장합니다. 함수가 호출될 때 <strong>프레임(frame)</strong>이 쌓이고, 함수가 리턴하면 자동으로 해제됩니다. 포인터를 통한 검색 없이 스택 포인터만 증감하면 되므로 매우 빠릅니다.</p>
+  <ul>
+    <li>정수(<code>i32</code>, <code>u64</code>…), 부동소수(<code>f64</code>…), 불리언(<code>bool</code>), 문자(<code>char</code>)</li>
+    <li>고정 크기 배열(<code>[i32; 5]</code>), 튜플 — 요소 모두 Copy 타입이면 스택에만 존재</li>
+    <li>참조(<code>&amp;T</code>, <code>&amp;mut T</code>) — 포인터(주소) 자체는 스택, 가리키는 데이터는 힙/스택 모두 가능</li>
+  </ul>
+
+  <h3>힙(Heap)</h3>
+  <p>힙은 <strong>런타임에 크기가 결정</strong>되거나 크기가 클 때 사용합니다. 할당자(allocator)가 빈 공간을 찾아 포인터를 반환합니다. 스택보다 느리고, <strong>반드시 명시적 해제</strong>가 필요합니다. Rust는 소유권 시스템으로 이를 자동화합니다.</p>
+  <ul>
+    <li><code>String</code> — 내부적으로 (ptr, len, capacity) 세 값을 스택에, 실제 문자열 바이트를 힙에 저장</li>
+    <li><code>Vec&lt;T&gt;</code> — (ptr, len, capacity) 스택 + 실제 요소들 힙</li>
+    <li><code>Box&lt;T&gt;</code> — 포인터는 스택, 데이터는 힙</li>
+  </ul>
+
+  <pre><code><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="cm">// 스택에만 존재 — Copy 트레이트 구현됨</span>
+    <span class="kw">let</span> <span class="at">x</span>: <span class="ty">i32</span> <span class="op">=</span> <span class="nm">42</span>;
+    <span class="kw">let</span> <span class="at">y</span> <span class="op">=</span> <span class="at">x</span>;  <span class="cm">// 값 복사 — x도 y도 유효</span>
+    <span class="mc">println!</span>(<span class="st">"x={}, y={}"</span>, <span class="at">x</span>, <span class="at">y</span>); <span class="cm">// OK</span>
+
+    <span class="cm">// 힙을 사용 — Copy 없음, 이동(move) 발생</span>
+    <span class="kw">let</span> <span class="at">s1</span> <span class="op">=</span> <span class="ty">String</span>::<span class="fn_">from</span>(<span class="st">"hello"</span>);
+    <span class="cm">// s1의 (ptr, len, cap)이 스택에, "hello" 바이트가 힙에 있음</span>
+    <span class="kw">let</span> <span class="at">s2</span> <span class="op">=</span> <span class="at">s1</span>;  <span class="cm">// s1의 스택 값이 s2로 이동 — 힙 데이터는 그대로</span>
+    <span class="cm">// println!("{}", s1); // 컴파일 에러! s1은 이동됨</span>
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="at">s2</span>); <span class="cm">// OK</span>
+
+    <span class="cm">// clone() — 힙 데이터까지 깊은 복사</span>
+    <span class="kw">let</span> <span class="at">s3</span> <span class="op">=</span> <span class="at">s2</span>.<span class="fn_">clone</span>();
+    <span class="mc">println!</span>(<span class="st">"s2={}, s3={}"</span>, <span class="at">s2</span>, <span class="at">s3</span>); <span class="cm">// 둘 다 유효</span>
+}</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     02. 소유권 핵심 규칙
+══════════════════════════════════════════════════════════ -->
+<section id="ownership">
+  <h2><span class="sec-num">02</span> 소유권(Ownership) 핵심 규칙 <a class="sec-ref" href="https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html" target="_blank">공식 문서 →</a></h2>
+  <p class="section-lead">Rust의 소유권 시스템은 GC 없이 메모리 안전성을 보장하는 핵심 메커니즘입니다. 세 가지 규칙이 컴파일 타임에 모든 것을 결정합니다.</p>
+
+  <div class="callout info">
+    <strong>소유권 세 가지 규칙 (The Rust Book, Ch.4.1)</strong><br>
+    1. Rust의 각 값은 <strong>소유자(owner)</strong>가 있다.<br>
+    2. 한 번에 소유자는 <strong>하나만</strong> 존재할 수 있다.<br>
+    3. 소유자가 스코프를 벗어나면 값은 <strong>자동으로 해제(drop)</strong>된다.
+  </div>
+
+  <h3>이동(Move) vs 복사(Copy)</h3>
+  <p>기본 타입(<code>i32</code>, <code>bool</code>, <code>f64</code>, <code>char</code> 등)은 <code>Copy</code> 트레이트를 구현하여 대입 시 값이 복사됩니다. <code>Copy</code>가 없는 타입(String, Vec, Box 등)은 대입 시 소유권이 <strong>이동(move)</strong>되어 원본은 무효화됩니다.</p>
+
+  <pre><code><span class="cm">// Copy 타입 — 스택에만 존재, 이동 없이 복사</span>
+<span class="kw">let</span> <span class="at">a</span>: <span class="ty">i32</span> <span class="op">=</span> <span class="nm">10</span>;
+<span class="kw">let</span> <span class="at">b</span> <span class="op">=</span> <span class="at">a</span>;  <span class="cm">// 비트 단위 복사, a 여전히 유효</span>
+
+<span class="cm">// non-Copy 타입 — 이동 발생</span>
+<span class="kw">let</span> <span class="at">v1</span> <span class="op">=</span> <span class="mc">vec!</span>[<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>];
+<span class="kw">let</span> <span class="at">v2</span> <span class="op">=</span> <span class="at">v1</span>;  <span class="cm">// v1 → v2 로 소유권 이동</span>
+<span class="cm">// v1.len(); // error[E0382]: use of moved value: `v1`</span>
+
+<span class="cm">// 함수에 전달해도 이동 발생</span>
+<span class="kw">fn</span> <span class="fn_">takes_ownership</span>(<span class="at">s</span>: <span class="ty">String</span>) {
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="at">s</span>);
+} <span class="cm">// s가 여기서 drop됨</span>
+
+<span class="kw">let</span> <span class="at">my_str</span> <span class="op">=</span> <span class="ty">String</span>::<span class="fn_">from</span>(<span class="st">"hello"</span>);
+<span class="fn_">takes_ownership</span>(<span class="at">my_str</span>);
+<span class="cm">// println!("{}", my_str); // 컴파일 에러! 소유권 이전됨</span></code></pre>
+
+  <h3>스코프와 Drop</h3>
+  <pre><code>{
+    <span class="kw">let</span> <span class="at">s</span> <span class="op">=</span> <span class="ty">String</span>::<span class="fn_">from</span>(<span class="st">"world"</span>); <span class="cm">// s 유효 시작</span>
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="at">s</span>);
+} <span class="cm">// ← 스코프 끝: drop(s) 자동 호출, 힙 메모리 해제</span>
+  <span class="cm">// s 여기서 사용 불가</span></code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     03. Box<T>
+══════════════════════════════════════════════════════════ -->
+<section id="box">
+  <h2><span class="sec-num">03</span> Box&lt;T&gt; — 힙에 단독 소유 <a class="sec-ref" href="https://doc.rust-lang.org/book/ch15-01-box.html" target="_blank">공식 문서 →</a></h2>
+  <p class="section-lead"><code>Box&lt;T&gt;</code>는 가장 단순한 스마트 포인터입니다. 스택에는 포인터(8바이트)만, 실제 데이터는 힙에 저장합니다. 소유권 규칙을 그대로 따르며, 스코프를 벗어나면 포인터와 힙 데이터 모두 해제됩니다.</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">언제 Box&lt;T&gt;를 쓰나?</div>
+      <ul>
+        <li class="plus">크기를 컴파일 타임에 알 수 없는 타입 (재귀 타입)</li>
+        <li class="plus">큰 데이터를 힙으로 옮기고 싶을 때</li>
+        <li class="plus">특정 트레이트를 구현하는 값 소유 (<code>Box&lt;dyn Trait&gt;</code>)</li>
+        <li class="minus">단순히 힙에 올리려는 목적만으론 불필요 — Vec/String 써도 됨</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">메모리 구조</div>
+      <div class="card-sub">Box::new(5) 생성 시</div>
+      <ul>
+        <li>스택: 포인터 1개 (8 bytes, 64bit)</li>
+        <li>힙: 정수 5 (4 bytes)</li>
+        <li>Box 드롭 시 힙도 함께 해제</li>
+        <li>Deref로 역참조 → *b == 5</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>기본 사용</h3>
+  <pre><code><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="at">b</span> <span class="op">=</span> <span class="ty">Box</span>::<span class="fn_">new</span>(<span class="nm">5</span>);
+    <span class="mc">println!</span>(<span class="st">"b = {}"</span>, <span class="at">b</span>);   <span class="cm">// 자동 역참조 → "b = 5"</span>
+    <span class="mc">println!</span>(<span class="st">"*b = {}"</span>, <span class="op">*</span><span class="at">b</span>); <span class="cm">// 명시적 역참조 → "*b = 5"</span>
+    <span class="cm">// b가 스코프를 벗어나면: 스택의 포인터 + 힙의 5 모두 해제</span>
+
+    <span class="cm">// Box는 소유권 규칙 그대로 따름</span>
+    <span class="kw">let</span> <span class="at">b1</span> <span class="op">=</span> <span class="ty">Box</span>::<span class="fn_">new</span>(<span class="ty">String</span>::<span class="fn_">from</span>(<span class="st">"hello"</span>));
+    <span class="kw">let</span> <span class="at">b2</span> <span class="op">=</span> <span class="at">b1</span>; <span class="cm">// b1 → b2로 이동 (힙 할당은 그대로, 포인터만 이동)</span>
+    <span class="cm">// println!("{}", b1); // 에러! b1은 이동됨</span>
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="at">b2</span>); <span class="cm">// OK</span>
+}</code></pre>
+
+  <h3>재귀 타입 — Box 없이는 불가능</h3>
+  <p>Rust 컴파일러는 모든 타입의 크기를 컴파일 타임에 알아야 합니다. 재귀 타입은 이론상 무한한 크기가 되므로 컴파일 에러가 납니다. <code>Box</code>를 사용하면 "이 자리는 포인터(고정 8바이트)만 있다"고 알려주어 문제를 해결합니다.</p>
+
+  <pre><code><span class="cm">// 에러 예: Box 없이 재귀 타입 정의 시도</span>
+<span class="cm">// enum List {</span>
+<span class="cm">//     Cons(i32, List), // error: recursive type has infinite size</span>
+<span class="cm">//     Nil,</span>
+<span class="cm">// }</span>
+
+<span class="cm">// 해결: Box로 감싸면 Cons 변형 크기 = i32(4) + 포인터(8) = 12 bytes</span>
+<span class="kw">enum</span> <span class="ty">List</span> {
+    <span class="ty">Cons</span>(<span class="ty">i32</span>, <span class="ty">Box</span><span class="op">&lt;</span><span class="ty">List</span><span class="op">&gt;</span>),
+    <span class="ty">Nil</span>,
+}
+
+<span class="kw">use</span> <span class="ty">List</span>::{<span class="ty">Cons</span>, <span class="ty">Nil</span>};
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="at">list</span> <span class="op">=</span> <span class="ty">Cons</span>(<span class="nm">1</span>,
+        <span class="ty">Box</span>::<span class="fn_">new</span>(<span class="ty">Cons</span>(<span class="nm">2</span>,
+            <span class="ty">Box</span>::<span class="fn_">new</span>(<span class="ty">Cons</span>(<span class="nm">3</span>,
+                <span class="ty">Box</span>::<span class="fn_">new</span>(<span class="ty">Nil</span>))))));
+}</code></pre>
+
+  <h3>트레이트 객체 — <code>Box&lt;dyn Trait&gt;</code></h3>
+  <p>여러 타입을 하나의 컬렉션에 담으려면 컴파일 타임에 크기를 알 수 없습니다. <code>Box&lt;dyn Trait&gt;</code>는 포인터 크기(고정 16바이트 — 데이터 포인터 + vtable 포인터)로 모든 구현체를 균일하게 다룰 수 있게 합니다.</p>
+
+  <pre><code><span class="kw">trait</span> <span class="ty">Shape</span> {
+    <span class="kw">fn</span> <span class="fn_">area</span>(<span class="op">&amp;</span><span class="kw">self</span>) <span class="op">-&gt;</span> <span class="ty">f64</span>;
+    <span class="kw">fn</span> <span class="fn_">name</span>(<span class="op">&amp;</span><span class="kw">self</span>) <span class="op">-&gt;</span> <span class="op">&amp;</span><span class="kw">str</span>;
+}
+
+<span class="kw">struct</span> <span class="ty">Circle</span> { <span class="at">radius</span>: <span class="ty">f64</span> }
+<span class="kw">struct</span> <span class="ty">Rectangle</span> { <span class="at">w</span>: <span class="ty">f64</span>, <span class="at">h</span>: <span class="ty">f64</span> }
+<span class="kw">struct</span> <span class="ty">Triangle</span> { <span class="at">base</span>: <span class="ty">f64</span>, <span class="at">height</span>: <span class="ty">f64</span> }
+
+<span class="kw">impl</span> <span class="ty">Shape</span> <span class="kw">for</span> <span class="ty">Circle</span> {
+    <span class="kw">fn</span> <span class="fn_">area</span>(<span class="op">&amp;</span><span class="kw">self</span>) <span class="op">-&gt;</span> <span class="ty">f64</span> { std::f64::consts::PI <span class="op">*</span> <span class="kw">self</span>.<span class="at">radius</span>.powi(<span class="nm">2</span>) }
+    <span class="kw">fn</span> <span class="fn_">name</span>(<span class="op">&amp;</span><span class="kw">self</span>) <span class="op">-&gt;</span> <span class="op">&amp;</span><span class="kw">str</span> { <span class="st">"원"</span> }
+}
+<span class="kw">impl</span> <span class="ty">Shape</span> <span class="kw">for</span> <span class="ty">Rectangle</span> {
+    <span class="kw">fn</span> <span class="fn_">area</span>(<span class="op">&amp;</span><span class="kw">self</span>) <span class="op">-&gt;</span> <span class="ty">f64</span> { <span class="kw">self</span>.<span class="at">w</span> <span class="op">*</span> <span class="kw">self</span>.<span class="at">h</span> }
+    <span class="kw">fn</span> <span class="fn_">name</span>(<span class="op">&amp;</span><span class="kw">self</span>) <span class="op">-&gt;</span> <span class="op">&amp;</span><span class="kw">str</span> { <span class="st">"직사각형"</span> }
+}
+<span class="kw">impl</span> <span class="ty">Shape</span> <span class="kw">for</span> <span class="ty">Triangle</span> {
+    <span class="kw">fn</span> <span class="fn_">area</span>(<span class="op">&amp;</span><span class="kw">self</span>) <span class="op">-&gt;</span> <span class="ty">f64</span> { <span class="kw">self</span>.<span class="at">base</span> <span class="op">*</span> <span class="kw">self</span>.<span class="at">height</span> <span class="op">/</span> <span class="nm">2.0</span> }
+    <span class="kw">fn</span> <span class="fn_">name</span>(<span class="op">&amp;</span><span class="kw">self</span>) <span class="op">-&gt;</span> <span class="op">&amp;</span><span class="kw">str</span> { <span class="st">"삼각형"</span> }
+}
+
+<span class="kw">fn</span> <span class="fn_">total_area</span>(<span class="at">shapes</span>: <span class="op">&amp;</span>[<span class="ty">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ty">Shape</span><span class="op">&gt;</span>]) <span class="op">-&gt;</span> <span class="ty">f64</span> {
+    <span class="at">shapes</span>.<span class="fn_">iter</span>().<span class="fn_">map</span>(|<span class="at">s</span>| <span class="at">s</span>.<span class="fn_">area</span>()).<span class="fn_">sum</span>()
+}
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="at">shapes</span>: <span class="ty">Vec</span><span class="op">&lt;</span><span class="ty">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ty">Shape</span><span class="op">&gt;&gt;</span> <span class="op">=</span> <span class="mc">vec!</span>[
+        <span class="ty">Box</span>::<span class="fn_">new</span>(<span class="ty">Circle</span> { <span class="at">radius</span>: <span class="nm">3.0</span> }),
+        <span class="ty">Box</span>::<span class="fn_">new</span>(<span class="ty">Rectangle</span> { <span class="at">w</span>: <span class="nm">4.0</span>, <span class="at">h</span>: <span class="nm">5.0</span> }),
+        <span class="ty">Box</span>::<span class="fn_">new</span>(<span class="ty">Triangle</span> { <span class="at">base</span>: <span class="nm">6.0</span>, <span class="at">height</span>: <span class="nm">4.0</span> }),
+    ];
+
+    <span class="kw">for</span> <span class="at">s</span> <span class="kw2">in</span> <span class="op">&amp;</span><span class="at">shapes</span> {
+        <span class="mc">println!</span>(<span class="st">"{}: {:.2}"</span>, <span class="at">s</span>.<span class="fn_">name</span>(), <span class="at">s</span>.<span class="fn_">area</span>());
+    }
+    <span class="mc">println!</span>(<span class="st">"총 면적: {:.2}"</span>, <span class="fn_">total_area</span>(<span class="op">&amp;</span><span class="at">shapes</span>));
+    <span class="cm">// 원: 28.27</span>
+    <span class="cm">// 직사각형: 20.00</span>
+    <span class="cm">// 삼각형: 12.00</span>
+    <span class="cm">// 총 면적: 60.27</span>
+}</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     04. Deref
+══════════════════════════════════════════════════════════ -->
+<section id="deref">
+  <h2><span class="sec-num">04</span> Deref 트레이트와 역참조 강제 <a class="sec-ref" href="https://doc.rust-lang.org/book/ch15-02-deref.html" target="_blank">공식 문서 →</a></h2>
+  <p class="section-lead"><code>Deref</code> 트레이트를 구현하면 <code>*</code> 연산자로 역참조할 수 있고, Rust 컴파일러가 자동으로 참조를 변환해주는 <strong>역참조 강제(deref coercion)</strong>가 작동합니다.</p>
+
+  <h3>역참조 강제란?</h3>
+  <p>함수/메서드 인자에서 <code>Deref</code>가 구현된 타입을 필요한 참조 타입으로 자동 변환합니다. 이 변환은 컴파일 타임에 일어나므로 런타임 비용이 없습니다.</p>
+
+  <pre><code><span class="kw">fn</span> <span class="fn_">hello</span>(<span class="at">name</span>: <span class="op">&amp;</span><span class="kw">str</span>) {
+    <span class="mc">println!</span>(<span class="st">"Hello, {}!"</span>, <span class="at">name</span>);
+}
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="at">m</span> <span class="op">=</span> <span class="ty">Box</span>::<span class="fn_">new</span>(<span class="ty">String</span>::<span class="fn_">from</span>(<span class="st">"Rust"</span>));
+
+    <span class="cm">// 역참조 강제 체인: Box&lt;String&gt; → &amp;String → &amp;str</span>
+    <span class="fn_">hello</span>(<span class="op">&amp;</span><span class="at">m</span>);      <span class="cm">// &amp;Box&lt;String&gt; → &amp;String → &amp;str 자동 변환</span>
+    <span class="fn_">hello</span>(<span class="op">&amp;*</span><span class="at">m</span>);     <span class="cm">// 같은 의미, 명시적 역참조</span>
+
+    <span class="cm">// &amp;str, &amp;String, &amp;Box&lt;String&gt; 모두 hello()에 전달 가능</span>
+    <span class="kw">let</span> <span class="at">s</span> <span class="op">=</span> <span class="ty">String</span>::<span class="fn_">from</span>(<span class="st">"World"</span>);
+    <span class="fn_">hello</span>(<span class="op">&amp;</span><span class="at">s</span>);      <span class="cm">// &amp;String → &amp;str 자동 변환</span>
+    <span class="fn_">hello</span>(<span class="st">"직접"</span>); <span class="cm">// &amp;str 직접 전달</span>
+
+    <span class="cm">// Vec&lt;T&gt;도 Deref 구현: &amp;Vec&lt;T&gt; → &amp;[T]</span>
+    <span class="kw">let</span> <span class="at">v</span> <span class="op">=</span> <span class="mc">vec!</span>[<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>];
+    <span class="kw">let</span> <span class="at">sum</span>: <span class="ty">i32</span> <span class="op">=</span> <span class="fn_">sum_slice</span>(<span class="op">&amp;</span><span class="at">v</span>); <span class="cm">// &amp;Vec&lt;i32&gt; → &amp;[i32] 자동 변환</span>
+    <span class="mc">println!</span>(<span class="st">"합계: {}"</span>, <span class="at">sum</span>);
+}
+
+<span class="kw">fn</span> <span class="fn_">sum_slice</span>(<span class="at">s</span>: <span class="op">&amp;</span>[<span class="ty">i32</span>]) <span class="op">-&gt;</span> <span class="ty">i32</span> {
+    <span class="at">s</span>.<span class="fn_">iter</span>().<span class="fn_">sum</span>()
+}</code></pre>
+
+  <div class="callout tip">
+    <strong>역참조 강제 규칙 (Rust Reference 기반)</strong><br>
+    <code>&amp;T</code> → <code>&amp;U</code> : T가 <code>Deref&lt;Target=U&gt;</code> 구현 시<br>
+    <code>&amp;mut T</code> → <code>&amp;mut U</code> : T가 <code>DerefMut&lt;Target=U&gt;</code> 구현 시<br>
+    <code>&amp;mut T</code> → <code>&amp;U</code> : T가 <code>Deref&lt;Target=U&gt;</code> 구현 시 (단방향만 가능)
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     05. Drop
+══════════════════════════════════════════════════════════ -->
+<section id="drop">
+  <h2><span class="sec-num">05</span> Drop 트레이트 — 자동 메모리 해제 <a class="sec-ref" href="https://doc.rust-lang.org/book/ch15-03-drop.html" target="_blank">공식 문서 →</a></h2>
+  <p class="section-lead"><code>Drop</code> 트레이트의 <code>drop</code> 메서드는 값이 스코프를 벗어날 때 컴파일러가 자동으로 호출합니다. C++의 소멸자(destructor)와 동일한 역할이며, 리소스 해제 로직을 여기에 작성합니다.</p>
+
+  <pre><code><span class="kw">struct</span> <span class="ty">Resource</span> {
+    <span class="at">name</span>: <span class="ty">String</span>,
+}
+
+<span class="kw">impl</span> <span class="ty">Drop</span> <span class="kw">for</span> <span class="ty">Resource</span> {
+    <span class="kw">fn</span> <span class="fn_">drop</span>(<span class="op">&amp;</span><span class="kw">mut</span> <span class="kw">self</span>) {
+        <span class="mc">println!</span>(<span class="st">"리소스 '{}' 해제됨"</span>, <span class="kw">self</span>.<span class="at">name</span>);
+        <span class="cm">// 파일 닫기, 락 해제, 네트워크 연결 종료 등</span>
+    }
+}
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="at">r1</span> <span class="op">=</span> <span class="ty">Resource</span> { <span class="at">name</span>: <span class="ty">String</span>::<span class="fn_">from</span>(<span class="st">"DB 연결"</span>) };
+    {
+        <span class="kw">let</span> <span class="at">r2</span> <span class="op">=</span> <span class="ty">Resource</span> { <span class="at">name</span>: <span class="ty">String</span>::<span class="fn_">from</span>(<span class="st">"파일 핸들"</span>) };
+        <span class="mc">println!</span>(<span class="st">"내부 스코프 종료 직전"</span>);
+    } <span class="cm">// ← r2 drop: "리소스 '파일 핸들' 해제됨" 출력</span>
+    <span class="mc">println!</span>(<span class="st">"main 종료 직전"</span>);
+} <span class="cm">// ← r1 drop: "리소스 'DB 연결' 해제됨" 출력</span>
+<span class="cm">// 출력 순서: 생성 역순 (LIFO)</span>
+
+<span class="cm">// 명시적 조기 해제: drop() 직접 호출은 금지!</span>
+<span class="cm">// r1.drop(); // error: explicit use of destructor method</span>
+<span class="cm">// std::mem::drop(r1)은 OK — 소유권을 가져가 즉시 해제</span>
+<span class="kw">let</span> <span class="at">lock</span> <span class="op">=</span> <span class="ty">Resource</span> { <span class="at">name</span>: <span class="ty">String</span>::<span class="fn_">from</span>(<span class="st">"Mutex 락"</span>) };
+std::mem::<span class="fn_">drop</span>(<span class="at">lock</span>); <span class="cm">// 조기 해제 — "리소스 'Mutex 락' 해제됨"</span>
+<span class="mc">println!</span>(<span class="st">"이후에 다른 작업..."</span>); <span class="cm">// lock은 이미 해제됨</span></code></pre>
+
+  <div class="callout info">
+    <strong>Drop 호출 순서:</strong> 변수는 선언된 역순으로 drop됩니다. 구조체 필드는 선언된 순서대로 drop됩니다. 이는 컴파일러가 보장하며, <strong>이중 해제(double free)</strong>는 소유권 시스템이 원천 차단합니다.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     06. Rc<T>
+══════════════════════════════════════════════════════════ -->
+<section id="rc">
+  <h2><span class="sec-num">06</span> Rc&lt;T&gt; — 참조 카운팅 공유 소유권 <a class="sec-ref" href="https://doc.rust-lang.org/book/ch15-04-rc.html" target="_blank">공식 문서 →</a></h2>
+  <p class="section-lead"><code>Rc&lt;T&gt;</code> (Reference Counted)는 힙에 단일 데이터를 두고 여러 소유자가 공유할 수 있게 합니다. 내부에 <strong>강한 참조 카운트(strong_count)</strong>를 유지하며, 카운트가 0이 되면 자동으로 데이터를 해제합니다. <strong>단일 스레드</strong>에서만 사용 가능합니다 (멀티스레드는 <code>Arc&lt;T&gt;</code> 사용).</p>
+
+  <div class="callout warn">
+    <strong>왜 단일 스레드만?</strong> <code>Rc&lt;T&gt;</code>의 참조 카운트 증감은 원자적(atomic)이지 않습니다. 여러 스레드가 동시에 카운트를 변경하면 데이터 경쟁(data race)이 발생합니다. 멀티스레드 환경에서는 원자적 연산을 사용하는 <code>Arc&lt;T&gt;</code>를 사용하세요.
+  </div>
+
+  <h3>기본 사용과 참조 카운트</h3>
+  <pre><code><span class="kw">use</span> std::rc::<span class="ty">Rc</span>;
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="at">a</span> <span class="op">=</span> <span class="ty">Rc</span>::<span class="fn_">new</span>(<span class="ty">String</span>::<span class="fn_">from</span>(<span class="st">"공유 데이터"</span>));
+    <span class="mc">println!</span>(<span class="st">"a 생성 후 count: {}"</span>, <span class="ty">Rc</span>::<span class="fn_">strong_count</span>(<span class="op">&amp;</span><span class="at">a</span>)); <span class="cm">// 1</span>
+
+    <span class="kw">let</span> <span class="at">b</span> <span class="op">=</span> <span class="ty">Rc</span>::<span class="fn_">clone</span>(<span class="op">&amp;</span><span class="at">a</span>); <span class="cm">// 힙 데이터 복사 없음! 카운트만 증가</span>
+    <span class="mc">println!</span>(<span class="st">"b 생성 후 count: {}"</span>, <span class="ty">Rc</span>::<span class="fn_">strong_count</span>(<span class="op">&amp;</span><span class="at">a</span>)); <span class="cm">// 2</span>
+
+    {
+        <span class="kw">let</span> <span class="at">c</span> <span class="op">=</span> <span class="ty">Rc</span>::<span class="fn_">clone</span>(<span class="op">&amp;</span><span class="at">a</span>);
+        <span class="mc">println!</span>(<span class="st">"c 생성 후 count: {}"</span>, <span class="ty">Rc</span>::<span class="fn_">strong_count</span>(<span class="op">&amp;</span><span class="at">a</span>)); <span class="cm">// 3</span>
+        <span class="mc">println!</span>(<span class="st">"a={}, b={}, c={}"</span>, <span class="at">a</span>, <span class="at">b</span>, <span class="at">c</span>);
+    } <span class="cm">// c drop → count 2</span>
+    <span class="mc">println!</span>(<span class="st">"c 해제 후 count: {}"</span>, <span class="ty">Rc</span>::<span class="fn_">strong_count</span>(<span class="op">&amp;</span><span class="at">a</span>)); <span class="cm">// 2</span>
+
+    <span class="cm">// Rc는 불변 참조만 허용 — 여러 곳에서 읽기는 OK</span>
+    <span class="kw">let</span> <span class="at">len_a</span> <span class="op">=</span> <span class="at">a</span>.<span class="fn_">len</span>();
+    <span class="kw">let</span> <span class="at">len_b</span> <span class="op">=</span> <span class="at">b</span>.<span class="fn_">len</span>();
+    <span class="mc">println!</span>(<span class="st">"a len={}, b len={}"</span>, <span class="at">len_a</span>, <span class="at">len_b</span>);
+} <span class="cm">// a, b drop → count 0 → 힙 데이터 해제</span></code></pre>
+
+  <h3>Rc를 이용한 그래프 노드 공유</h3>
+  <pre><code><span class="kw">use</span> std::rc::<span class="ty">Rc</span>;
+
+<span class="kw">struct</span> <span class="ty">Node</span> {
+    <span class="at">value</span>: <span class="ty">i32</span>,
+    <span class="at">children</span>: <span class="ty">Vec</span><span class="op">&lt;</span><span class="ty">Rc</span><span class="op">&lt;</span><span class="ty">Node</span><span class="op">&gt;&gt;</span>,
+}
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="at">leaf</span> <span class="op">=</span> <span class="ty">Rc</span>::<span class="fn_">new</span>(<span class="ty">Node</span> { <span class="at">value</span>: <span class="nm">3</span>, <span class="at">children</span>: <span class="mc">vec!</span>[] });
+    <span class="mc">println!</span>(<span class="st">"leaf count: {}"</span>, <span class="ty">Rc</span>::<span class="fn_">strong_count</span>(<span class="op">&amp;</span><span class="at">leaf</span>)); <span class="cm">// 1</span>
+
+    <span class="kw">let</span> <span class="at">branch</span> <span class="op">=</span> <span class="ty">Rc</span>::<span class="fn_">new</span>(<span class="ty">Node</span> {
+        <span class="at">value</span>: <span class="nm">2</span>,
+        <span class="at">children</span>: <span class="mc">vec!</span>[<span class="ty">Rc</span>::<span class="fn_">clone</span>(<span class="op">&amp;</span><span class="at">leaf</span>)], <span class="cm">// leaf를 공유 소유</span>
+    });
+    <span class="mc">println!</span>(<span class="st">"leaf count: {}"</span>, <span class="ty">Rc</span>::<span class="fn_">strong_count</span>(<span class="op">&amp;</span><span class="at">leaf</span>)); <span class="cm">// 2</span>
+
+    <span class="kw">let</span> <span class="at">root</span> <span class="op">=</span> <span class="ty">Rc</span>::<span class="fn_">new</span>(<span class="ty">Node</span> {
+        <span class="at">value</span>: <span class="nm">1</span>,
+        <span class="at">children</span>: <span class="mc">vec!</span>[
+            <span class="ty">Rc</span>::<span class="fn_">clone</span>(<span class="op">&amp;</span><span class="at">branch</span>),
+            <span class="ty">Rc</span>::<span class="fn_">clone</span>(<span class="op">&amp;</span><span class="at">leaf</span>), <span class="cm">// leaf를 root도 공유 소유</span>
+        ],
+    });
+    <span class="mc">println!</span>(<span class="st">"leaf count: {}"</span>, <span class="ty">Rc</span>::<span class="fn_">strong_count</span>(<span class="op">&amp;</span><span class="at">leaf</span>)); <span class="cm">// 3</span>
+    <span class="mc">println!</span>(<span class="st">"root value: {}"</span>, <span class="at">root</span>.<span class="at">value</span>);
+}</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     07. Weak<T>
+══════════════════════════════════════════════════════════ -->
+<section id="weak">
+  <h2><span class="sec-num">07</span> Weak&lt;T&gt; — 순환 참조 해결 <a class="sec-ref" href="https://doc.rust-lang.org/book/ch15-06-reference-cycles.html" target="_blank">공식 문서 →</a></h2>
+  <p class="section-lead"><code>Rc&lt;T&gt;</code>만 사용하면 서로를 가리키는 <strong>순환 참조(reference cycle)</strong>가 발생할 수 있고, 이 경우 카운트가 영원히 0이 되지 않아 <strong>메모리 누수</strong>가 생깁니다. <code>Weak&lt;T&gt;</code>는 <strong>소유권 없이</strong> 참조만 보유하여 이 문제를 해결합니다.</p>
+
+  <div class="callout err">
+    <strong>순환 참조 예시 — 메모리 누수 발생:</strong><br>
+    A가 B를 <code>Rc</code>로 가리키고, B가 A를 <code>Rc</code>로 가리키면 → 둘 다 스코프를 벗어나도 카운트가 1씩 남아 절대 해제되지 않음.
+  </div>
+
+  <h3>순환 참조 발생 예제</h3>
+  <pre><code><span class="kw">use</span> std::rc::<span class="ty">Rc</span>;
+<span class="kw">use</span> std::cell::<span class="ty">RefCell</span>;
+
+<span class="kw">struct</span> <span class="ty">Node</span> {
+    <span class="at">value</span>: <span class="ty">i32</span>,
+    <span class="at">next</span>: <span class="ty">Option</span><span class="op">&lt;</span><span class="ty">Rc</span><span class="op">&lt;</span><span class="ty">RefCell</span><span class="op">&lt;</span><span class="ty">Node</span><span class="op">&gt;&gt;&gt;</span>,
+}
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="at">a</span> <span class="op">=</span> <span class="ty">Rc</span>::<span class="fn_">new</span>(<span class="ty">RefCell</span>::<span class="fn_">new</span>(<span class="ty">Node</span> { <span class="at">value</span>: <span class="nm">1</span>, <span class="at">next</span>: <span class="ty">None</span> }));
+    <span class="kw">let</span> <span class="at">b</span> <span class="op">=</span> <span class="ty">Rc</span>::<span class="fn_">new</span>(<span class="ty">RefCell</span>::<span class="fn_">new</span>(<span class="ty">Node</span> { <span class="at">value</span>: <span class="nm">2</span>, <span class="at">next</span>: <span class="ty">Some</span>(<span class="ty">Rc</span>::<span class="fn_">clone</span>(<span class="op">&amp;</span><span class="at">a</span>)) }));
+    <span class="cm">// a.next → b로 만들면 a ↔ b 순환 참조 발생!</span>
+    <span class="at">a</span>.<span class="fn_">borrow_mut</span>().<span class="at">next</span> <span class="op">=</span> <span class="ty">Some</span>(<span class="ty">Rc</span>::<span class="fn_">clone</span>(<span class="op">&amp;</span><span class="at">b</span>));
+
+    <span class="cm">// 스코프 종료 시: a count=2, b count=2 → 둘 다 해제 안됨 → 메모리 누수!</span>
+    <span class="mc">println!</span>(<span class="st">"a count: {}"</span>, <span class="ty">Rc</span>::<span class="fn_">strong_count</span>(<span class="op">&amp;</span><span class="at">a</span>)); <span class="cm">// 2</span>
+    <span class="mc">println!</span>(<span class="st">"b count: {}"</span>, <span class="ty">Rc</span>::<span class="fn_">strong_count</span>(<span class="op">&amp;</span><span class="at">b</span>)); <span class="cm">// 2</span>
+}</code></pre>
+
+  <h3>Weak&lt;T&gt;로 해결 — 트리 부모-자식 관계</h3>
+  <pre><code><span class="kw">use</span> std::rc::{<span class="ty">Rc</span>, <span class="ty">Weak</span>};
+<span class="kw">use</span> std::cell::<span class="ty">RefCell</span>;
+
+<span class="kw">struct</span> <span class="ty">TreeNode</span> {
+    <span class="at">value</span>: <span class="ty">i32</span>,
+    <span class="cm">// 자식은 Rc — "자식을 소유"</span>
+    <span class="at">children</span>: <span class="ty">RefCell</span><span class="op">&lt;</span><span class="ty">Vec</span><span class="op">&lt;</span><span class="ty">Rc</span><span class="op">&lt;</span><span class="ty">TreeNode</span><span class="op">&gt;&gt;&gt;</span>,
+    <span class="cm">// 부모는 Weak — "부모를 참조만, 소유하지 않음"</span>
+    <span class="at">parent</span>: <span class="ty">RefCell</span><span class="op">&lt;</span><span class="ty">Weak</span><span class="op">&lt;</span><span class="ty">TreeNode</span><span class="op">&gt;&gt;</span>,
+}
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="at">leaf</span> <span class="op">=</span> <span class="ty">Rc</span>::<span class="fn_">new</span>(<span class="ty">TreeNode</span> {
+        <span class="at">value</span>: <span class="nm">3</span>,
+        <span class="at">children</span>: <span class="ty">RefCell</span>::<span class="fn_">new</span>(<span class="mc">vec!</span>[]),
+        <span class="at">parent</span>: <span class="ty">RefCell</span>::<span class="fn_">new</span>(<span class="ty">Weak</span>::<span class="fn_">new</span>()), <span class="cm">// 아직 부모 없음</span>
+    });
+
+    <span class="kw">let</span> <span class="at">root</span> <span class="op">=</span> <span class="ty">Rc</span>::<span class="fn_">new</span>(<span class="ty">TreeNode</span> {
+        <span class="at">value</span>: <span class="nm">1</span>,
+        <span class="at">children</span>: <span class="ty">RefCell</span>::<span class="fn_">new</span>(<span class="mc">vec!</span>[<span class="ty">Rc</span>::<span class="fn_">clone</span>(<span class="op">&amp;</span><span class="at">leaf</span>)]),
+        <span class="at">parent</span>: <span class="ty">RefCell</span>::<span class="fn_">new</span>(<span class="ty">Weak</span>::<span class="fn_">new</span>()),
+    });
+
+    <span class="cm">// leaf의 부모를 root의 Weak 참조로 설정</span>
+    <span class="op">*</span><span class="at">leaf</span>.<span class="at">parent</span>.<span class="fn_">borrow_mut</span>() <span class="op">=</span> <span class="ty">Rc</span>::<span class="fn_">downgrade</span>(<span class="op">&amp;</span><span class="at">root</span>);
+    <span class="cm">// Rc::downgrade → Weak 생성 (strong_count 증가 없음)</span>
+
+    <span class="mc">println!</span>(<span class="st">"root strong={}, weak={}"</span>,
+        <span class="ty">Rc</span>::<span class="fn_">strong_count</span>(<span class="op">&amp;</span><span class="at">root</span>), <span class="cm">// 1 — leaf.parent는 weak이라 미포함</span>
+        <span class="ty">Rc</span>::<span class="fn_">weak_count</span>(<span class="op">&amp;</span><span class="at">root</span>),   <span class="cm">// 1</span>
+    );
+
+    <span class="cm">// Weak → Rc 승격: upgrade() → Option&lt;Rc&lt;T&gt;&gt;</span>
+    <span class="kw">match</span> <span class="at">leaf</span>.<span class="at">parent</span>.<span class="fn_">borrow</span>().<span class="fn_">upgrade</span>() {
+        <span class="ok_">Some</span>(<span class="at">p</span>) <span class="op">=&gt;</span> <span class="mc">println!</span>(<span class="st">"leaf의 부모 값: {}"</span>, <span class="at">p</span>.<span class="at">value</span>), <span class="cm">// 1</span>
+        <span class="ok_">None</span>    <span class="op">=&gt;</span> <span class="mc">println!</span>(<span class="st">"부모 없음"</span>),
+    }
+} <span class="cm">// root drop → strong_count 0 → 해제됨 (순환 참조 없음!)</span></code></pre>
+
+  <div class="callout tip">
+    <strong>Weak 사용 원칙:</strong> 소유 관계는 <code>Rc</code>, 참조만 필요한 역방향 참조(부모 포인터, 캐시 등)는 <code>Weak</code>로 설계하세요. <code>upgrade()</code>가 <code>None</code>을 반환할 수 있으므로 항상 <code>Option</code>으로 처리해야 합니다.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     08. RefCell<T>
+══════════════════════════════════════════════════════════ -->
+<section id="refcell">
+  <h2><span class="sec-num">08</span> RefCell&lt;T&gt; — 런타임 내부 가변성 <a class="sec-ref" href="https://doc.rust-lang.org/book/ch15-05-interior-mutability.html" target="_blank">공식 문서 →</a></h2>
+  <p class="section-lead"><code>RefCell&lt;T&gt;</code>는 <strong>내부 가변성(Interior Mutability)</strong> 패턴을 구현합니다. 컴파일러 대신 <strong>런타임에</strong> 빌림 규칙을 검사합니다. <code>&amp;self</code>(불변 참조)를 통해서도 내부 데이터를 변경할 수 있습니다.</p>
+
+  <div class="callout info">
+    <strong>내부 가변성이란? (std::cell 공식 문서)</strong><br>
+    "공유 참조(<code>&amp;T</code>)를 통해 내부 상태를 변경할 수 있는 능력." <code>RefCell&lt;T&gt;</code>는 내부적으로 <code>UnsafeCell&lt;T&gt;</code>를 사용하여 컴파일러의 불변성 검사를 우회하고, 대신 <strong>런타임 카운터</strong>로 안전성을 보장합니다.
+  </div>
+
+  <h3>RefCell 내부 상태 — borrow_count와 BorrowFlag</h3>
+  <p>RefCell은 내부에 <code>BorrowFlag</code>를 유지합니다. 불변 빌림 시 양수로 증가, 가변 빌림 시 음수 플래그로 전환됩니다. 규칙 위반 시 즉시 패닉합니다.</p>
+
+  <pre><code><span class="kw">use</span> std::cell::<span class="ty">RefCell</span>;
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="at">data</span> <span class="op">=</span> <span class="ty">RefCell</span>::<span class="fn_">new</span>(<span class="mc">vec!</span>[<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>]);
+
+    <span class="cm">// ── 케이스 1: 불변 빌림 여러 개 동시 → OK ──</span>
+    {
+        <span class="kw">let</span> <span class="at">r1</span> <span class="op">=</span> <span class="at">data</span>.<span class="fn_">borrow</span>(); <span class="cm">// Ref&lt;Vec&lt;i32&gt;&gt;, flag = +1</span>
+        <span class="kw">let</span> <span class="at">r2</span> <span class="op">=</span> <span class="at">data</span>.<span class="fn_">borrow</span>(); <span class="cm">// flag = +2</span>
+        <span class="mc">println!</span>(<span class="st">"r1={:?}, r2={:?}"</span>, <span class="op">*</span><span class="at">r1</span>, <span class="op">*</span><span class="at">r2</span>);
+    } <span class="cm">// r1, r2 drop → flag = 0</span>
+
+    <span class="cm">// ── 케이스 2: 가변 빌림 → OK ──</span>
+    {
+        <span class="kw">let</span> <span class="kw">mut</span> <span class="at">w</span> <span class="op">=</span> <span class="at">data</span>.<span class="fn_">borrow_mut</span>(); <span class="cm">// RefMut, flag = -1</span>
+        <span class="at">w</span>.<span class="fn_">push</span>(<span class="nm">4</span>);
+        <span class="at">w</span>.<span class="fn_">push</span>(<span class="nm">5</span>);
+    } <span class="cm">// w drop → flag = 0</span>
+    <span class="mc">println!</span>(<span class="st">"{:?}"</span>, <span class="at">data</span>.<span class="fn_">borrow</span>()); <span class="cm">// [1, 2, 3, 4, 5]</span>
+
+    <span class="cm">// ── 케이스 3: 패닉 방지 — try_borrow / try_borrow_mut ──</span>
+    <span class="kw">let</span> <span class="at">_guard</span> <span class="op">=</span> <span class="at">data</span>.<span class="fn_">borrow</span>(); <span class="cm">// 불변 빌림 활성 중</span>
+    <span class="kw">match</span> <span class="at">data</span>.<span class="fn_">try_borrow_mut</span>() {
+        <span class="ok_">Ok</span>(<span class="kw">mut</span> <span class="at">w</span>) <span class="op">=&gt;</span> <span class="at">w</span>.<span class="fn_">push</span>(<span class="nm">99</span>),
+        <span class="err_">Err</span>(<span class="at">e</span>) <span class="op">=&gt;</span> <span class="mc">println!</span>(<span class="st">"빌림 실패 (패닉 없음): {}"</span>, <span class="at">e</span>),
+        <span class="cm">// "already borrowed: BorrowMutError"</span>
+    }
+}</code></pre>
+
+  <h3>내부 가변성 패턴 — &amp;self 메서드 안에서 변경</h3>
+  <pre><code><span class="kw">use</span> std::cell::<span class="ty">RefCell</span>;
+
+<span class="cm">// 피보나치 수열 메모이제이션 캐시</span>
+<span class="kw">struct</span> <span class="ty">FibCache</span> {
+    <span class="at">cache</span>: <span class="ty">RefCell</span><span class="op">&lt;</span><span class="ty">Vec</span><span class="op">&lt;</span><span class="ty">u64</span><span class="op">&gt;&gt;</span>,
+}
+
+<span class="kw">impl</span> <span class="ty">FibCache</span> {
+    <span class="kw">fn</span> <span class="fn_">new</span>() <span class="op">-&gt;</span> <span class="ty">Self</span> {
+        <span class="ty">FibCache</span> { <span class="at">cache</span>: <span class="ty">RefCell</span>::<span class="fn_">new</span>(<span class="mc">vec!</span>[<span class="nm">0</span>, <span class="nm">1</span>]) }
+    }
+
+    <span class="cm">// &amp;self — 외부에서 보면 불변이지만 내부적으로 캐시를 채움</span>
+    <span class="kw">fn</span> <span class="fn_">get</span>(<span class="op">&amp;</span><span class="kw">self</span>, <span class="at">n</span>: <span class="ty">usize</span>) <span class="op">-&gt;</span> <span class="ty">u64</span> {
+        <span class="kw2">if</span> <span class="at">n</span> <span class="op">&lt;</span> <span class="kw">self</span>.<span class="at">cache</span>.<span class="fn_">borrow</span>().<span class="fn_">len</span>() {
+            <span class="kw2">return</span> <span class="kw">self</span>.<span class="at">cache</span>.<span class="fn_">borrow</span>()[<span class="at">n</span>];
+        }
+        <span class="kw">let</span> <span class="kw">mut</span> <span class="at">c</span> <span class="op">=</span> <span class="kw">self</span>.<span class="at">cache</span>.<span class="fn_">borrow_mut</span>();
+        <span class="kw2">while</span> <span class="at">c</span>.<span class="fn_">len</span>() <span class="op">&lt;=</span> <span class="at">n</span> {
+            <span class="kw">let</span> <span class="at">len</span> <span class="op">=</span> <span class="at">c</span>.<span class="fn_">len</span>();
+            <span class="kw">let</span> <span class="at">next</span> <span class="op">=</span> <span class="at">c</span>[<span class="at">len</span> <span class="op">-</span> <span class="nm">1</span>] <span class="op">+</span> <span class="at">c</span>[<span class="at">len</span> <span class="op">-</span> <span class="nm">2</span>];
+            <span class="at">c</span>.<span class="fn_">push</span>(<span class="at">next</span>);
+        }
+        <span class="at">c</span>[<span class="at">n</span>]
+    }
+}
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="at">fib</span> <span class="op">=</span> <span class="ty">FibCache</span>::<span class="fn_">new</span>(); <span class="cm">// mut 없이 선언!</span>
+    <span class="mc">println!</span>(<span class="st">"fib(10) = {}"</span>, <span class="at">fib</span>.<span class="fn_">get</span>(<span class="nm">10</span>)); <span class="cm">// 55</span>
+    <span class="mc">println!</span>(<span class="st">"fib(20) = {}"</span>, <span class="at">fib</span>.<span class="fn_">get</span>(<span class="nm">20</span>)); <span class="cm">// 6765</span>
+    <span class="mc">println!</span>(<span class="st">"fib(10) = {}"</span>, <span class="at">fib</span>.<span class="fn_">get</span>(<span class="nm">10</span>)); <span class="cm">// 55 (캐시 히트)</span>
+
+    <span class="cm">// &amp;self 이므로 동시에 여러 참조자도 가능</span>
+    <span class="kw">let</span> <span class="at">r1</span> <span class="op">=</span> <span class="op">&amp;</span><span class="at">fib</span>;
+    <span class="kw">let</span> <span class="at">r2</span> <span class="op">=</span> <span class="op">&amp;</span><span class="at">fib</span>;
+    <span class="mc">println!</span>(<span class="st">"r1.get(5)={}, r2.get(6)={}"</span>, <span class="at">r1</span>.<span class="fn_">get</span>(<span class="nm">5</span>), <span class="at">r2</span>.<span class="fn_">get</span>(<span class="nm">6</span>));
+}</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     09. Rc<RefCell<T>> 조합
+══════════════════════════════════════════════════════════ -->
+<section id="combination">
+  <h2><span class="sec-num">09</span> Rc&lt;RefCell&lt;T&gt;&gt; — 공유 + 내부 가변 <a class="sec-ref" href="https://doc.rust-lang.org/book/ch15-05-interior-mutability.html#having-multiple-owners-of-mutable-data-by-combining-rct-and-refcellt" target="_blank">공식 문서 →</a></h2>
+  <p class="section-lead"><code>Rc&lt;T&gt;</code>는 공유 소유권을, <code>RefCell&lt;T&gt;</code>는 내부 가변성을 제공합니다. 둘을 조합하면 여러 소유자가 같은 데이터를 공유하면서 각자 변경할 수 있습니다. 그래프, GUI 위젯 트리, 옵저버 패턴 등에서 필수 패턴입니다.</p>
+
+  <h3>옵저버 패턴 — 실전 예제</h3>
+  <pre><code><span class="kw">use</span> std::rc::<span class="ty">Rc</span>;
+<span class="kw">use</span> std::cell::<span class="ty">RefCell</span>;
+
+<span class="cm">// 공유 상태</span>
+<span class="kw">struct</span> <span class="ty">EventBus</span> {
+    <span class="at">listeners</span>: <span class="ty">Vec</span><span class="op">&lt;</span><span class="ty">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="fn_">Fn</span>(<span class="op">&amp;</span><span class="kw">str</span>)<span class="op">&gt;&gt;</span>,
+}
+
+<span class="kw">impl</span> <span class="ty">EventBus</span> {
+    <span class="kw">fn</span> <span class="fn_">new</span>() <span class="op">-&gt;</span> <span class="ty">Self</span> { <span class="ty">EventBus</span> { <span class="at">listeners</span>: <span class="mc">vec!</span>[] } }
+
+    <span class="kw">fn</span> <span class="fn_">subscribe</span>(<span class="op">&amp;</span><span class="kw">mut</span> <span class="kw">self</span>, <span class="at">f</span>: <span class="kw">impl</span> <span class="fn_">Fn</span>(<span class="op">&amp;</span><span class="kw">str</span>) <span class="op">+</span> <span class="lifetime">'static</span>) {
+        <span class="kw">self</span>.<span class="at">listeners</span>.<span class="fn_">push</span>(<span class="ty">Box</span>::<span class="fn_">new</span>(<span class="at">f</span>));
+    }
+
+    <span class="kw">fn</span> <span class="fn_">publish</span>(<span class="op">&amp;</span><span class="kw">self</span>, <span class="at">event</span>: <span class="op">&amp;</span><span class="kw">str</span>) {
+        <span class="kw">for</span> <span class="at">listener</span> <span class="kw2">in</span> <span class="op">&amp;</span><span class="kw">self</span>.<span class="at">listeners</span> {
+            <span class="at">listener</span>(<span class="at">event</span>);
+        }
+    }
+}
+
+<span class="kw">struct</span> <span class="ty">Widget</span> {
+    <span class="at">name</span>: <span class="ty">String</span>,
+    <span class="at">bus</span>: <span class="ty">Rc</span><span class="op">&lt;</span><span class="ty">RefCell</span><span class="op">&lt;</span><span class="ty">EventBus</span><span class="op">&gt;&gt;</span>,
+}
+
+<span class="kw">impl</span> <span class="ty">Widget</span> {
+    <span class="kw">fn</span> <span class="fn_">new</span>(<span class="at">name</span>: <span class="op">&amp;</span><span class="kw">str</span>, <span class="at">bus</span>: <span class="ty">Rc</span><span class="op">&lt;</span><span class="ty">RefCell</span><span class="op">&lt;</span><span class="ty">EventBus</span><span class="op">&gt;&gt;</span>) <span class="op">-&gt;</span> <span class="ty">Self</span> {
+        <span class="ty">Widget</span> { <span class="at">name</span>: <span class="at">name</span>.<span class="fn_">to_string</span>(), <span class="at">bus</span> }
+    }
+
+    <span class="kw">fn</span> <span class="fn_">click</span>(<span class="op">&amp;</span><span class="kw">self</span>) { <span class="cm">// &amp;self: 위젯은 불변</span>
+        <span class="kw">let</span> <span class="at">event</span> <span class="op">=</span> <span class="mc">format!</span>(<span class="st">"click:{}"</span>, <span class="kw">self</span>.<span class="at">name</span>);
+        <span class="kw">self</span>.<span class="at">bus</span>.<span class="fn_">borrow</span>().<span class="fn_">publish</span>(<span class="op">&amp;</span><span class="at">event</span>);
+    }
+}
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="at">bus</span> <span class="op">=</span> <span class="ty">Rc</span>::<span class="fn_">new</span>(<span class="ty">RefCell</span>::<span class="fn_">new</span>(<span class="ty">EventBus</span>::<span class="fn_">new</span>()));
+
+    <span class="cm">// 리스너 등록 (bus 공유 소유)</span>
+    <span class="at">bus</span>.<span class="fn_">borrow_mut</span>().<span class="fn_">subscribe</span>(|<span class="at">e</span>| <span class="mc">println!</span>(<span class="st">"로그: {}"</span>, <span class="at">e</span>));
+    <span class="at">bus</span>.<span class="fn_">borrow_mut</span>().<span class="fn_">subscribe</span>(|<span class="at">e</span>| <span class="mc">println!</span>(<span class="st">"분석: {}"</span>, <span class="at">e</span>));
+
+    <span class="cm">// 두 위젯이 같은 bus 공유</span>
+    <span class="kw">let</span> <span class="at">btn_a</span> <span class="op">=</span> <span class="ty">Widget</span>::<span class="fn_">new</span>(<span class="st">"버튼A"</span>, <span class="ty">Rc</span>::<span class="fn_">clone</span>(<span class="op">&amp;</span><span class="at">bus</span>));
+    <span class="kw">let</span> <span class="at">btn_b</span> <span class="op">=</span> <span class="ty">Widget</span>::<span class="fn_">new</span>(<span class="st">"버튼B"</span>, <span class="ty">Rc</span>::<span class="fn_">clone</span>(<span class="op">&amp;</span><span class="at">bus</span>));
+
+    <span class="at">btn_a</span>.<span class="fn_">click</span>(); <span class="cm">// "로그: click:버튼A", "분석: click:버튼A"</span>
+    <span class="at">btn_b</span>.<span class="fn_">click</span>(); <span class="cm">// "로그: click:버튼B", "분석: click:버튼B"</span>
+}</code></pre>
+</section>
+<!-- ══════════════════════════════════════════════════════════
+     10. self / &self / &mut self
+══════════════════════════════════════════════════════════ -->
+<section id="receivers">
+  <h2><span class="sec-num">10</span> self / &amp;self / &amp;mut self <a class="sec-ref" href="https://doc.rust-lang.org/book/ch05-03-method-syntax.html" target="_blank">공식 문서 →</a></h2>
+  <p class="section-lead">메서드가 자신을 어떻게 받느냐에 따라 소유권 동작이 완전히 달라집니다. 잘못 선택하면 컴파일 에러가 나거나 불필요하게 값이 소비됩니다.</p>
+
+  <div class="svg-wrap">
+    <svg width="680" height="480" viewBox="0 0 680 480" xmlns="http://www.w3.org/2000/svg">
+    <defs><marker id="a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#888780" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker><style>text{font-family:sans-serif;}</style></defs>
+    <text font-size="14" font-weight="600" fill="#2C2C2A" x="340" y="30" text-anchor="middle">메서드 수신자(Receiver) 세 가지</text>
+    <rect x="30" y="50" width="190" height="390" rx="14" fill="#FAECE7" stroke="#993C1D" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#712B13" x="125" y="78" text-anchor="middle">self</text>
+    <text font-size="12" fill="#993C1D" x="125" y="96" text-anchor="middle">소유권을 가져옴</text>
+    <rect x="50" y="112" width="150" height="44" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#444441" x="125" y="132" text-anchor="middle">호출자</text>
+    <text font-size="12" fill="#5F5E5A" x="125" y="147" text-anchor="middle">s: String ← 소유</text>
+    <line x1="125" y1="156" x2="125" y2="185" stroke="#993C1D" stroke-width="1.5" marker-end="url(#a3)"/>
+    <text font-size="11" fill="#993C1D" x="140" y="175">이전!</text>
+    <rect x="50" y="185" width="150" height="44" rx="6" fill="#FAECE7" stroke="#993C1D" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#712B13" x="125" y="205" text-anchor="middle">fn consume(self)</text>
+    <text font-size="12" fill="#993C1D" x="125" y="220" text-anchor="middle">s의 소유권 획득</text>
+    <rect x="50" y="245" width="150" height="36" rx="6" fill="none" stroke="#D3D1C7" stroke-width="0.5" stroke-dasharray="4 4"/>
+    <text font-size="12" fill="#888780" x="125" y="266" text-anchor="middle" opacity="0.6">호출 후 s 사용 불가 ✗</text>
+    <rect x="50" y="295" width="150" height="120" rx="6" fill="none" stroke="#D3D1C7" stroke-width="0.5"/>
+    <text font-size="12" fill="#5F5E5A" x="125" y="318" text-anchor="middle">사용 예:</text>
+    <text font-size="12" fill="#5F5E5A" x="125" y="338" text-anchor="middle">into() 변환</text>
+    <text font-size="12" fill="#5F5E5A" x="125" y="358" text-anchor="middle">소비형 빌더 패턴</text>
+    <text font-size="12" fill="#5F5E5A" x="125" y="378" text-anchor="middle">for 루프: IntoIter</text>
+    <text font-size="12" fill="#5F5E5A" x="125" y="398" text-anchor="middle">드롭 명시적 처리</text>
+    <rect x="245" y="50" width="190" height="390" rx="14" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#085041" x="340" y="78" text-anchor="middle">&amp;self</text>
+    <text font-size="12" fill="#0F6E56" x="340" y="96" text-anchor="middle">불변 빌림 (읽기 전용)</text>
+    <rect x="265" y="112" width="150" height="44" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#444441" x="340" y="132" text-anchor="middle">호출자</text>
+    <text font-size="12" fill="#5F5E5A" x="340" y="147" text-anchor="middle">s: String ← 소유 유지</text>
+    <path d="M340 156 Q310 175 265 192" fill="none" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#a3)"/>
+    <path d="M265 205 Q310 220 340 232" fill="none" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#a3)"/>
+    <text font-size="11" fill="#0F6E56" x="290" y="192">빌림</text>
+    <text font-size="11" fill="#0F6E56" x="290" y="215">반환</text>
+    <rect x="265" y="195" width="150" height="44" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#085041" x="340" y="215" text-anchor="middle">fn read(&amp;self)</text>
+    <text font-size="12" fill="#0F6E56" x="340" y="230" text-anchor="middle">s 읽기만 가능</text>
+    <rect x="265" y="255" width="150" height="36" rx="6" fill="none" stroke="#9FE1CB" stroke-width="0.5"/>
+    <text font-size="12" fill="#085041" x="340" y="278" text-anchor="middle">호출 후 s 계속 사용 가능 ✓</text>
+    <rect x="265" y="305" width="150" height="120" rx="6" fill="none" stroke="#D3D1C7" stroke-width="0.5"/>
+    <text font-size="12" fill="#5F5E5A" x="340" y="328" text-anchor="middle">사용 예:</text>
+    <text font-size="12" fill="#5F5E5A" x="340" y="348" text-anchor="middle">len(), is_empty()</text>
+    <text font-size="12" fill="#5F5E5A" x="340" y="368" text-anchor="middle">Display, Debug 출력</text>
+    <text font-size="12" fill="#5F5E5A" x="340" y="388" text-anchor="middle">for 루프: iter()</text>
+    <rect x="460" y="50" width="190" height="390" rx="14" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#633806" x="555" y="78" text-anchor="middle">&amp;mut self</text>
+    <text font-size="12" fill="#854F0B" x="555" y="96" text-anchor="middle">가변 빌림 (읽기+쓰기)</text>
+    <rect x="480" y="112" width="150" height="44" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#444441" x="555" y="132" text-anchor="middle">호출자</text>
+    <text font-size="12" fill="#5F5E5A" x="555" y="147" text-anchor="middle">mut s 소유 유지</text>
+    <path d="M555 156 Q520 175 480 192" fill="none" stroke="#854F0B" stroke-width="1.5" marker-end="url(#a3)"/>
+    <path d="M480 205 Q520 220 555 232" fill="none" stroke="#854F0B" stroke-width="1.5" marker-end="url(#a3)"/>
+    <text font-size="11" fill="#854F0B" x="493" y="190">가변 빌림</text>
+    <text font-size="11" fill="#854F0B" x="500" y="215">반환</text>
+    <rect x="480" y="195" width="150" height="44" rx="6" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#633806" x="555" y="215" text-anchor="middle">fn modify(&amp;mut self)</text>
+    <text font-size="12" fill="#854F0B" x="555" y="230" text-anchor="middle">읽기 + 쓰기 가능</text>
+    <rect x="480" y="255" width="150" height="36" rx="6" fill="none" stroke="#FAC775" stroke-width="0.5"/>
+    <text font-size="12" fill="#633806" x="555" y="278" text-anchor="middle">호출 후 s 계속 사용 가능 ✓</text>
+    <rect x="480" y="305" width="150" height="120" rx="6" fill="none" stroke="#D3D1C7" stroke-width="0.5"/>
+    <text font-size="12" fill="#5F5E5A" x="555" y="328" text-anchor="middle">사용 예:</text>
+    <text font-size="12" fill="#5F5E5A" x="555" y="348" text-anchor="middle">push(), pop()</text>
+    <text font-size="12" fill="#5F5E5A" x="555" y="368" text-anchor="middle">필드 값 변경</text>
+    <text font-size="12" fill="#5F5E5A" x="555" y="388" text-anchor="middle">for 루프: iter_mut()</text>
+    <text font-size="12" fill="#993C1D" x="125" y="458" text-anchor="middle">소유권 소비 — 신중하게!</text>
+    <text font-size="12" fill="#0F6E56" x="340" y="458" text-anchor="middle">가장 흔히 사용</text>
+    <text font-size="12" fill="#854F0B" x="555" y="458" text-anchor="middle">동시에 하나만!</text>
+    </svg>
+  </div>
+  <p class="svg-caption">그림 3. self / &amp;self / &amp;mut self 소유권 동작 비교</p>
+
+  <h3>실전 예제 — 빌더 패턴(self), 조회(&amp;self), 변경(&amp;mut self)</h3>
+  <pre><code><span class="kw">struct</span> <span class="ty">QueryBuilder</span> {
+    <span class="at">table</span>: <span class="ty">String</span>,
+    <span class="at">conditions</span>: <span class="ty">Vec</span><span class="op">&lt;</span><span class="ty">String</span><span class="op">&gt;</span>,
+    <span class="at">limit</span>: <span class="ty">Option</span><span class="op">&lt;</span><span class="ty">usize</span><span class="op">&gt;</span>,
+}
+
+<span class="kw">impl</span> <span class="ty">QueryBuilder</span> {
+    <span class="cm">// &amp;self — 읽기만</span>
+    <span class="kw">fn</span> <span class="fn_">table_name</span>(<span class="op">&amp;</span><span class="kw">self</span>) <span class="op">-&gt;</span> <span class="op">&amp;</span><span class="kw">str</span> { <span class="op">&amp;</span><span class="kw">self</span>.<span class="at">table</span> }
+    <span class="kw">fn</span> <span class="fn_">condition_count</span>(<span class="op">&amp;</span><span class="kw">self</span>) <span class="op">-&gt;</span> <span class="ty">usize</span> { <span class="kw">self</span>.<span class="at">conditions</span>.<span class="fn_">len</span>() }
+
+    <span class="cm">// &amp;mut self — 상태 변경, 호출 후에도 builder 사용 가능</span>
+    <span class="kw">fn</span> <span class="fn_">add_condition</span>(<span class="op">&amp;</span><span class="kw">mut</span> <span class="kw">self</span>, <span class="at">cond</span>: <span class="op">&amp;</span><span class="kw">str</span>) {
+        <span class="kw">self</span>.<span class="at">conditions</span>.<span class="fn_">push</span>(<span class="at">cond</span>.<span class="fn_">to_string</span>());
+    }
+    <span class="kw">fn</span> <span class="fn_">set_limit</span>(<span class="op">&amp;</span><span class="kw">mut</span> <span class="kw">self</span>, <span class="at">n</span>: <span class="ty">usize</span>) { <span class="kw">self</span>.<span class="at">limit</span> <span class="op">=</span> <span class="ty">Some</span>(<span class="at">n</span>); }
+
+    <span class="cm">// self — 소유권 소비, 최종 결과 생성 (빌더 패턴 끝)</span>
+    <span class="kw">fn</span> <span class="fn_">build</span>(<span class="kw">self</span>) <span class="op">-&gt;</span> <span class="ty">String</span> {
+        <span class="kw">let</span> <span class="at">where_clause</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">self</span>.<span class="at">conditions</span>.<span class="fn_">is_empty</span>() {
+            <span class="ty">String</span>::<span class="fn_">new</span>()
+        } <span class="kw2">else</span> {
+            <span class="mc">format!</span>(<span class="st">" WHERE {}"</span>, <span class="kw">self</span>.<span class="at">conditions</span>.<span class="fn_">join</span>(<span class="st">" AND "</span>))
+        };
+        <span class="kw">let</span> <span class="at">limit_clause</span> <span class="op">=</span> <span class="kw">self</span>.<span class="at">limit</span>
+            .<span class="fn_">map</span>(|<span class="at">n</span>| <span class="mc">format!</span>(<span class="st">" LIMIT {}"</span>, <span class="at">n</span>))
+            .<span class="fn_">unwrap_or_default</span>();
+        <span class="mc">format!</span>(<span class="st">"SELECT * FROM {}{}{}"</span>, <span class="kw">self</span>.<span class="at">table</span>, <span class="at">where_clause</span>, <span class="at">limit_clause</span>)
+    } <span class="cm">// self가 여기서 drop됨 — build() 이후 builder 사용 불가</span>
+}
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="kw">mut</span> <span class="at">qb</span> <span class="op">=</span> <span class="ty">QueryBuilder</span> {
+        <span class="at">table</span>: <span class="st">"users"</span>.<span class="fn_">to_string</span>(),
+        <span class="at">conditions</span>: <span class="mc">vec!</span>[],
+        <span class="at">limit</span>: <span class="ty">None</span>,
+    };
+
+    <span class="mc">println!</span>(<span class="st">"테이블: {}"</span>, <span class="at">qb</span>.<span class="fn_">table_name</span>()); <span class="cm">// &amp;self</span>
+    <span class="at">qb</span>.<span class="fn_">add_condition</span>(<span class="st">"age > 18"</span>);             <span class="cm">// &amp;mut self</span>
+    <span class="at">qb</span>.<span class="fn_">add_condition</span>(<span class="st">"active = true"</span>);          <span class="cm">// &amp;mut self</span>
+    <span class="at">qb</span>.<span class="fn_">set_limit</span>(<span class="nm">10</span>);                           <span class="cm">// &amp;mut self</span>
+    <span class="mc">println!</span>(<span class="st">"조건 수: {}"</span>, <span class="at">qb</span>.<span class="fn_">condition_count</span>()); <span class="cm">// &amp;self, 2</span>
+
+    <span class="kw">let</span> <span class="at">sql</span> <span class="op">=</span> <span class="at">qb</span>.<span class="fn_">build</span>(); <span class="cm">// self — qb 소비됨</span>
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="at">sql</span>);
+    <span class="cm">// SELECT * FROM users WHERE age > 18 AND active = true LIMIT 10</span>
+    <span class="cm">// println!("{}", qb.table_name()); // 에러! qb 이동됨</span>
+}</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     11. for 루프
+══════════════════════════════════════════════════════════ -->
+<section id="for-loop">
+  <h2><span class="sec-num">11</span> for 루프와 이터레이터 <a class="sec-ref" href="https://doc.rust-lang.org/book/ch13-02-iterators.html" target="_blank">공식 문서 →</a></h2>
+  <p class="section-lead"><code>for x in yyy</code>에서 <code>yyy</code>에 무엇을 쓰느냐가 소유권 동작을 결정합니다. <code>&amp;v</code>, <code>&amp;mut v</code>, <code>v</code> 세 가지는 각각 <code>iter()</code>, <code>iter_mut()</code>, <code>into_iter()</code>를 암묵적으로 호출합니다.</p>
+
+  <div class="svg-wrap">
+    <svg width="680" height="400" viewBox="0 0 680 400" xmlns="http://www.w3.org/2000/svg">
+    <defs><marker id="a4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#888780" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker><style>text{font-family:sans-serif;}</style></defs>
+    <rect x="220" y="20" width="240" height="50" rx="10" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#444441" x="340" y="44" text-anchor="middle">let mut v = vec![1, 2, 3]</text>
+    <text font-size="12" fill="#5F5E5A" x="340" y="60" text-anchor="middle">원본 Vec&lt;i32&gt;</text>
+    <rect x="20" y="110" width="190" height="250" rx="12" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#085041" x="115" y="138" text-anchor="middle">for x in &amp;v</text>
+    <text font-size="12" fill="#0F6E56" x="115" y="156" text-anchor="middle">v.iter() 호출</text>
+    <line x1="230" y1="70" x2="155" y2="108" stroke="#888780" stroke-width="1" marker-end="url(#a4)"/>
+    <rect x="40" y="170" width="150" height="36" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+    <text font-size="12" fill="#444441" x="115" y="192" text-anchor="middle">x: &amp;i32 (불변 참조)</text>
+    <rect x="40" y="218" width="150" height="120" rx="6" fill="none" stroke="#D3D1C7" stroke-width="0.5"/>
+    <text font-size="12" fill="#085041" x="115" y="244" text-anchor="middle">✓ v 루프 후 사용 가능</text>
+    <text font-size="12" fill="#085041" x="115" y="264" text-anchor="middle">✓ 읽기 전용</text>
+    <text font-size="12" fill="#5F5E5A" x="115" y="284" text-anchor="middle">println!("{}", x)</text>
+    <text font-size="12" fill="#5F5E5A" x="115" y="304" text-anchor="middle">또는 *x + 1</text>
+    <rect x="245" y="110" width="190" height="250" rx="12" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#633806" x="340" y="138" text-anchor="middle">for x in &amp;mut v</text>
+    <text font-size="12" fill="#854F0B" x="340" y="156" text-anchor="middle">v.iter_mut() 호출</text>
+    <line x1="340" y1="70" x2="340" y2="108" stroke="#888780" stroke-width="1" marker-end="url(#a4)"/>
+    <rect x="265" y="170" width="150" height="36" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+    <text font-size="12" fill="#444441" x="340" y="192" text-anchor="middle">x: &amp;mut i32 (가변 참조)</text>
+    <rect x="265" y="218" width="150" height="120" rx="6" fill="none" stroke="#D3D1C7" stroke-width="0.5"/>
+    <text font-size="12" fill="#085041" x="340" y="244" text-anchor="middle">✓ v 루프 후 사용 가능</text>
+    <text font-size="12" fill="#085041" x="340" y="264" text-anchor="middle">✓ 요소 수정 가능</text>
+    <text font-size="12" fill="#5F5E5A" x="340" y="284" text-anchor="middle">*x *= 2</text>
+    <text font-size="12" fill="#5F5E5A" x="340" y="304" text-anchor="middle">(역참조로 수정)</text>
+    <rect x="470" y="110" width="190" height="250" rx="12" fill="#FAECE7" stroke="#993C1D" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#712B13" x="555" y="138" text-anchor="middle">for x in v</text>
+    <text font-size="12" fill="#993C1D" x="555" y="156" text-anchor="middle">v.into_iter() 호출</text>
+    <line x1="450" y1="70" x2="515" y2="108" stroke="#888780" stroke-width="1" marker-end="url(#a4)"/>
+    <rect x="490" y="170" width="150" height="36" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+    <text font-size="12" fill="#444441" x="555" y="192" text-anchor="middle">x: i32 (소유권 이전)</text>
+    <rect x="490" y="218" width="150" height="120" rx="6" fill="none" stroke="#D3D1C7" stroke-width="0.5"/>
+    <text font-size="12" fill="#A32D2D" x="555" y="244" text-anchor="middle">✗ v 루프 후 사용 불가</text>
+    <text font-size="12" fill="#085041" x="555" y="264" text-anchor="middle">✓ 소유권 이전됨</text>
+    <text font-size="12" fill="#5F5E5A" x="555" y="284" text-anchor="middle">process(x)</text>
+    <text font-size="12" fill="#5F5E5A" x="555" y="304" text-anchor="middle">(x 직접 사용)</text>
+    <rect x="20" y="372" width="640" height="22" rx="6" fill="none" stroke="#D3D1C7" stroke-width="0.5"/>
+    <text font-size="12" fill="#5F5E5A" x="340" y="387" text-anchor="middle">읽기만? → &amp;v (iter)   |   수정? → &amp;mut v (iter_mut)   |   소비? → v (into_iter)</text>
+    </svg>
+  </div>
+  <p class="svg-caption">그림 4. iter / iter_mut / into_iter 소유권 비교</p>
+
+  <pre><code><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="kw">mut</span> <span class="at">v</span> <span class="op">=</span> <span class="mc">vec!</span>[<span class="nm">10</span>, <span class="nm">20</span>, <span class="nm">30</span>, <span class="nm">40</span>];
+
+    <span class="cm">// &amp;v → iter() → x: &amp;i32 — v 유효 유지</span>
+    <span class="kw">let</span> <span class="at">sum</span>: <span class="ty">i32</span> <span class="op">=</span> <span class="at">v</span>.<span class="fn_">iter</span>().<span class="fn_">filter</span>(|<span class="op">&&</span><span class="at">x</span>| <span class="at">x</span> <span class="op">&gt;</span> <span class="nm">15</span>).<span class="fn_">sum</span>();
+    <span class="mc">println!</span>(<span class="st">"15 초과 합계: {}, v: {:?}"</span>, <span class="at">sum</span>, <span class="at">v</span>); <span class="cm">// v 여전히 유효</span>
+
+    <span class="cm">// &amp;mut v → iter_mut() → x: &amp;mut i32 — 요소 수정</span>
+    <span class="kw">for</span> <span class="at">x</span> <span class="kw2">in</span> <span class="op">&amp;</span><span class="kw">mut</span> <span class="at">v</span> { <span class="op">*</span><span class="at">x</span> <span class="op">*=</span> <span class="nm">2</span>; }
+    <span class="mc">println!</span>(<span class="st">"두 배: {:?}"</span>, <span class="at">v</span>); <span class="cm">// [20, 40, 60, 80]</span>
+
+    <span class="cm">// v → into_iter() → x: i32 — v 소비</span>
+    <span class="kw">let</span> <span class="at">big</span>: <span class="ty">Vec</span><span class="op">&lt;</span><span class="ty">i32</span><span class="op">&gt;</span> <span class="op">=</span> <span class="at">v</span>.<span class="fn_">into_iter</span>().<span class="fn_">filter</span>(|<span class="op">&amp;</span><span class="at">x</span>| <span class="at">x</span> <span class="op">&gt;</span> <span class="nm">40</span>).<span class="fn_">collect</span>();
+    <span class="mc">println!</span>(<span class="st">"40 초과: {:?}"</span>, <span class="at">big</span>); <span class="cm">// [60, 80]</span>
+    <span class="cm">// println!("{:?}", v); // 에러! v는 into_iter()로 소비됨</span>
+
+    <span class="cm">// HashMap도 동일 패턴</span>
+    <span class="kw">use</span> std::collections::<span class="ty">HashMap</span>;
+    <span class="kw">let</span> <span class="kw">mut</span> <span class="at">scores</span>: <span class="ty">HashMap</span><span class="op">&lt;</span><span class="ty">String</span>, <span class="ty">i32</span><span class="op">&gt;</span> <span class="op">=</span>
+        [(<span class="st">"Alice"</span>, <span class="nm">95</span>), (<span class="st">"Bob"</span>, <span class="nm">87</span>), (<span class="st">"Carol"</span>, <span class="nm">92</span>)]
+        .<span class="fn_">iter</span>().<span class="fn_">map</span>(|(<span class="at">k</span>, <span class="at">v</span>)| (<span class="at">k</span>.<span class="fn_">to_string</span>(), <span class="op">*</span><span class="at">v</span>)).<span class="fn_">collect</span>();
+
+    <span class="kw">for</span> (<span class="at">name</span>, <span class="at">score</span>) <span class="kw2">in</span> <span class="op">&amp;</span><span class="at">scores</span> {      <span class="cm">// &amp;HashMap: (k,v) 참조</span>
+        <span class="mc">println!</span>(<span class="st">"{}: {}"</span>, <span class="at">name</span>, <span class="at">score</span>);
+    }
+    <span class="kw">for</span> (<span class="at">_</span>, <span class="at">score</span>) <span class="kw2">in</span> <span class="op">&amp;</span><span class="kw">mut</span> <span class="at">scores</span> {    <span class="cm">// &amp;mut HashMap: 값 수정</span>
+        <span class="op">*</span><span class="at">score</span> <span class="op">+=</span> <span class="nm">5</span>;
+    }
+    <span class="mc">println!</span>(<span class="st">"{:?}"</span>, <span class="at">scores</span>); <span class="cm">// 모두 +5</span>
+}</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     12. 빌림 규칙과 NLL
+══════════════════════════════════════════════════════════ -->
+<section id="borrow-rules">
+  <h2><span class="sec-num">12</span> 빌림 규칙과 NLL <a class="sec-ref" href="https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html" target="_blank">공식 문서 →</a></h2>
+  <p class="section-lead">빌림 검사기(borrow checker)는 컴파일 타임에 메모리 안전성을 보장합니다. 두 가지 핵심 규칙과 Rust 2018+에서 도입된 NLL(Non-Lexical Lifetimes)을 이해하면 컴파일 에러를 예측하고 해결할 수 있습니다.</p>
+
+  <div class="callout info">
+    <strong>빌림 규칙 (The Rust Reference, Ch.10.3)</strong><br>
+    R1. 불변 참조(<code>&amp;T</code>)는 동시에 개수 제한 없이 존재 가능<br>
+    R2. 가변 참조(<code>&amp;mut T</code>)는 <strong>딱 하나만</strong> 존재 가능<br>
+    R3. 가변 참조가 살아있는 동안 불변 참조도 불가 (R1과 R2 동시 불가)
+  </div>
+
+  <div class="svg-wrap">
+    <svg width="680" height="560" viewBox="0 0 680 560" xmlns="http://www.w3.org/2000/svg">
+    <defs><marker id="a5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#888780" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker><style>text{font-family:sans-serif;}</style></defs>
+    <text font-size="15" font-weight="600" fill="#2C2C2A" x="340" y="28" text-anchor="middle">빌림 규칙 — 스코프 타임라인</text>
+    <rect x="30" y="44" width="620" height="54" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+    <text font-size="13" font-weight="600" fill="#085041" x="340" y="66" text-anchor="middle">R1: &amp;T (불변) 는 동시에 여러 개 가능</text>
+    <text font-size="13" font-weight="600" fill="#712B13" x="340" y="86" text-anchor="middle">R2: &amp;mut T (가변) 는 딱 하나만, 그 동안 &amp;T 도 불가</text>
+    <text font-size="13" font-weight="600" fill="#085041" x="30" y="126">케이스 1: 불변 참조 여러 개 → OK</text>
+    <rect x="580" y="112" width="90" height="22" rx="11" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+    <text font-size="11" font-weight="600" fill="#085041" x="625" y="127" text-anchor="middle">컴파일 OK</text>
+    <line x1="30" y1="155" x2="650" y2="155" stroke="#B4B2A9" stroke-width="0.5" marker-end="url(#a5)"/>
+    <text font-size="11" fill="#888780" x="30" y="148">시간 →</text>
+    <rect x="100" y="162" width="520" height="16" rx="3" fill="#1D9E75" opacity="0.2"/>
+    <text font-size="11" fill="#085041" x="105" y="174">s 소유</text>
+    <rect x="160" y="180" width="200" height="16" rx="3" fill="#185FA5" opacity="0.25"/>
+    <text font-size="11" fill="#0C447C" x="165" y="192">r1: &amp;String</text>
+    <rect x="210" y="198" width="220" height="16" rx="3" fill="#185FA5" opacity="0.25"/>
+    <text font-size="11" fill="#0C447C" x="215" y="210">r2: &amp;String (동시 활성 → OK)</text>
+    <text font-size="11" fill="#5F5E5A" x="30" y="175">let s</text>
+    <text font-size="11" fill="#5F5E5A" x="30" y="192">r1 = &amp;s</text>
+    <text font-size="11" fill="#5F5E5A" x="30" y="210">r2 = &amp;s</text>
+    <text font-size="13" font-weight="600" fill="#A32D2D" x="30" y="248">케이스 2: 가변 활성 중 불변 → 에러</text>
+    <rect x="556" y="234" width="114" height="22" rx="11" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+    <text font-size="11" font-weight="600" fill="#A32D2D" x="613" y="249" text-anchor="middle">컴파일 에러</text>
+    <line x1="30" y1="275" x2="650" y2="275" stroke="#B4B2A9" stroke-width="0.5" marker-end="url(#a5)"/>
+    <text font-size="11" fill="#888780" x="30" y="268">시간 →</text>
+    <rect x="110" y="282" width="510" height="16" rx="3" fill="#1D9E75" opacity="0.2"/>
+    <rect x="185" y="300" width="280" height="16" rx="3" fill="#E24B4A" opacity="0.25"/>
+    <text font-size="11" fill="#A32D2D" x="190" y="312">w: &amp;mut String (활성)</text>
+    <rect x="340" y="318" width="160" height="16" rx="3" fill="none" stroke="#E24B4A" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text font-size="11" fill="#A32D2D" x="345" y="330">불가 — w 살아있음!</text>
+    <line x1="340" y1="314" x2="340" y2="342" stroke="#E24B4A" stroke-width="2" opacity="0.7"/>
+    <text font-size="11" fill="#5F5E5A" x="30" y="295">let mut s</text>
+    <text font-size="11" fill="#5F5E5A" x="30" y="312">w = &amp;mut s</text>
+    <text font-size="11" fill="#A32D2D" x="30" y="330">r = &amp;s ?</text>
+    <text font-size="13" font-weight="600" fill="#085041" x="30" y="370">케이스 3: 스코프 분리 → OK</text>
+    <rect x="580" y="356" width="90" height="22" rx="11" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+    <text font-size="11" font-weight="600" fill="#085041" x="625" y="371" text-anchor="middle">컴파일 OK</text>
+    <line x1="30" y1="400" x2="650" y2="400" stroke="#B4B2A9" stroke-width="0.5" marker-end="url(#a5)"/>
+    <text font-size="11" fill="#888780" x="30" y="393">시간 →</text>
+    <rect x="110" y="406" width="510" height="16" rx="3" fill="#1D9E75" opacity="0.2"/>
+    <rect x="160" y="424" width="160" height="16" rx="3" fill="#E24B4A" opacity="0.25"/>
+    <text font-size="11" fill="#A32D2D" x="165" y="436">w: &amp;mut</text>
+    <line x1="322" y1="420" x2="322" y2="448" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="3 3"/>
+    <text font-size="11" fill="#888780" x="324" y="438">w 드롭</text>
+    <rect x="340" y="442" width="200" height="16" rx="3" fill="#185FA5" opacity="0.25"/>
+    <text font-size="11" fill="#0C447C" x="345" y="454">r: &amp;String (OK!)</text>
+    <text font-size="11" fill="#5F5E5A" x="30" y="418">let mut s</text>
+    <text font-size="11" fill="#5F5E5A" x="30" y="436">{ w = &amp;mut s }</text>
+    <text font-size="11" fill="#5F5E5A" x="30" y="454">r = &amp;s</text>
+    <text font-size="13" font-weight="600" fill="#085041" x="30" y="490">케이스 4: NLL — 마지막 사용 시점이 수명 끝</text>
+    <rect x="556" y="476" width="114" height="22" rx="11" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+    <text font-size="11" font-weight="600" fill="#085041" x="613" y="491" text-anchor="middle">NLL OK</text>
+    <rect x="110" y="506" width="510" height="16" rx="3" fill="#1D9E75" opacity="0.2"/>
+    <rect x="160" y="524" width="160" height="16" rx="3" fill="#185FA5" opacity="0.25"/>
+    <text font-size="11" fill="#0C447C" x="165" y="536">r: &amp;String</text>
+    <line x1="322" y1="520" x2="322" y2="548" stroke="#0C447C" stroke-width="1" stroke-dasharray="3 3"/>
+    <text font-size="11" fill="#0C447C" x="324" y="536">NLL 끝</text>
+    <rect x="340" y="524" width="140" height="16" rx="3" fill="#E24B4A" opacity="0.25"/>
+    <text font-size="11" fill="#A32D2D" x="345" y="536">w: &amp;mut (OK!)</text>
+    <text font-size="11" fill="#5F5E5A" x="30" y="518">let s</text>
+    <text font-size="11" fill="#5F5E5A" x="30" y="536">r = &amp;s</text>
+    <text font-size="12" fill="#085041" x="340" y="556" text-anchor="middle">r의 마지막 사용 후 → &amp;mut 가능 (NLL)</text>
+    </svg>
+  </div>
+  <p class="svg-caption">그림 5. 빌림 규칙 스코프 타임라인 — 케이스 1~4</p>
+
+  <h3>NLL (Non-Lexical Lifetimes) 란?</h3>
+  <p>Rust 2018 이전에는 참조의 수명이 <strong>중괄호 블록 끝</strong>까지였습니다. Rust 2018+의 NLL은 <strong>마지막으로 사용된 시점</strong>이 수명 끝입니다. 덕분에 불필요한 블록 중첩 없이 더 자연스러운 코드를 작성할 수 있습니다.</p>
+
+  <pre><code><span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="kw">mut</span> <span class="at">v</span> <span class="op">=</span> <span class="mc">vec!</span>[<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>];
+
+    <span class="cm">// NLL 덕분에 가능한 패턴</span>
+    <span class="kw">let</span> <span class="at">first</span> <span class="op">=</span> <span class="op">&amp;</span><span class="at">v</span>[<span class="nm">0</span>];          <span class="cm">// 불변 참조 시작</span>
+    <span class="mc">println!</span>(<span class="st">"first = {}"</span>, <span class="at">first</span>); <span class="cm">// ← NLL: first의 수명 끝</span>
+    <span class="at">v</span>.<span class="fn_">push</span>(<span class="nm">4</span>);                  <span class="cm">// OK! first 수명이 이미 끝남</span>
+    <span class="mc">println!</span>(<span class="st">"{:?}"</span>, <span class="at">v</span>);        <span class="cm">// [1, 2, 3, 4]</span>
+
+    <span class="cm">// Rust 2015 스타일 (NLL 이전): 불필요한 블록 필요</span>
+    <span class="cm">// { let first = &amp;v[0]; println!("{}", first); }</span>
+    <span class="cm">// v.push(4);</span>
+
+    <span class="cm">// 컴파일 에러 케이스 — 에러 메시지 포함</span>
+    <span class="kw">let</span> <span class="kw">mut</span> <span class="at">s</span> <span class="op">=</span> <span class="ty">String</span>::<span class="fn_">from</span>(<span class="st">"hello"</span>);
+    <span class="kw">let</span> <span class="at">r1</span> <span class="op">=</span> <span class="op">&amp;</span><span class="at">s</span>;
+    <span class="kw">let</span> <span class="at">r2</span> <span class="op">=</span> <span class="op">&amp;</span><span class="at">s</span>;
+    <span class="mc">println!</span>(<span class="st">"{} {}"</span>, <span class="at">r1</span>, <span class="at">r2</span>); <span class="cm">// r1, r2 수명 끝</span>
+    <span class="kw">let</span> <span class="at">r3</span> <span class="op">=</span> <span class="op">&amp;</span><span class="kw">mut</span> <span class="at">s</span>;           <span class="cm">// OK! r1, r2 이미 끝남</span>
+    <span class="mc">println!</span>(<span class="st">"{}"</span>, <span class="at">r3</span>);
+}</code></pre>
+
+  <pre class="error-block"><code>error[E0502]: cannot borrow `s` as mutable because it is also borrowed as immutable
+  --> src/main.rs:5:14
+   |
+3  |     let r1 = &amp;s;
+   |              -- immutable borrow occurs here
+4  |     let r2 = &amp;s;
+5  |     let r3 = &amp;mut s;  // 만약 r1, r2 이후에 println 없이 바로 쓰면
+   |              ^^^^^^ mutable borrow occurs here
+6  |     println!("{} {}", r1, r2); // r1이 여기서도 살아있다면 에러</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     13. RefCell 런타임 검사
+══════════════════════════════════════════════════════════ -->
+<section id="refcell-runtime">
+  <h2><span class="sec-num">13</span> RefCell 런타임 빌림 검사 — 전체 케이스 <a class="sec-ref" href="https://doc.rust-lang.org/std/cell/struct.RefCell.html" target="_blank">공식 문서 →</a></h2>
+  <p class="section-lead">RefCell은 동일한 빌림 규칙을 컴파일 타임 대신 런타임에 검사합니다. <code>borrow()</code>와 <code>borrow_mut()</code>의 실패 조건, 그리고 패닉 없이 처리하는 <code>try_borrow</code> 방법을 완전히 정리합니다.</p>
+
+  <pre><code><span class="kw">use</span> std::cell::<span class="ty">RefCell</span>;
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="at">cell</span> <span class="op">=</span> <span class="ty">RefCell</span>::<span class="fn_">new</span>(<span class="mc">vec!</span>[<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>]);
+
+    <span class="cm">// ── 케이스 1: 불변 빌림 여러 개 동시 → OK ──</span>
+    {
+        <span class="kw">let</span> <span class="at">r1</span> <span class="op">=</span> <span class="at">cell</span>.<span class="fn_">borrow</span>(); <span class="cm">// BorrowFlag: 0 → 1</span>
+        <span class="kw">let</span> <span class="at">r2</span> <span class="op">=</span> <span class="at">cell</span>.<span class="fn_">borrow</span>(); <span class="cm">// BorrowFlag: 1 → 2</span>
+        <span class="mc">println!</span>(<span class="st">"동시 불변: {:?}, {:?}"</span>, <span class="op">*</span><span class="at">r1</span>, <span class="op">*</span><span class="at">r2</span>);
+    } <span class="cm">// r2 drop(2→1), r1 drop(1→0)</span>
+
+    <span class="cm">// ── 케이스 2: 가변 빌림 하나 → OK ──</span>
+    {
+        <span class="kw">let</span> <span class="kw">mut</span> <span class="at">w</span> <span class="op">=</span> <span class="at">cell</span>.<span class="fn_">borrow_mut</span>(); <span class="cm">// flag: 0 → -1 (가변)</span>
+        <span class="at">w</span>.<span class="fn_">push</span>(<span class="nm">4</span>);
+        <span class="at">w</span>.<span class="fn_">retain</span>(|<span class="op">&amp;</span><span class="at">x</span>| <span class="at">x</span> <span class="op">%</span> <span class="nm">2</span> <span class="op">==</span> <span class="nm">0</span>); <span class="cm">// 짝수만 남김</span>
+    } <span class="cm">// w drop: flag → 0</span>
+    <span class="mc">println!</span>(<span class="st">"짝수만: {:?}"</span>, <span class="at">cell</span>.<span class="fn_">borrow</span>()); <span class="cm">// [2, 4]</span>
+
+    <span class="cm">// ── 케이스 3: 불변 중 가변 시도 → PANIC (borrow_mut)</span>
+    <span class="cm">//    try_borrow_mut으로 안전하게 처리 ──</span>
+    <span class="kw">let</span> <span class="at">_guard</span> <span class="op">=</span> <span class="at">cell</span>.<span class="fn_">borrow</span>(); <span class="cm">// 불변 빌림 활성</span>
+    <span class="kw">match</span> <span class="at">cell</span>.<span class="fn_">try_borrow_mut</span>() {
+        <span class="ok_">Ok</span>(<span class="kw">mut</span> <span class="at">w</span>) <span class="op">=&gt;</span> <span class="at">w</span>.<span class="fn_">push</span>(<span class="nm">99</span>),
+        <span class="err_">Err</span>(<span class="at">e</span>) <span class="op">=&gt;</span> <span class="mc">println!</span>(<span class="st">"패닉 없이 처리: {}"</span>, <span class="at">e</span>),
+        <span class="cm">// "already borrowed: BorrowMutError"</span>
+    }
+    <span class="fn_">drop</span>(<span class="at">_guard</span>); <span class="cm">// 명시적 해제</span>
+
+    <span class="cm">// ── 케이스 4: 가변 중 가변 시도 → PANIC ──</span>
+    <span class="kw">let</span> <span class="at">_w1</span> <span class="op">=</span> <span class="at">cell</span>.<span class="fn_">borrow_mut</span>();
+    <span class="kw">match</span> <span class="at">cell</span>.<span class="fn_">try_borrow_mut</span>() {
+        <span class="ok_">Ok</span>(<span class="at">_</span>)  <span class="op">=&gt;</span> <span class="mc">println!</span>(<span class="st">"가변 빌림 성공"</span>),
+        <span class="err_">Err</span>(<span class="at">e</span>) <span class="op">=&gt;</span> <span class="mc">println!</span>(<span class="st">"이미 가변 빌림 중: {}"</span>, <span class="at">e</span>),
+    }
+}</code></pre>
+
+  <div class="table-wrap">
+  <table>
+    <tr><th>현재 상태</th><th>borrow() 호출</th><th>borrow_mut() 호출</th></tr>
+    <tr><td>빌림 없음 (flag=0)</td><td class="ok">OK (flag +1)</td><td class="ok">OK (flag=-1)</td></tr>
+    <tr><td>불변 빌림 N개 (flag&gt;0)</td><td class="ok">OK (flag +1)</td><td class="bad">PANIC: already borrowed</td></tr>
+    <tr><td>가변 빌림 1개 (flag&lt;0)</td><td class="bad">PANIC: already mutably borrowed</td><td class="bad">PANIC: already mutably borrowed</td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     14. RefCell이 필요한 이유
+══════════════════════════════════════════════════════════ -->
+<section id="why-refcell">
+  <h2><span class="sec-num">14</span> RefCell이 필요한 이유 — 구조적 불가능</h2>
+  <p class="section-lead"><code>&amp;mut</code>으로 충분한데 왜 RefCell을 쓰나? — <strong>컴파일러가 &amp;mut을 발급할 수 없는 두 가지 구조적 상황</strong>이 있기 때문입니다.</p>
+
+  <div class="svg-wrap">
+    <svg width="680" height="560" viewBox="0 0 680 560" xmlns="http://www.w3.org/2000/svg">
+    <defs><marker id="a6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#888780" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker><style>text{font-family:sans-serif;}</style></defs>
+    <rect x="30" y="20" width="295" height="34" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#712B13" x="177" y="37" text-anchor="middle" dominant-baseline="central">상황 1: Rc&lt;T&gt; 공유 중</text>
+    <rect x="355" y="20" width="295" height="34" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#3C3489" x="502" y="37" text-anchor="middle" dominant-baseline="central">상황 2: &amp;self 메서드 안</text>
+    <line x1="340" y1="15" x2="340" y2="545" stroke="#D3D1C7" stroke-width="0.5" stroke-dasharray="4 3"/>
+    <rect x="30" y="72" width="120" height="44" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#444441" x="90" y="90" text-anchor="middle" dominant-baseline="central">소유자 A</text>
+    <text font-size="12" fill="#5F5E5A" x="90" y="106" text-anchor="middle" dominant-baseline="central">Rc::clone()</text>
+    <rect x="205" y="72" width="120" height="44" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#444441" x="265" y="90" text-anchor="middle" dominant-baseline="central">소유자 B</text>
+    <text font-size="12" fill="#5F5E5A" x="265" y="106" text-anchor="middle" dominant-baseline="central">Rc::clone()</text>
+    <rect x="95" y="148" width="165" height="52" rx="6" fill="#FAECE7" stroke="#993C1D" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#712B13" x="177" y="168" text-anchor="middle" dominant-baseline="central">힙: 데이터</text>
+    <text font-size="12" fill="#993C1D" x="177" y="186" text-anchor="middle" dominant-baseline="central">ref_count = 2</text>
+    <line x1="120" y1="116" x2="155" y2="146" stroke="#993C1D" stroke-width="1" marker-end="url(#a6)"/>
+    <line x1="235" y1="116" x2="200" y2="146" stroke="#993C1D" stroke-width="1" marker-end="url(#a6)"/>
+    <rect x="48" y="222" width="260" height="52" rx="6" fill="none" stroke="#E24B4A" stroke-width="1" stroke-dasharray="5 3"/>
+    <text font-size="12" fill="#A32D2D" x="177" y="244" text-anchor="middle">A.get_mut() → None (소유자 2명)</text>
+    <text font-size="12" fill="#A32D2D" x="177" y="261" text-anchor="middle">직접 &amp;mut 참조 불가</text>
+    <text font-size="12" fill="#A32D2D" x="177" y="278" text-anchor="middle">Rc는 DerefMut 미구현</text>
+    <rect x="48" y="308" width="260" height="52" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#085041" x="177" y="328" text-anchor="middle" dominant-baseline="central">Rc&lt;RefCell&lt;T&gt;&gt;</text>
+    <text font-size="12" fill="#0F6E56" x="177" y="346" text-anchor="middle" dominant-baseline="central">런타임 검사로 우회 → 가능!</text>
+    <line x1="177" y1="278" x2="177" y2="306" stroke="#1D9E75" stroke-width="1.5" marker-end="url(#a6)"/>
+    <text font-size="11" fill="#085041" x="190" y="298">해결</text>
+    <rect x="355" y="72" width="295" height="44" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+    <text font-size="13" font-weight="600" fill="#444441" x="502" y="90" text-anchor="middle" dominant-baseline="central">fn query(&amp;self) -&gt; i32</text>
+    <text font-size="12" fill="#5F5E5A" x="502" y="106" text-anchor="middle" dominant-baseline="central">시그니처는 &amp;self (불변)</text>
+    <rect x="370" y="136" width="265" height="70" rx="6" fill="none" stroke="#D3D1C7" stroke-width="0.5"/>
+    <text font-size="12" fill="#5F5E5A" x="502" y="158" text-anchor="middle">결과를 캐시에 저장하고 싶음</text>
+    <text font-size="12" fill="#5F5E5A" x="502" y="176" text-anchor="middle">but &amp;self 안에서</text>
+    <text font-size="12" fill="#A32D2D" x="502" y="194" text-anchor="middle">self.cache = ... 불가!</text>
+    <rect x="370" y="226" width="265" height="52" rx="6" fill="none" stroke="#E24B4A" stroke-width="1" stroke-dasharray="5 3"/>
+    <text font-size="12" fill="#A32D2D" x="502" y="248" text-anchor="middle">&amp;self로는 필드 수정 불가</text>
+    <text font-size="12" fill="#A32D2D" x="502" y="264" text-anchor="middle">"cannot assign to self.cache"</text>
+    <rect x="370" y="298" width="265" height="62" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+    <text font-size="14" font-weight="600" fill="#3C3489" x="502" y="318" text-anchor="middle" dominant-baseline="central">cache: RefCell&lt;Option&lt;i32&gt;&gt;</text>
+    <text font-size="12" fill="#534AB7" x="502" y="338" text-anchor="middle" dominant-baseline="central">&amp;self에서 borrow_mut() 가능!</text>
+    <text font-size="12" fill="#534AB7" x="502" y="352" text-anchor="middle" dominant-baseline="central">외부에는 불변으로 보임</text>
+    <line x1="502" y1="278" x2="502" y2="296" stroke="#534AB7" stroke-width="1.5" marker-end="url(#a6)"/>
+    <rect x="30" y="505" width="620" height="35" rx="8" fill="none" stroke="#D3D1C7" stroke-width="0.5"/>
+    <text font-size="12" fill="#5F5E5A" x="340" y="527" text-anchor="middle">핵심: &amp;mut을 컴파일러가 줄 수 없는 구조적 상황 → RefCell로 책임을 런타임으로 이전</text>
+    </svg>
+  </div>
+  <p class="svg-caption">그림 6. RefCell이 필요한 두 가지 상황</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     15. 실전 패턴
+══════════════════════════════════════════════════════════ -->
+<section id="patterns">
+  <h2><span class="sec-num">15</span> 실전 패턴 모음</h2>
+  <p class="section-lead">지금까지 배운 개념들을 실제 코드에서 어떻게 조합하는지 보여주는 완성형 예제들입니다.</p>
+
+  <h3>패턴 1 — 공유 카운터 (멀티 소유자 + 변경)</h3>
+  <pre><code><span class="kw">use</span> std::rc::<span class="ty">Rc</span>;
+<span class="kw">use</span> std::cell::<span class="ty">RefCell</span>;
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="at">counter</span> <span class="op">=</span> <span class="ty">Rc</span>::<span class="fn_">new</span>(<span class="ty">RefCell</span>::<span class="fn_">new</span>(<span class="nm">0</span>));
+
+    <span class="kw">let</span> <span class="at">workers</span>: <span class="ty">Vec</span><span class="op">&lt;</span><span class="ty">_</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="nm">0</span><span class="op">..</span><span class="nm">5</span>).<span class="fn_">map</span>(|<span class="at">i</span>| {
+        <span class="kw">let</span> <span class="at">c</span> <span class="op">=</span> <span class="ty">Rc</span>::<span class="fn_">clone</span>(<span class="op">&amp;</span><span class="at">counter</span>);
+        <span class="kw">move</span> || {
+            <span class="op">*</span><span class="at">c</span>.<span class="fn_">borrow_mut</span>() <span class="op">+=</span> <span class="nm">1</span>;
+            <span class="mc">println!</span>(<span class="st">"worker {} 완료, count={}"</span>, <span class="at">i</span>, <span class="at">c</span>.<span class="fn_">borrow</span>());
+        }
+    }).<span class="fn_">collect</span>();
+
+    <span class="kw">for</span> <span class="at">w</span> <span class="kw2">in</span> <span class="at">workers</span> { <span class="at">w</span>(); }
+    <span class="mc">println!</span>(<span class="st">"최종: {}"</span>, <span class="at">counter</span>.<span class="fn_">borrow</span>()); <span class="cm">// 5</span>
+}</code></pre>
+
+  <h3>패턴 2 — 레이지 초기화 (내부 가변성)</h3>
+  <pre><code><span class="kw">use</span> std::cell::<span class="ty">RefCell</span>;
+
+<span class="kw">struct</span> <span class="ty">ExpensiveConfig</span> {
+    <span class="at">raw</span>: <span class="ty">String</span>,
+    <span class="at">parsed</span>: <span class="ty">RefCell</span><span class="op">&lt;</span><span class="ty">Option</span><span class="op">&lt;</span><span class="ty">Vec</span><span class="op">&lt;</span><span class="ty">String</span><span class="op">&gt;&gt;&gt;</span>,
+}
+
+<span class="kw">impl</span> <span class="ty">ExpensiveConfig</span> {
+    <span class="kw">fn</span> <span class="fn_">new</span>(<span class="at">raw</span>: <span class="op">&amp;</span><span class="kw">str</span>) <span class="op">-&gt;</span> <span class="ty">Self</span> {
+        <span class="ty">ExpensiveConfig</span> {
+            <span class="at">raw</span>: <span class="at">raw</span>.<span class="fn_">to_string</span>(),
+            <span class="at">parsed</span>: <span class="ty">RefCell</span>::<span class="fn_">new</span>(<span class="ty">None</span>),
+        }
+    }
+
+    <span class="cm">// &amp;self 이지만 첫 호출 시 캐시를 채움</span>
+    <span class="kw">fn</span> <span class="fn_">items</span>(<span class="op">&amp;</span><span class="kw">self</span>) <span class="op">-&gt;</span> <span class="ty">Vec</span><span class="op">&lt;</span><span class="ty">String</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="kw">self</span>.<span class="at">parsed</span>.<span class="fn_">borrow</span>().<span class="fn_">is_none</span>() {
+            <span class="cm">// 무거운 파싱 작업 (한 번만 실행)</span>
+            <span class="kw">let</span> <span class="at">result</span>: <span class="ty">Vec</span><span class="op">&lt;</span><span class="ty">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">self</span>.<span class="at">raw</span>
+                .<span class="fn_">split</span>(<span class="st">','</span>)
+                .<span class="fn_">map</span>(|<span class="at">s</span>| <span class="at">s</span>.<span class="fn_">trim</span>().<span class="fn_">to_string</span>())
+                .<span class="fn_">collect</span>();
+            <span class="mc">println!</span>(<span class="st">"파싱 완료 ({} 항목)"</span>, <span class="at">result</span>.<span class="fn_">len</span>());
+            <span class="op">*</span><span class="kw">self</span>.<span class="at">parsed</span>.<span class="fn_">borrow_mut</span>() <span class="op">=</span> <span class="ty">Some</span>(<span class="at">result</span>);
+        }
+        <span class="kw">self</span>.<span class="at">parsed</span>.<span class="fn_">borrow</span>().<span class="fn_">clone</span>().<span class="fn_">unwrap</span>()
+    }
+}
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="at">cfg</span> <span class="op">=</span> <span class="ty">ExpensiveConfig</span>::<span class="fn_">new</span>(<span class="st">"alpha, beta, gamma, delta"</span>);
+    <span class="mc">println!</span>(<span class="st">"{:?}"</span>, <span class="at">cfg</span>.<span class="fn_">items</span>()); <span class="cm">// 파싱 완료 (4 항목)</span>
+    <span class="mc">println!</span>(<span class="st">"{:?}"</span>, <span class="at">cfg</span>.<span class="fn_">items</span>()); <span class="cm">// 파싱 없이 캐시에서</span>
+    <span class="mc">println!</span>(<span class="st">"첫 번째: {}"</span>, <span class="at">cfg</span>.<span class="fn_">items</span>()[<span class="nm">0</span>]);
+}</code></pre>
+
+  <h3>패턴 3 — 방향 그래프 (Rc + RefCell + Weak)</h3>
+  <pre><code><span class="kw">use</span> std::rc::{<span class="ty">Rc</span>, <span class="ty">Weak</span>};
+<span class="kw">use</span> std::cell::<span class="ty">RefCell</span>;
+
+<span class="kw">type</span> <span class="ty">NodeRef</span> <span class="op">=</span> <span class="ty">Rc</span><span class="op">&lt;</span><span class="ty">RefCell</span><span class="op">&lt;</span><span class="ty">GraphNode</span><span class="op">&gt;&gt;</span>;
+
+<span class="kw">struct</span> <span class="ty">GraphNode</span> {
+    <span class="at">id</span>: <span class="ty">usize</span>,
+    <span class="at">label</span>: <span class="ty">String</span>,
+    <span class="at">outgoing</span>: <span class="ty">Vec</span><span class="op">&lt;</span><span class="ty">NodeRef</span><span class="op">&gt;</span>,           <span class="cm">// 강한 참조 (소유)</span>
+    <span class="at">incoming</span>: <span class="ty">Vec</span><span class="op">&lt;</span><span class="ty">Weak</span><span class="op">&lt;</span><span class="ty">RefCell</span><span class="op">&lt;</span><span class="ty">GraphNode</span><span class="op">&gt;&gt;&gt;</span>, <span class="cm">// 약한 참조 (순환 방지)</span>
+}
+
+<span class="kw">impl</span> <span class="ty">GraphNode</span> {
+    <span class="kw">fn</span> <span class="fn_">new</span>(<span class="at">id</span>: <span class="ty">usize</span>, <span class="at">label</span>: <span class="op">&amp;</span><span class="kw">str</span>) <span class="op">-&gt;</span> <span class="ty">NodeRef</span> {
+        <span class="ty">Rc</span>::<span class="fn_">new</span>(<span class="ty">RefCell</span>::<span class="fn_">new</span>(<span class="ty">GraphNode</span> {
+            <span class="at">id</span>, <span class="at">label</span>: <span class="at">label</span>.<span class="fn_">to_string</span>(),
+            <span class="at">outgoing</span>: <span class="mc">vec!</span>[], <span class="at">incoming</span>: <span class="mc">vec!</span>[],
+        }))
+    }
+
+    <span class="kw">fn</span> <span class="fn_">connect</span>(<span class="at">from</span>: <span class="op">&amp;</span><span class="ty">NodeRef</span>, <span class="at">to</span>: <span class="op">&amp;</span><span class="ty">NodeRef</span>) {
+        <span class="at">from</span>.<span class="fn_">borrow_mut</span>().<span class="at">outgoing</span>.<span class="fn_">push</span>(<span class="ty">Rc</span>::<span class="fn_">clone</span>(<span class="at">to</span>));
+        <span class="at">to</span>.<span class="fn_">borrow_mut</span>().<span class="at">incoming</span>.<span class="fn_">push</span>(<span class="ty">Rc</span>::<span class="fn_">downgrade</span>(<span class="at">from</span>));
+    }
+}
+
+<span class="kw">fn</span> <span class="fn_">main</span>() {
+    <span class="kw">let</span> <span class="at">a</span> <span class="op">=</span> <span class="ty">GraphNode</span>::<span class="fn_">new</span>(<span class="nm">0</span>, <span class="st">"A"</span>);
+    <span class="kw">let</span> <span class="at">b</span> <span class="op">=</span> <span class="ty">GraphNode</span>::<span class="fn_">new</span>(<span class="nm">1</span>, <span class="st">"B"</span>);
+    <span class="kw">let</span> <span class="at">c</span> <span class="op">=</span> <span class="ty">GraphNode</span>::<span class="fn_">new</span>(<span class="nm">2</span>, <span class="st">"C"</span>);
+
+    <span class="ty">GraphNode</span>::<span class="fn_">connect</span>(<span class="op">&amp;</span><span class="at">a</span>, <span class="op">&amp;</span><span class="at">b</span>); <span class="cm">// A → B</span>
+    <span class="ty">GraphNode</span>::<span class="fn_">connect</span>(<span class="op">&amp;</span><span class="at">b</span>, <span class="op">&amp;</span><span class="at">c</span>); <span class="cm">// B → C</span>
+    <span class="ty">GraphNode</span>::<span class="fn_">connect</span>(<span class="op">&amp;</span><span class="at">a</span>, <span class="op">&amp;</span><span class="at">c</span>); <span class="cm">// A → C</span>
+
+    <span class="mc">println!</span>(<span class="st">"A의 이웃:"</span>);
+    <span class="kw">for</span> <span class="at">n</span> <span class="kw2">in</span> <span class="op">&amp;</span><span class="at">a</span>.<span class="fn_">borrow</span>().<span class="at">outgoing</span> {
+        <span class="mc">println!</span>(<span class="st">"  → {}"</span>, <span class="at">n</span>.<span class="fn_">borrow</span>().<span class="at">label</span>);
+    }
+    <span class="mc">println!</span>(<span class="st">"C로 들어오는 엣지 수: {}"</span>,
+        <span class="at">c</span>.<span class="fn_">borrow</span>().<span class="at">incoming</span>.<span class="fn_">iter</span>()
+            .<span class="fn_">filter</span>(|<span class="at">w</span>| <span class="at">w</span>.<span class="fn_">upgrade</span>().<span class="fn_">is_some</span>())
+            .<span class="fn_">count</span>()); <span class="cm">// 2 (A, B로부터)</span>
+}</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     16. 핵심 요약표
+══════════════════════════════════════════════════════════ -->
+<section id="summary">
+  <h2><span class="sec-num">16</span> 핵심 요약표</h2>
+  <p class="section-lead">이 문서에서 다룬 모든 개념의 비교표입니다.</p>
+
+  <h3>스마트 포인터 비교</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>타입</th><th>소유자</th><th>가변성 검사</th><th>스레드</th><th>실패</th><th>주 용도</th></tr>
+    <tr><td><code>Box&lt;T&gt;</code></td><td>1명</td><td>컴파일</td><td class="ok">안전</td><td>빌드 에러</td><td>힙 할당, 재귀 타입, dyn Trait</td></tr>
+    <tr><td><code>Rc&lt;T&gt;</code></td><td>여러 명</td><td>컴파일</td><td class="bad">단일만</td><td>빌드 에러</td><td>공유 그래프·트리 (읽기)</td></tr>
+    <tr><td><code>Weak&lt;T&gt;</code></td><td>0명(참조만)</td><td>컴파일</td><td class="bad">단일만</td><td>upgrade()→None</td><td>순환 참조 방지</td></tr>
+    <tr><td><code>RefCell&lt;T&gt;</code></td><td>1명</td><td class="bad">런타임</td><td class="bad">단일만</td><td>런타임 패닉</td><td>내부 가변성</td></tr>
+    <tr><td><code>Rc&lt;RefCell&lt;T&gt;&gt;</code></td><td>여러 명</td><td class="bad">런타임</td><td class="bad">단일만</td><td>런타임 패닉</td><td>공유 + 내부 변경</td></tr>
+    <tr><td><code>Arc&lt;T&gt;</code></td><td>여러 명</td><td>컴파일</td><td class="ok">안전</td><td>빌드 에러</td><td>멀티스레드 공유 (읽기)</td></tr>
+    <tr><td><code>Arc&lt;Mutex&lt;T&gt;&gt;</code></td><td>여러 명</td><td class="bad">런타임</td><td class="ok">안전</td><td>데드락</td><td>멀티스레드 공유 + 변경</td></tr>
+  </table>
+  </div>
+
+  <h3>for 루프 이터레이터</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>코드</th><th>암묵적 호출</th><th>x 타입</th><th>원본 사용</th><th>설명</th></tr>
+    <tr><td><code>for x in &amp;v</code></td><td><code>v.iter()</code></td><td><code>&amp;T</code></td><td class="ok">가능</td><td>읽기 전용, 가장 안전</td></tr>
+    <tr><td><code>for x in &amp;mut v</code></td><td><code>v.iter_mut()</code></td><td><code>&amp;mut T</code></td><td class="ok">가능</td><td>요소 수정 (*x = ...) 가능</td></tr>
+    <tr><td><code>for x in v</code></td><td><code>v.into_iter()</code></td><td><code>T</code></td><td class="bad">불가</td><td>소유권 이전, v 소비됨</td></tr>
+  </table>
+  </div>
+
+  <h3>메서드 수신자</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>수신자</th><th>소유권</th><th>호출 후 원본</th><th>내부 수정</th><th>주 용도</th></tr>
+    <tr><td><code>self</code></td><td>이전됨</td><td class="bad">사용 불가</td><td>가능</td><td>into() 변환, 소비형 빌더</td></tr>
+    <tr><td><code>&amp;self</code></td><td>불변 빌림</td><td class="ok">가능</td><td>불가 (RefCell 없이)</td><td>읽기, Display, 가장 흔함</td></tr>
+    <tr><td><code>&amp;mut self</code></td><td>가변 빌림</td><td class="ok">가능</td><td>가능</td><td>내부 상태 변경</td></tr>
+  </table>
+  </div>
+
+  <h3>RefCell 빌림 상태</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>현재 상태</th><th>borrow()</th><th>borrow_mut()</th><th>try_borrow()</th><th>try_borrow_mut()</th></tr>
+    <tr><td>비어있음</td><td class="ok">OK</td><td class="ok">OK</td><td class="ok">Ok(Ref)</td><td class="ok">Ok(RefMut)</td></tr>
+    <tr><td>불변 빌림 N개</td><td class="ok">OK</td><td class="bad">PANIC</td><td class="ok">Ok(Ref)</td><td class="bad">Err</td></tr>
+    <tr><td>가변 빌림 1개</td><td class="bad">PANIC</td><td class="bad">PANIC</td><td class="bad">Err</td><td class="bad">Err</td></tr>
+  </table>
+  </div>
+
+  <div class="callout tip">
+    <strong>결정 트리:</strong> 단순 소유 → <code>Box&lt;T&gt;</code> / 공유 읽기 → <code>Rc&lt;T&gt;</code> / 순환 참조 → <code>Weak&lt;T&gt;</code> / 내부 변경 필요 → <code>RefCell&lt;T&gt;</code> / 공유+변경 → <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> / 멀티스레드 → <code>Arc&lt;Mutex&lt;T&gt;&gt;</code>
+  </div>
+</section>
+
+</main><!-- end main -->
+</div><!-- end layout -->
+
+<script>
+// ── 테마 토글 ──
+const html = document.documentElement;
+const btn  = document.getElementById('themeBtn');
+const saved = localStorage.getItem('rust-doc-theme');
+if (saved) { html.setAttribute('data-theme', saved); }
+function updateBtn() {
+  btn.textContent = html.getAttribute('data-theme') === 'dark' ? '🌙' : '☀️';
+}
+updateBtn();
+btn.addEventListener('click', () => {
+  const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('rust-doc-theme', next);
+  updateBtn();
+});
+
+// ── 스크롤 스파이 ──
+const sections = document.querySelectorAll('section[id]');
+const links    = document.querySelectorAll('nav a[href^="#"]');
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const a = document.querySelector(`nav a[href="#${e.target.id}"]`);
+      if (a) { a.classList.add('active'); a.scrollIntoView({block:'nearest'}); }
+    }
+  });
+}, { rootMargin: '-20% 0px -65% 0px' });
+sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>

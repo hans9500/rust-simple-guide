@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rust 수명(Lifetime) 완전 가이드</title>
+<style>
+:root{--bg:#fff;--bg2:#f3f3f3;--bg3:#e8e8e8;--bd:#d0d0d0;--tx:#1e1e1e;--mu:#555;--head:#0066cc;--sub:#444;--or:#c05000;--bl:#0066aa;--gn:#1a6600;--rd:#cc0000;--pu:#6600cc;--ye:#806000;--nav-bg:#f8f8f8;--nav-bd:#d0d0d0;--tab-act-bg:#fff;--tab-act-col:#c05000;--tab-bg:#eee;--tab-col:#555;--card:#fff;--rule-info-bg:#e8f0ff;--rule-info-bd:#0066aa;--rule-ok-bg:#e8ffe8;--rule-ok-bd:#1a6600;--rule-warn-bg:#fff8e0;--rule-warn-bd:#806000;--rule-err-bg:#ffe8e8;--rule-err-bd:#cc0000;--badge-ok-bg:#d4edda;--badge-ok-col:#1a6600;--badge-adv-bg:#e8d4f0;--badge-adv-col:#6600cc;--badge-tip-bg:#fff3cd;--badge-tip-col:#806000;--shadow:rgba(0,0,0,.08);--viz-bg:#f0f0f0;--part-act:#c05000;--part-col:#555}
+[data-theme=dark]{--bg:#1e1e1e;--bg2:#252526;--bg3:#2d2d2d;--bd:#3e3e42;--tx:#d4d4d4;--mu:#9d9d9d;--head:#79c0ff;--sub:#ccc;--or:#f0883e;--bl:#79c0ff;--gn:#56d364;--rd:#ff7b72;--pu:#d2a8ff;--ye:#e3b341;--nav-bg:#252526;--nav-bd:#3e3e42;--tab-act-bg:#252526;--tab-act-col:#f0883e;--tab-bg:#2d2d2d;--tab-col:#9d9d9d;--card:#252526;--rule-info-bg:#0d1a2b;--rule-info-bd:#79c0ff;--rule-ok-bg:#0d2b1a;--rule-ok-bd:#56d364;--rule-warn-bg:#2b250d;--rule-warn-bd:#e3b341;--rule-err-bg:#2b0d0d;--rule-err-bd:#ff7b72;--badge-ok-bg:#1a3d2b;--badge-ok-col:#56d364;--badge-adv-bg:#2a1a3d;--badge-adv-col:#d2a8ff;--badge-tip-bg:#2d2a1e;--badge-tip-col:#e3b341;--shadow:rgba(0,0,0,.3);--viz-bg:#2d2d2d;--part-act:#f0883e;--part-col:#9d9d9d}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx);font-size:15px;line-height:1.75}
+
+/* 헤더 */
+.hdr{position:sticky;top:0;z-index:200;background:var(--nav-bg);border-bottom:1px solid var(--nav-bd);padding:10px 20px;display:flex;align-items:center;justify-content:space-between}
+.hdr-title{font-size:1rem;font-weight:700;color:var(--or)}
+.theme-btn{background:var(--bg3);border:1px solid var(--bd);color:var(--tx);padding:5px 14px;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600}
+
+/* 파트 탭 바 */
+.part-bar{position:sticky;top:45px;z-index:190;background:var(--nav-bg);border-bottom:2px solid var(--bd);display:flex;overflow-x:auto;padding:0 0 0 200px}
+.part-tab{padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;color:var(--part-col);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:all .15s}
+.part-tab.active{color:var(--part-act);border-bottom-color:var(--part-act)}
+
+/* 레이아웃: 사이드바 + 콘텐츠 */
+.layout{display:flex;min-height:calc(100vh - 90px)}
+.sidebar{width:200px;flex-shrink:0;position:sticky;top:90px;height:calc(100vh - 90px);overflow-y:auto;border-right:1px solid var(--bd);background:var(--nav-bg);padding:16px 0}
+.sb-section{font-size:10px;font-weight:700;color:var(--bd);text-transform:uppercase;letter-spacing:.06em;padding:10px 16px 4px}
+.sb-link{display:block;padding:5px 16px;font-size:12px;color:var(--mu);text-decoration:none;border-left:2px solid transparent;line-height:1.5;transition:all .15s}
+.sb-link:hover,.sb-link.cur{color:var(--or);border-left-color:var(--or);background:var(--bg2)}
+.content{flex:1;padding:28px 32px 80px;min-width:0}
+
+/* 파트 패널 */
+.part-panel{display:none}.part-panel.active{display:block}
+
+/* 제목 */
+h1{font-size:1.8rem;font-weight:700;color:var(--or);margin-bottom:6px}
+h2{font-size:1.2rem;font-weight:700;color:var(--head);margin:36px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--bd);scroll-margin-top:100px}
+h3{font-size:1rem;font-weight:700;color:var(--sub);margin:22px 0 8px}
+h4{font-size:.9rem;font-weight:700;color:var(--mu);margin:14px 0 6px}
+p{color:var(--mu);margin-bottom:10px;line-height:1.8}
+strong{color:var(--tx)}
+ul,ol{color:var(--mu);padding-left:20px;line-height:2;margin-bottom:10px}
+code{font-family:'JetBrains Mono','Fira Code',monospace;font-size:.87em;background:var(--bg3);padding:1px 5px;border-radius:3px;color:var(--or)}
+pre{background:#1e1e1e;border:1px solid #3e3e42;border-radius:8px;padding:16px;overflow-x:auto;margin:12px 0;font-size:12.5px;line-height:1.65;font-family:'JetBrains Mono','Fira Code',monospace;color:#d4d4d4}
+.k{color:#569cd6}.t{color:#4ec9b0}.f{color:#dcdcaa}.s{color:#ce9178}.n{color:#b5cea8}.c{color:#6a9955;font-style:italic}.l{color:#9cdcfe}.m{color:#c586c0}.o{color:#d4d4d4}.e{color:#4ec9b0}
+
+/* 카드 */
+.card-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+@media(max-width:700px){.card-row{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:16px 18px;box-shadow:0 1px 4px var(--shadow)}
+
+/* 룰 박스 */
+.rule{border-left:4px solid;padding:10px 14px;margin:12px 0;border-radius:0 8px 8px 0}
+.rule.info{border-color:var(--rule-info-bd);background:var(--rule-info-bg)}
+.rule.ok{border-color:var(--rule-ok-bd);background:var(--rule-ok-bg)}
+.rule.warn{border-color:var(--rule-warn-bd);background:var(--rule-warn-bg)}
+.rule.err{border-color:var(--rule-err-bd);background:var(--rule-err-bg)}
+.rule p{margin-bottom:3px}
+
+/* 뱃지 */
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;margin-right:5px}
+.bok{background:var(--badge-ok-bg);color:var(--badge-ok-col)}
+.badv{background:var(--badge-adv-bg);color:var(--badge-adv-col)}
+.btip{background:var(--badge-tip-bg);color:var(--badge-tip-col)}
+
+/* 세부 탭 */
+.tab-wrap{margin:14px 0}
+.tab-btns{display:flex;gap:3px;flex-wrap:wrap}
+.tab-btn{padding:6px 12px;border-radius:8px 8px 0 0;cursor:pointer;font-size:11px;font-weight:600;border:1px solid var(--bd);border-bottom:none;background:var(--tab-bg);color:var(--tab-col);user-select:none;white-space:nowrap;transition:all .15s}
+.tab-btn.active{background:var(--tab-act-bg);color:var(--tab-act-col)}
+.tab-panes{background:var(--card);border:1px solid var(--bd);border-radius:0 8px 8px 8px;padding:20px}
+.tab-pane{display:none}.tab-pane.active{display:block}
+
+/* 다이어그램 */
+.dw{margin:18px 0;overflow-x:auto}
+.dw svg{max-width:100%;height:auto;display:block}
+.dt{font-size:11px;color:var(--mu);text-align:center;margin-top:5px;font-style:italic}
+
+/* 타임라인 */
+.viz-box{background:var(--viz-bg);border:1px solid var(--bd);border-radius:10px;padding:16px;margin:16px 0}
+#vsvg{width:100%;display:block;background:var(--bg);border-radius:6px}
+
+/* 테이블 */
+.tbl{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+.tbl th{background:var(--bg3);color:var(--tx);padding:7px 10px;text-align:left;border:1px solid var(--bd);font-weight:700}
+.tbl td{padding:7px 10px;border:1px solid var(--bd);color:var(--mu)}
+.ok-cell{color:var(--gn);font-weight:700}.err-cell{color:var(--rd);font-weight:700}
+
+/* 에러그리드 */
+.egrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+@media(max-width:700px){.egrid{grid-template-columns:1fr}}
+
+hr{border:none;border-top:1px solid var(--bd);margin:32px 0}
+.section-intro{background:var(--bg2);border-radius:8px;padding:14px 18px;margin-bottom:16px;border-left:4px solid var(--or)}
+.section-intro p{margin:0;font-size:13px}
+</style>
+</head>
+<body data-theme="dark">
+
+<header class="hdr">
+  <span class="hdr-title">🦀 Rust 수명(Lifetime) 완전 가이드</span>
+  <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀ Light</button>
+</header>
+
+<div class="part-bar" id="partBar">
+  <div class="part-tab active" onclick="showPart(0)">📖 Part 1 — 개념·원리</div>
+  <div class="part-tab" onclick="showPart(1)">🔰 Part 2 — 기본 예제</div>
+  <div class="part-tab" onclick="showPart(2)">⚡ Part 3 — 심화 예제</div>
+  <div class="part-tab" onclick="showPart(3)">🐛 Part 4 — 에러 해석</div>
+</div>
+
+<div class="layout">
+
+<!-- ═══ 사이드바 ═══ -->
+<nav class="sidebar" id="sidebar">
+  <!-- Part 1 목차 -->
+  <div id="sb0">
+    <div class="sb-section">개념·원리</div>
+    <a class="sb-link" href="#s1" onclick="scrollTo('s1')">1. 메모리 구조</a>
+    <a class="sb-link" href="#s2" onclick="scrollTo('s2')">2. String vs &amp;str</a>
+    <a class="sb-link" href="#s3" onclick="scrollTo('s3')">3. 소유권</a>
+    <a class="sb-link" href="#s4" onclick="scrollTo('s4')">4. 차용 규칙</a>
+    <a class="sb-link" href="#s5" onclick="scrollTo('s5')">5. 수명(Lifetime)</a>
+    <a class="sb-link" href="#s6" onclick="scrollTo('s6')">6. 타임라인</a>
+  </div>
+  <!-- Part 2 목차 -->
+  <div id="sb1" style="display:none">
+    <div class="sb-section">기본 예제</div>
+    <a class="sb-link" onclick="eshow(0);return false">① Drop·스코프</a>
+    <a class="sb-link" onclick="eshow(1);return false">② Move·소유권</a>
+    <a class="sb-link" onclick="eshow(2);return false">③ Clone·Copy</a>
+    <a class="sb-link" onclick="eshow(3);return false">④ 불변 차용</a>
+    <a class="sb-link" onclick="eshow(4);return false">⑤ 가변 참조</a>
+    <a class="sb-link" onclick="eshow(5);return false">⑥ 슬라이스</a>
+    <a class="sb-link" onclick="eshow(6);return false">⑦ 수명 명시</a>
+    <a class="sb-link" onclick="eshow(7);return false">⑧ 'static·생략</a>
+  </div>
+  <!-- Part 3 목차 -->
+  <div id="sb2" style="display:none">
+    <div class="sb-section">심화 예제</div>
+    <a class="sb-link" onclick="ashow(0);return false">① 다중수명</a>
+    <a class="sb-link" onclick="ashow(1);return false">② Iterator</a>
+    <a class="sb-link" onclick="ashow(2);return false">③ Rc/RefCell</a>
+    <a class="sb-link" onclick="ashow(3);return false">④ 클로저</a>
+    <a class="sb-link" onclick="ashow(4);return false">⑤ dyn Trait</a>
+    <a class="sb-link" onclick="ashow(5);return false">⑥ 제네릭+수명</a>
+    <a class="sb-link" onclick="ashow(6);return false">⑦ Parser</a>
+    <a class="sb-link" onclick="ashow(7);return false">⑧ Arena</a>
+    <a class="sb-link" onclick="ashow(8);return false">⑨ 스레드</a>
+    <a class="sb-link" onclick="ashow(9);return false">⑩ Pin</a>
+  </div>
+  <!-- Part 4 목차 -->
+  <div id="sb3" style="display:none">
+    <div class="sb-section">에러 해석</div>
+    <a class="sb-link" href="#e382">E0382 moved value</a>
+    <a class="sb-link" href="#e505">E0505 move out borrow</a>
+    <a class="sb-link" href="#e502">E0502 mut borrow</a>
+    <a class="sb-link" href="#e499">E0499 두 번째 &amp;mut</a>
+    <a class="sb-link" href="#e106">E0106 lifetime</a>
+    <a class="sb-link" href="#e597">E0597 live long</a>
+    <a class="sb-link" href="#e716">E0716 temporary</a>
+    <a class="sb-link" href="#e310">E0310 'static</a>
+    <div class="sb-section">참고</div>
+    <a class="sb-link" href="#decision">수명 결정 트리</a>
+  </div>
+</nav>
+
+<!-- ═══ 콘텐츠 ═══ -->
+<main class="content">
+
+<!-- ════════ PART 1 ════════ -->
+<div class="part-panel active" id="part0">
+<h1 style="margin-top:0">Rust 수명(Lifetime) 완전 가이드</h1>
+<p style="color:var(--mu);margin-bottom:24px">The Rust Programming Language 공식문서 기반 · 할루시네이션 없음</p>
+
+<h2 id="s1">1. 메모리 구조 — 스택과 힙</h2>
+<div class="section-intro"><p>Rust의 모든 값은 <strong>스택(Stack)</strong> 또는 <strong>힙(Heap)</strong> 중 하나에 저장됩니다. 이 구분이 소유권과 수명 시스템의 근간입니다.</p></div>
+<div class="card-row">
+<div class="card"><h4>스택 (Stack)</h4><ul>
+  <li><strong>컴파일 타임</strong>에 크기가 확정된 값</li>
+  <li>LIFO 구조 · 할당/해제 매우 빠름</li>
+  <li>함수 종료 시 자동 해제</li>
+  <li>예: <code>i32</code> <code>bool</code> <code>f64</code> <code>char</code> <code>&amp;T</code> <code>[T;N]</code></li>
+</ul></div>
+<div class="card"><h4>힙 (Heap)</h4><ul>
+  <li><strong>런타임</strong>에 크기가 결정 · 동적 할당</li>
+  <li>포인터를 통해 접근</li>
+  <li>소유자가 사라지면 <code>drop()</code> 자동 호출</li>
+  <li>예: <code>String</code> <code>Vec&lt;T&gt;</code> <code>Box&lt;T&gt;</code></li>
+</ul></div>
+</div>
+<div class="dw"><svg viewBox="0 0 860 290" xmlns="http://www.w3.org/2000/svg" font-family="monospace" font-size="12">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M2 2L8 5L2 8" fill="none" stroke="#79c0ff" stroke-width="1.5"/></marker>
+<marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M2 2L8 5L2 8" fill="none" stroke="#f0883e" stroke-width="1.5"/></marker>
+<marker id="c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M2 2L8 5L2 8" fill="none" stroke="#e3b341" stroke-width="1.5"/></marker></defs>
+<rect x="10" y="10" width="370" height="270" rx="10" fill="#252526" stroke="#3e3e42"/>
+<text x="195" y="30" text-anchor="middle" fill="#9d9d9d" font-size="11" font-weight="700">STACK — 컴파일 타임 고정 크기 · LIFO</text>
+<line x1="10" y1="38" x2="380" y2="38" stroke="#3e3e42"/>
+<rect x="28" y="48" width="334" height="42" rx="6" fill="#1a2a1a" stroke="#2ea043" stroke-width="0.8"/>
+<text x="44" y="66" fill="#56d364">let x: i32 = 42</text>
+<text x="44" y="82" fill="#6a9955" font-size="10">// 4 bytes  [Copy trait]</text>
+<rect x="316" y="55" width="36" height="26" rx="4" fill="#0d2b1a" stroke="#2ea043"/>
+<text x="334" y="72" text-anchor="middle" fill="#56d364" font-weight="700">42</text>
+<rect x="28" y="98" width="334" height="50" rx="6" fill="#1a1c2a" stroke="#388bfd" stroke-width="0.8"/>
+<text x="44" y="116" fill="#9cdcfe">let s1: &amp;str = "hello"</text>
+<text x="44" y="132" fill="#9d9d9d" font-size="10">16bytes (fat ptr)  ptr→binary  len:5  ['static]</text>
+<rect x="28" y="156" width="334" height="62" rx="6" fill="#2a1a0d" stroke="#f0883e" stroke-width="0.8"/>
+<text x="44" y="174" fill="#f0883e">let s2 = String::from("hello")</text>
+<text x="44" y="190" fill="#9d9d9d" font-size="10">24bytes  ptr→heap  len:5  cap:8</text>
+<text x="44" y="204" fill="#f0883e" font-size="10">소유자 → 스코프 종료 시 drop() 자동</text>
+<rect x="28" y="226" width="334" height="44" rx="6" fill="#2a2a1a" stroke="#e3b341" stroke-width="0.8"/>
+<text x="44" y="244" fill="#e3b341">let s3: &amp;str = &amp;s2</text>
+<text x="44" y="260" fill="#9d9d9d" font-size="10">ptr→s2의힙  len:5  소유권없음  s2 생존시만 유효</text>
+<rect x="430" y="10" width="420" height="270" rx="10" fill="#252526" stroke="#3e3e42"/>
+<text x="640" y="30" text-anchor="middle" fill="#9d9d9d" font-size="11" font-weight="700">HEAP / BINARY — 런타임 동적 · 소유권 추적</text>
+<line x1="430" y1="38" x2="850" y2="38" stroke="#3e3e42"/>
+<rect x="448" y="48" width="382" height="64" rx="8" fill="#0d1a2b" stroke="#388bfd" stroke-dasharray="4 2"/>
+<text x="639" y="66" text-anchor="middle" fill="#79c0ff" font-size="11" font-weight="700">바이너리 세그먼트 (읽기전용 · 'static)</text>
+<text x="639" y="86" text-anchor="middle" fill="#388bfd" font-size="13">[ h ][ e ][ l ][ l ][ o ]</text>
+<text x="639" y="104" text-anchor="middle" fill="#6a9955" font-size="10">프로그램 전체 수명</text>
+<rect x="448" y="128" width="382" height="86" rx="8" fill="#0d2b1a" stroke="#f0883e" stroke-dasharray="4 2"/>
+<text x="639" y="148" text-anchor="middle" fill="#f0883e" font-size="11" font-weight="700">힙 메모리 (s2 소유 · cap=8)</text>
+<text x="639" y="172" text-anchor="middle" fill="#56d364" font-size="13">[ h ][ e ][ l ][ l ][ o ][ _ ][ _ ][ _ ]</text>
+<text x="480" y="190" fill="#56d364" font-size="10">←len:5→</text>
+<text x="639" y="206" text-anchor="middle" fill="#f0883e" font-size="10">s2 drop 시 해제</text>
+<rect x="448" y="230" width="382" height="34" rx="8" fill="#1a1a0d" stroke="#e3b341" stroke-dasharray="4 2"/>
+<text x="639" y="251" text-anchor="middle" fill="#e3b341" font-size="11">s3도 이 힙을 가리킴 (공유, 소유 아님)</text>
+<path d="M195 120 Q310 90 446 80" fill="none" stroke="#388bfd" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#a)"/>
+<path d="M195 186 Q310 170 446 170" fill="none" stroke="#f0883e" stroke-width="1.4" marker-end="url(#b)"/>
+<path d="M195 246 Q310 246 446 247" fill="none" stroke="#e3b341" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#c)"/>
+</svg><div class="dt">스택(좌) → 힙/바이너리(우) 포인터 흐름과 소유권 관계</div></div>
+
+<h2 id="s2">2. String vs &amp;str</h2>
+<div class="section-intro"><p>두 타입의 차이를 정확히 이해하는 것이 수명 이해의 출발점입니다.</p></div>
+<table class="tbl">
+<tr><th>항목</th><th>&amp;str</th><th>String</th></tr>
+<tr><td>소유권</td><td class="err-cell">없음</td><td class="ok-cell">있음</td></tr>
+<tr><td>가변성</td><td class="err-cell">불변</td><td class="ok-cell">가변 가능</td></tr>
+<tr><td>저장 위치</td><td>바이너리 또는 힙의 일부</td><td>힙</td></tr>
+<tr><td>크기(스택)</td><td>16 bytes (ptr+len)</td><td>24 bytes (ptr+len+cap)</td></tr>
+<tr><td>수명</td><td>참조 대상에 묶임</td><td>소유자가 결정</td></tr>
+<tr><td>drop</td><td class="err-cell">없음</td><td class="ok-cell">스코프 종료 시 자동</td></tr>
+<tr><td>리터럴</td><td><code>'static</code> 수명</td><td>해당 없음</td></tr>
+</table>
+<div class="rule info"><p><strong>📌 공식문서 Chapter 8.2</strong></p><p>"A String is made up of three parts: a pointer to the memory that holds the contents of the string, a length, and a capacity. This group of data is stored on the stack."</p></div>
+<h3>UTF-8과 인덱싱 주의</h3>
+<pre><span class="k">let</span> <span class="l">s</span> <span class="o">=</span> <span class="s">"안녕하세요"</span><span class="o">;</span>
+<span class="k">for</span> <span class="l">c</span> <span class="k">in</span> <span class="l">s</span><span class="o">.</span><span class="f">chars</span><span class="o">() {</span> <span class="m">print!</span><span class="o">(</span><span class="s">"{c} "</span><span class="o">); }</span>  <span class="c">// 안 녕 하 세 요</span>
+<span class="m">println!</span><span class="o">(</span><span class="s">"chars={} bytes={}"</span><span class="o">,</span> <span class="l">s</span><span class="o">.</span><span class="f">chars</span><span class="o">().</span><span class="f">count</span><span class="o">(),</span> <span class="l">s</span><span class="o">.</span><span class="f">len</span><span class="o">());</span>  <span class="c">// 5, 15</span>
+<span class="c">// let bad = &amp;s[0..1]; // ❌ 런타임 패닉! 잘못된 UTF-8 경계</span></pre>
+
+<h2 id="s3">3. 소유권(Ownership)</h2>
+<div class="section-intro"><p>소유권은 GC 없이 메모리 안전성을 보장하는 핵심 메커니즘입니다.</p></div>
+<div class="rule ok"><p><strong>소유권 3대 규칙 (공식문서 Chapter 4.1)</strong></p>
+<p>1. 각 값은 <strong>소유자(owner)</strong>가 있다.</p>
+<p>2. 한 번에 소유자는 <strong>하나뿐</strong>이다.</p>
+<p>3. 소유자가 스코프를 벗어나면 값은 <strong>drop</strong>된다.</p></div>
+<div class="dw"><svg viewBox="0 0 860 250" xmlns="http://www.w3.org/2000/svg" font-family="monospace" font-size="12">
+<defs><marker id="mo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M2 2L8 5L2 8" fill="none" stroke="#f0883e" stroke-width="1.5"/></marker>
+<marker id="mg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M2 2L8 5L2 8" fill="none" stroke="#56d364" stroke-width="1.5"/></marker>
+<marker id="mp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M2 2L8 5L2 8" fill="none" stroke="#d2a8ff" stroke-width="1.5"/></marker>
+<marker id="mm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M2 2L8 5L2 8" fill="none" stroke="#9d9d9d" stroke-width="1.5"/></marker></defs>
+<rect x="10" y="8" width="840" height="76" rx="8" fill="#252526" stroke="#3e3e42"/>
+<text x="24" y="26" fill="#ff7b72" font-weight="700">① MOVE — Drop 구현체: 소유권 이동, 원본 무효화</text>
+<rect x="28" y="32" width="116" height="44" rx="5" fill="#2a1a1a" stroke="#f85149"/>
+<text x="86" y="52" text-anchor="middle" fill="#ff7b72" font-weight="700">s1 (소유)</text>
+<text x="38" y="68" fill="#9d9d9d" font-size="10">ptr→힙 len:5</text>
+<line x1="144" y1="54" x2="186" y2="54" stroke="#f0883e" stroke-width="2" marker-end="url(#mo)"/>
+<text x="165" y="47" text-anchor="middle" fill="#f0883e" font-size="11">let s2=s1</text>
+<rect x="192" y="32" width="116" height="44" rx="5" fill="#1a1a1a" stroke="#3e3e42" stroke-dasharray="4 2"/>
+<text x="250" y="57" text-anchor="middle" fill="#3e3e42">s1 (무효)</text>
+<rect x="378" y="32" width="116" height="44" rx="5" fill="#1a2a1a" stroke="#2ea043"/>
+<text x="436" y="52" text-anchor="middle" fill="#56d364" font-weight="700">s2 (소유)</text>
+<text x="388" y="68" fill="#9d9d9d" font-size="10">ptr→힙 len:5</text>
+<rect x="558" y="32" width="180" height="44" rx="5" fill="#0d2b1a" stroke="#56d364" stroke-width="0.6"/>
+<text x="648" y="52" text-anchor="middle" fill="#56d364" font-size="11">힙 [h][e][l][l][o]</text>
+<text x="648" y="68" text-anchor="middle" fill="#f0883e" font-size="10">s2 drop 시 해제</text>
+<line x1="494" y1="54" x2="556" y2="54" stroke="#56d364" stroke-width="1.2" marker-end="url(#mg)"/>
+<rect x="10" y="96" width="840" height="66" rx="8" fill="#252526" stroke="#3e3e42"/>
+<text x="24" y="114" fill="#56d364" font-weight="700">② COPY — i32/bool/f64/char: 스택 비트복사, 둘 다 유효</text>
+<rect x="28" y="120" width="96" height="34" rx="5" fill="#1a2a1a" stroke="#2ea043"/>
+<text x="76" y="141" text-anchor="middle" fill="#56d364" font-weight="700">n1=42</text>
+<line x1="124" y1="137" x2="164" y2="137" stroke="#9d9d9d" stroke-width="1.5" marker-end="url(#mm)"/>
+<rect x="170" y="120" width="96" height="34" rx="5" fill="#1a2a1a" stroke="#2ea043"/>
+<text x="218" y="141" text-anchor="middle" fill="#56d364" font-weight="700">n1 유효</text>
+<rect x="300" y="120" width="96" height="34" rx="5" fill="#1a2a1a" stroke="#2ea043"/>
+<text x="348" y="141" text-anchor="middle" fill="#56d364" font-weight="700">n2 독립</text>
+<text x="440" y="143" fill="#9d9d9d" font-size="12">힙 없음 · 둘 다 유효 · 독립적</text>
+<rect x="10" y="174" width="840" height="66" rx="8" fill="#252526" stroke="#3e3e42"/>
+<text x="24" y="192" fill="#d2a8ff" font-weight="700">③ CLONE — 명시적 깊은 복사: 힙 재할당, 두 소유자</text>
+<rect x="28" y="198" width="116" height="34" rx="5" fill="#2a1a3d" stroke="#a371f7"/>
+<text x="86" y="219" text-anchor="middle" fill="#d2a8ff" font-weight="700">s1 (유지)</text>
+<line x1="144" y1="215" x2="184" y2="215" stroke="#d2a8ff" stroke-width="1.5" marker-end="url(#mp)"/>
+<text x="164" y="208" text-anchor="middle" fill="#d2a8ff" font-size="11">.clone()</text>
+<rect x="190" y="198" width="116" height="34" rx="5" fill="#2a1a3d" stroke="#a371f7"/>
+<text x="248" y="219" text-anchor="middle" fill="#d2a8ff" font-weight="700">s2 (별도)</text>
+<rect x="360" y="202" width="150" height="26" rx="5" fill="#0d2b1a" stroke="#56d364" stroke-width="0.6"/>
+<text x="435" y="219" text-anchor="middle" fill="#56d364" font-size="11">힙_A [h][e][l][l][o]</text>
+<rect x="524" y="202" width="150" height="26" rx="5" fill="#0d2b1a" stroke="#56d364" stroke-width="0.6"/>
+<text x="599" y="219" text-anchor="middle" fill="#56d364" font-size="11">힙_B [h][e][l][l][o]</text>
+</svg><div class="dt">Move / Copy / Clone 세 가지 값 전달 방식</div></div>
+
+<h2 id="s4">4. 차용(Borrowing) 규칙</h2>
+<div class="section-intro"><p>참조를 생성하는 것을 차용이라 합니다. borrow checker가 컴파일 타임에 모든 규칙을 검증합니다.</p></div>
+<div class="rule ok"><p><strong>차용 규칙 (공식문서 Chapter 4.2)</strong></p>
+<p>1. <strong>불변 참조(&amp;T)는 몇 개든</strong> 동시에 가질 수 있다.</p>
+<p>2. 또는 <strong>가변 참조(&amp;mut T) 하나만</strong> 가질 수 있다.</p>
+<p>3. 참조는 <strong>항상 유효</strong>해야 한다 (댕글링 포인터 불가).</p></div>
+<div class="dw"><svg viewBox="0 0 860 155" xmlns="http://www.w3.org/2000/svg" font-family="monospace" font-size="12">
+<defs><marker id="br" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M2 2L8 5L2 8" fill="none" stroke="#79c0ff" stroke-width="1.5"/></marker>
+<marker id="bm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M2 2L8 5L2 8" fill="none" stroke="#f0883e" stroke-width="1.5"/></marker>
+<marker id="be" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M2 2L8 5L2 8" fill="none" stroke="#ff7b72" stroke-width="1.5"/></marker></defs>
+<rect x="10" y="6" width="252" height="140" rx="8" fill="#0d2b1a" stroke="#2ea043"/>
+<text x="136" y="24" text-anchor="middle" fill="#56d364" font-weight="700">✓ 불변 참조 여럿 OK</text>
+<rect x="28" y="32" width="80" height="36" rx="5" fill="#1a3d26" stroke="#2ea043"/>
+<text x="68" y="54" text-anchor="middle" fill="#56d364" font-weight="700">s (소유)</text>
+<rect x="136" y="28" width="70" height="20" rx="4" fill="#162a20" stroke="#2ea043" stroke-width="0.6"/>
+<text x="171" y="42" text-anchor="middle" fill="#56d364">r1: &amp;s</text>
+<rect x="136" y="54" width="70" height="20" rx="4" fill="#162a20" stroke="#2ea043" stroke-width="0.6"/>
+<text x="171" y="68" text-anchor="middle" fill="#56d364">r2: &amp;s</text>
+<rect x="136" y="80" width="70" height="20" rx="4" fill="#162a20" stroke="#2ea043" stroke-width="0.6"/>
+<text x="171" y="94" text-anchor="middle" fill="#56d364">r3: &amp;s</text>
+<line x1="108" y1="44" x2="134" y2="38" stroke="#79c0ff" stroke-width="1" marker-end="url(#br)"/>
+<line x1="108" y1="50" x2="134" y2="64" stroke="#79c0ff" stroke-width="1" marker-end="url(#br)"/>
+<line x1="108" y1="50" x2="134" y2="90" stroke="#79c0ff" stroke-width="1" marker-end="url(#br)"/>
+<text x="136" y="118" text-anchor="middle" fill="#56d364" font-size="11">동시에 몇 개든 허용</text>
+<text x="136" y="134" text-anchor="middle" fill="#9d9d9d" font-size="10">읽기만 → 경쟁 없음</text>
+<rect x="278" y="6" width="252" height="140" rx="8" fill="#1a1c0d" stroke="#b5a800"/>
+<text x="404" y="24" text-anchor="middle" fill="#e3b341" font-weight="700">✓ 가변 참조 하나만</text>
+<rect x="296" y="32" width="80" height="36" rx="5" fill="#2a2a1a" stroke="#b5a800"/>
+<text x="336" y="54" text-anchor="middle" fill="#e3b341" font-weight="700">s (mut)</text>
+<rect x="406" y="42" width="86" height="20" rx="4" fill="#1e1e10" stroke="#b5a800" stroke-width="0.8"/>
+<text x="449" y="56" text-anchor="middle" fill="#e3b341">r: &amp;mut s</text>
+<line x1="376" y1="50" x2="404" y2="52" stroke="#f0883e" stroke-width="1.5" marker-end="url(#bm)"/>
+<text x="404" y="108" text-anchor="middle" fill="#e3b341" font-size="11">쓰기 가능 · 단 하나</text>
+<text x="404" y="124" text-anchor="middle" fill="#9d9d9d" font-size="10">수명 끝나면 다음 &amp;mut 가능(NLL)</text>
+<rect x="546" y="6" width="304" height="140" rx="8" fill="#2b0d0d" stroke="#f85149"/>
+<text x="698" y="24" text-anchor="middle" fill="#ff7b72" font-weight="700">❌ 불변+가변 동시 불가</text>
+<rect x="564" y="32" width="80" height="36" rx="5" fill="#3d1a1a" stroke="#f85149"/>
+<text x="604" y="54" text-anchor="middle" fill="#ff7b72" font-weight="700">s (mut)</text>
+<rect x="674" y="28" width="70" height="20" rx="4" fill="#2b1a1a" stroke="#388bfd" stroke-width="0.6"/>
+<text x="709" y="42" text-anchor="middle" fill="#79c0ff">r1: &amp;s</text>
+<rect x="674" y="54" width="86" height="20" rx="4" fill="#2b1a1a" stroke="#f85149" stroke-width="0.6"/>
+<text x="717" y="68" text-anchor="middle" fill="#ff7b72">r2: &amp;mut s</text>
+<line x1="644" y1="44" x2="672" y2="38" stroke="#79c0ff" stroke-width="1" marker-end="url(#br)"/>
+<line x1="644" y1="54" x2="672" y2="64" stroke="#ff7b72" stroke-width="1.5" marker-end="url(#be)"/>
+<text x="698" y="100" text-anchor="middle" fill="#ff7b72" font-size="11">데이터 경쟁 → 컴파일 에러</text>
+<text x="698" y="116" text-anchor="middle" fill="#9d9d9d" font-size="10">NLL: r1 종료 후엔 &amp;mut 가능</text>
+</svg><div class="dt">차용 규칙 3가지 — borrow checker가 컴파일 타임에 보장</div></div>
+
+<h2 id="s5">5. 수명(Lifetime) — 참조의 유효 범위</h2>
+<div class="section-intro"><p>수명은 참조가 유효한 스코프를 나타내는 컴파일 타임 정보입니다. 런타임 동작을 바꾸지 않습니다.</p></div>
+<div class="rule info"><p><strong>수명 생략 규칙 3가지 (공식문서 Chapter 10.3)</strong></p>
+<p><strong>규칙 1</strong>: 각 참조 입력 파라미터는 각자의 수명을 가진다.</p>
+<p>&nbsp;&nbsp;<code>fn foo(x: &amp;str, y: &amp;str)</code> → <code>fn foo&lt;'a,'b&gt;(x: &amp;'a str, y: &amp;'b str)</code></p>
+<p><strong>규칙 2</strong>: 입력 수명이 정확히 하나라면 출력에도 같은 수명이 적용된다.</p>
+<p>&nbsp;&nbsp;<code>fn foo(x: &amp;str) -&gt; &amp;str</code> → <code>fn foo&lt;'a&gt;(x: &amp;'a str) -&gt; &amp;'a str</code></p>
+<p><strong>규칙 3</strong>: <code>&amp;self</code>/<code>&amp;mut self</code>가 있으면 출력 수명은 self의 수명이 된다.</p>
+<p>세 규칙 적용 후에도 수명을 알 수 없으면 → 명시적 어노테이션 필요</p></div>
+<div class="rule warn"><p><strong>'static 두 가지 의미 (혼동 주의)</strong></p>
+<p><strong>① 참조 수명</strong>: 프로그램 전체 실행 기간 동안 유효 → 문자열 리터럴은 바이너리에 저장</p>
+<p><strong>② 트레이트 바운드</strong>: 타입이 non-static 참조를 포함하지 않음 (dangling 위험 없음)</p></div>
+
+<h2 id="s6">6. 수명 타임라인 인터랙티브</h2>
+<div class="viz-box">
+  <div class="tab-btns" id="vtab-btns">
+    <div class="tab-btn active" onclick="vshow(0)">기본 스코프</div>
+    <div class="tab-btn" onclick="vshow(1)">차용과 NLL</div>
+    <div class="tab-btn" onclick="vshow(2)">함수 수명</div>
+    <div class="tab-btn" onclick="vshow(3)">구조체 수명</div>
+  </div>
+  <div style="background:var(--bg);border:1px solid var(--bd);border-radius:0 8px 8px 8px;padding:14px">
+    <svg id="vsvg" viewBox="0 0 700 185" style="width:100%;display:block"></svg>
+    <pre id="vcode" style="margin-top:10px;font-size:12px"></pre>
+  </div>
+</div>
+</div><!-- /part0 -->
+
+<!-- ════════ PART 2 ════════ -->
+<div class="part-panel" id="part1">
+<h2 style="margin-top:0">기본 예제 — fn main() 포함, 실행 가능</h2>
+<div class="tab-wrap">
+<div class="tab-btns" id="etab-btns">
+  <div class="tab-btn active" onclick="eshow(0)">① Drop·스코프</div>
+  <div class="tab-btn" onclick="eshow(1)">② Move·소유권</div>
+  <div class="tab-btn" onclick="eshow(2)">③ Clone·Copy</div>
+  <div class="tab-btn" onclick="eshow(3)">④ 불변 차용</div>
+  <div class="tab-btn" onclick="eshow(4)">⑤ 가변 참조</div>
+  <div class="tab-btn" onclick="eshow(5)">⑥ 슬라이스</div>
+  <div class="tab-btn" onclick="eshow(6)">⑦ 수명 명시</div>
+  <div class="tab-btn" onclick="eshow(7)">⑧ 'static·생략</div>
+</div>
+<div class="tab-panes">
+<div class="tab-pane active" id="e0">
+<p><span class="badge bok">예제 01</span> <strong>스코프와 Drop — LIFO 순서</strong></p>
+<pre><span class="k">struct</span> <span class="t">Res</span> <span class="o">{</span> <span class="l">name</span><span class="o">:</span> <span class="t">String</span> <span class="o">}</span>
+<span class="k">impl</span> <span class="t">Drop</span> <span class="k">for</span> <span class="t">Res</span> <span class="o">{</span>
+    <span class="k">fn</span> <span class="f">drop</span><span class="o">(&amp;</span><span class="k">mut</span> <span class="l">self</span><span class="o">) {</span> <span class="m">println!</span><span class="o">(</span><span class="s">"[DROP] {}"</span><span class="o">,</span> <span class="l">self</span><span class="o">.</span><span class="l">name</span><span class="o">); }</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">() {</span>
+    <span class="k">let</span> <span class="l">_a</span> <span class="o">=</span> <span class="t">Res</span> <span class="o">{</span> <span class="l">name</span><span class="o">:</span> <span class="s">"A"</span><span class="o">.</span><span class="f">into</span><span class="o">() };</span>
+    <span class="o">{</span>
+        <span class="k">let</span> <span class="l">_b</span> <span class="o">=</span> <span class="t">Res</span> <span class="o">{</span> <span class="l">name</span><span class="o">:</span> <span class="s">"B"</span><span class="o">.</span><span class="f">into</span><span class="o">() };</span>
+        <span class="k">let</span> <span class="l">_c</span> <span class="o">=</span> <span class="t">Res</span> <span class="o">{</span> <span class="l">name</span><span class="o">:</span> <span class="s">"C"</span><span class="o">.</span><span class="f">into</span><span class="o">() };</span>
+        <span class="m">println!</span><span class="o">(</span><span class="s">"A B C 살아있음"</span><span class="o">);</span>
+    <span class="o">}</span> <span class="c">// → [DROP] C, [DROP] B  (LIFO!)</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"A만 남음"</span><span class="o">);</span>
+<span class="o">}</span> <span class="c">// → [DROP] A</span></pre>
+<p style="margin-top:14px"><span class="badge bok">예제 02</span> <strong>명시적 drop() 호출</strong></p>
+<pre><span class="k">fn</span> <span class="f">main</span><span class="o">() {</span>
+    <span class="k">let</span> <span class="l">s</span> <span class="o">=</span> <span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"hello"</span><span class="o">);</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"before: {s}"</span><span class="o">);</span>
+    <span class="f">drop</span><span class="o">(</span><span class="l">s</span><span class="o">);</span>  <span class="c">// 스코프 전에 즉시 해제</span>
+    <span class="c">// println!("{s}"); // ❌ E0382</span>
+<span class="o">}</span></pre>
+<p style="margin-top:14px"><span class="badge bok">예제 03</span> <strong>섀도잉(Shadowing)</strong></p>
+<pre><span class="k">fn</span> <span class="f">main</span><span class="o">() {</span>
+    <span class="k">let</span> <span class="l">x</span> <span class="o">=</span> <span class="n">5</span><span class="o">;</span>
+    <span class="k">let</span> <span class="l">x</span> <span class="o">=</span> <span class="l">x</span> <span class="o">+</span> <span class="n">1</span><span class="o">;</span>       <span class="c">// 새 변수, 이전 x 숨김</span>
+    <span class="o">{</span>
+        <span class="k">let</span> <span class="l">x</span> <span class="o">=</span> <span class="l">x</span> <span class="o">*</span> <span class="n">2</span><span class="o">;</span>   <span class="c">// 이 블록에서만 x=12</span>
+        <span class="m">println!</span><span class="o">(</span><span class="s">"inner: {x}"</span><span class="o">);</span>  <span class="c">// 12</span>
+    <span class="o">}</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"outer: {x}"</span><span class="o">);</span>    <span class="c">// 6</span>
+    <span class="k">let</span> <span class="l">spaces</span> <span class="o">=</span> <span class="s">"   "</span><span class="o">;</span>
+    <span class="k">let</span> <span class="l">spaces</span> <span class="o">=</span> <span class="l">spaces</span><span class="o">.</span><span class="f">len</span><span class="o">();</span>  <span class="c">// &amp;str → usize (타입 변경)</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"spaces: {spaces}"</span><span class="o">);</span>
+<span class="o">}</span></pre>
+</div>
+<div class="tab-pane" id="e1">
+<p><span class="badge bok">예제 04</span> <strong>함수와 소유권 이동</strong></p>
+<pre><span class="k">fn</span> <span class="f">takes_ownership</span><span class="o">(</span><span class="l">s</span><span class="o">:</span> <span class="t">String</span><span class="o">) {</span> <span class="m">println!</span><span class="o">(</span><span class="s">"got: {s}"</span><span class="o">); }</span>
+<span class="k">fn</span> <span class="f">gives_ownership</span><span class="o">() -&gt;</span> <span class="t">String</span> <span class="o">{</span> <span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"given"</span><span class="o">) }</span>
+<span class="k">fn</span> <span class="f">take_and_give</span><span class="o">(</span><span class="l">s</span><span class="o">:</span> <span class="t">String</span><span class="o">) -&gt;</span> <span class="t">String</span> <span class="o">{</span> <span class="l">s</span> <span class="o">}</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">() {</span>
+    <span class="k">let</span> <span class="l">s1</span> <span class="o">=</span> <span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"hello"</span><span class="o">);</span>
+    <span class="f">takes_ownership</span><span class="o">(</span><span class="l">s1</span><span class="o">);</span>
+    <span class="c">// println!("{s1}"); // ❌ E0382</span>
+    <span class="k">let</span> <span class="l">n</span> <span class="o">=</span> <span class="n">42</span><span class="o">;</span>
+    <span class="k">let</span> <span class="l">_</span> <span class="o">=</span> <span class="l">n</span><span class="o">;</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"n still: {n}"</span><span class="o">);</span>  <span class="c">// ✓ Copy 타입</span>
+    <span class="k">let</span> <span class="l">s2</span> <span class="o">=</span> <span class="f">gives_ownership</span><span class="o">();</span>
+    <span class="k">let</span> <span class="l">s3</span> <span class="o">=</span> <span class="f">take_and_give</span><span class="o">(</span><span class="l">s2</span><span class="o">);</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"{s3}"</span><span class="o">);</span>
+<span class="o">}</span></pre>
+<p style="margin-top:14px"><span class="badge bok">예제 05</span> <strong>튜플로 소유권 반환</strong></p>
+<pre><span class="k">fn</span> <span class="f">calc_len</span><span class="o">(</span><span class="l">s</span><span class="o">:</span> <span class="t">String</span><span class="o">) -&gt; (</span><span class="t">String</span><span class="o">,</span> <span class="t">usize</span><span class="o">) {</span>
+    <span class="k">let</span> <span class="l">l</span> <span class="o">=</span> <span class="l">s</span><span class="o">.</span><span class="f">len</span><span class="o">();</span> <span class="o">(</span><span class="l">s</span><span class="o">,</span> <span class="l">l</span><span class="o">)</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">() {</span>
+    <span class="k">let</span> <span class="o">(</span><span class="l">s</span><span class="o">,</span> <span class="l">len</span><span class="o">) =</span> <span class="f">calc_len</span><span class="o">(</span><span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"hello"</span><span class="o">));</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"'{s}' len={len}"</span><span class="o">);</span>
+    <span class="c">// 번거로움 → 참조(&amp;)를 쓰는 게 더 자연스러움</span>
+<span class="o">}</span></pre>
+</div>
+<div class="tab-pane" id="e2">
+<p><span class="badge bok">예제 06</span> <strong>Clone과 Copy 비교</strong></p>
+<pre><span class="o">#[</span><span class="f">derive</span><span class="o">(</span><span class="t">Debug</span><span class="o">,</span> <span class="t">Clone</span><span class="o">,</span> <span class="t">Copy</span><span class="o">)]</span>  <span class="c">// Copy: Clone도 필수</span>
+<span class="k">struct</span> <span class="t">Point</span> <span class="o">{</span> <span class="l">x</span><span class="o">:</span> <span class="t">f64</span><span class="o">,</span> <span class="l">y</span><span class="o">:</span> <span class="t">f64</span> <span class="o">}</span>
+
+<span class="o">#[</span><span class="f">derive</span><span class="o">(</span><span class="t">Debug</span><span class="o">,</span> <span class="t">Clone</span><span class="o">)]</span>         <span class="c">// Copy 불가: String이 Drop 구현</span>
+<span class="k">struct</span> <span class="t">Person</span> <span class="o">{</span> <span class="l">name</span><span class="o">:</span> <span class="t">String</span><span class="o">,</span> <span class="l">age</span><span class="o">:</span> <span class="t">u32</span> <span class="o">}</span>
+
+<span class="k">fn</span> <span class="f">main</span><span class="o">() {</span>
+    <span class="k">let</span> <span class="l">p1</span> <span class="o">=</span> <span class="t">Point</span> <span class="o">{</span> <span class="l">x</span><span class="o">:</span><span class="n">1.0</span><span class="o">,</span> <span class="l">y</span><span class="o">:</span><span class="n">2.0</span> <span class="o">};</span>
+    <span class="k">let</span> <span class="l">p2</span> <span class="o">=</span> <span class="l">p1</span><span class="o">;</span>                    <span class="c">// Copy: p1도 유효</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"p1={p1:?}, p2={p2:?}"</span><span class="o">);</span>
+
+    <span class="k">let</span> <span class="l">alice</span> <span class="o">=</span> <span class="t">Person</span> <span class="o">{</span> <span class="l">name</span><span class="o">:</span><span class="s">"Alice"</span><span class="o">.</span><span class="f">into</span><span class="o">(),</span> <span class="l">age</span><span class="o">:</span><span class="n">30</span> <span class="o">};</span>
+    <span class="k">let</span> <span class="l">alice2</span> <span class="o">=</span> <span class="l">alice</span><span class="o">.</span><span class="f">clone</span><span class="o">();</span>   <span class="c">// 힙 재할당</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"{alice:?}, {alice2:?}"</span><span class="o">);</span>
+<span class="o">}</span></pre>
+</div>
+<div class="tab-pane" id="e3">
+<p><span class="badge bok">예제 07</span> <strong>불변 참조 · Deref Coercion</strong></p>
+<pre><span class="k">fn</span> <span class="f">print_info</span><span class="o">(</span><span class="l">s</span><span class="o">: &amp;</span><span class="t">str</span><span class="o">) {</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"chars={} bytes={}"</span><span class="o">,</span> <span class="l">s</span><span class="o">.</span><span class="f">chars</span><span class="o">().</span><span class="f">count</span><span class="o">(),</span> <span class="l">s</span><span class="o">.</span><span class="f">len</span><span class="o">());</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">() {</span>
+    <span class="k">let</span> <span class="l">s</span> <span class="o">=</span> <span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"Hello 안녕"</span><span class="o">);</span>
+    <span class="k">let</span> <span class="l">r1</span> <span class="o">= &amp;</span><span class="l">s</span><span class="o">;</span>
+    <span class="k">let</span> <span class="l">r2</span> <span class="o">= &amp;</span><span class="l">s</span><span class="o">;</span>  <span class="c">// 불변 참조 동시에 여럿 OK</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"{r1} / {r2}"</span><span class="o">);</span>
+    <span class="f">print_info</span><span class="o">(&amp;</span><span class="l">s</span><span class="o">);</span>        <span class="c">// &amp;String → &amp;str (Deref coercion)</span>
+    <span class="f">print_info</span><span class="o">(</span><span class="s">"literal"</span><span class="o">);</span>  <span class="c">// &amp;str 직접</span>
+    <span class="k">let</span> <span class="l">b</span> <span class="o">=</span> <span class="t">Box</span><span class="o">::</span><span class="f">new</span><span class="o">(</span><span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"boxed"</span><span class="o">));</span>
+    <span class="f">print_info</span><span class="o">(&amp;</span><span class="l">b</span><span class="o">);</span>         <span class="c">// Box → &amp;String → &amp;str</span>
+<span class="o">}</span></pre>
+</div>
+<div class="tab-pane" id="e4">
+<p><span class="badge bok">예제 08</span> <strong>가변 참조 · NLL · split_at_mut</strong></p>
+<pre><span class="k">fn</span> <span class="f">add_suffix</span><span class="o">(</span><span class="l">s</span><span class="o">: &amp;</span><span class="k">mut</span> <span class="t">String</span><span class="o">,</span> <span class="l">sfx</span><span class="o">: &amp;</span><span class="t">str</span><span class="o">) {</span> <span class="l">s</span><span class="o">.</span><span class="f">push_str</span><span class="o">(</span><span class="l">sfx</span><span class="o">); }</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">() {</span>
+    <span class="k">let</span> <span class="k">mut</span> <span class="l">s</span> <span class="o">=</span> <span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"hello"</span><span class="o">);</span>
+    <span class="f">add_suffix</span><span class="o">(&amp;</span><span class="k">mut</span> <span class="l">s</span><span class="o">,</span> <span class="s">" world"</span><span class="o">);</span>
+    <span class="k">let</span> <span class="l">r1</span> <span class="o">= &amp;</span><span class="l">s</span><span class="o">;</span>
+    <span class="k">let</span> <span class="l">r2</span> <span class="o">= &amp;</span><span class="l">s</span><span class="o">;</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"{r1} {r2}"</span><span class="o">);</span>  <span class="c">// ← NLL 종료</span>
+    <span class="k">let</span> <span class="l">r3</span> <span class="o">= &amp;</span><span class="k">mut</span> <span class="l">s</span><span class="o">;</span>        <span class="c">// ✓ r1,r2 NLL 종료 후 가능</span>
+    <span class="l">r3</span><span class="o">.</span><span class="f">push</span><span class="o">(</span><span class="s">'!'</span><span class="o">);</span>
+    <span class="k">let</span> <span class="k">mut</span> <span class="l">v</span> <span class="o">=</span> <span class="m">vec!</span><span class="o">[</span><span class="n">1</span><span class="o">,</span><span class="n">2</span><span class="o">,</span><span class="n">3</span><span class="o">,</span><span class="n">4</span><span class="o">,</span><span class="n">5</span><span class="o">];</span>
+    <span class="k">for</span> <span class="l">x</span> <span class="k">in</span> <span class="l">v</span><span class="o">.</span><span class="f">iter_mut</span><span class="o">() {</span> <span class="o">*</span><span class="l">x</span> <span class="o">*=</span> <span class="n">2</span><span class="o">; }</span>
+    <span class="k">let</span> <span class="o">(</span><span class="l">l</span><span class="o">,</span><span class="l">r</span><span class="o">) =</span> <span class="l">v</span><span class="o">.</span><span class="f">split_at_mut</span><span class="o">(</span><span class="n">2</span><span class="o">);</span>
+    <span class="l">l</span><span class="o">[</span><span class="n">0</span><span class="o">]=</span><span class="n">100</span><span class="o">;</span> <span class="l">r</span><span class="o">[</span><span class="n">0</span><span class="o">]=</span><span class="n">999</span><span class="o">;</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"{v:?}"</span><span class="o">);</span>
+<span class="o">}</span></pre>
+</div>
+<div class="tab-pane" id="e5">
+<p><span class="badge bok">예제 09</span> <strong>문자열 슬라이스 · 댕글링 방지</strong></p>
+<pre><span class="k">fn</span> <span class="f">first_word</span><span class="o">(</span><span class="l">s</span><span class="o">: &amp;</span><span class="t">str</span><span class="o">) -&gt; &amp;</span><span class="t">str</span> <span class="o">{</span>
+    <span class="l">s</span><span class="o">.</span><span class="f">split_whitespace</span><span class="o">().</span><span class="f">next</span><span class="o">().</span><span class="f">unwrap_or</span><span class="o">(</span><span class="s">""</span><span class="o">)</span>
+<span class="o">}</span>
+<span class="c">// fn dangle() -> &amp;String { let s = String::from("x"); &amp;s } // ❌</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">() {</span>
+    <span class="k">let</span> <span class="l">s</span> <span class="o">=</span> <span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"the quick brown fox"</span><span class="o">);</span>
+    <span class="k">let</span> <span class="l">word</span> <span class="o">=</span> <span class="f">first_word</span><span class="o">(&amp;</span><span class="l">s</span><span class="o">);</span>
+    <span class="c">// s.clear(); // ❌ word가 빌리는 중</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"{word}"</span><span class="o">);</span>
+    <span class="k">let</span> <span class="l">arr</span> <span class="o">=</span> <span class="o">[</span><span class="n">10</span><span class="o">,</span><span class="n">20</span><span class="o">,</span><span class="n">30</span><span class="o">,</span><span class="n">40</span><span class="o">,</span><span class="n">50</span><span class="o">];</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"{:?}"</span><span class="o">, &amp;</span><span class="l">arr</span><span class="o">[</span><span class="n">1</span><span class="o">..</span><span class="n">4</span><span class="o">]);</span>  <span class="c">// [20,30,40]</span>
+    <span class="k">let</span> <span class="l">parts</span><span class="o">:</span> <span class="t">Vec</span><span class="o">&lt;&amp;</span><span class="t">str</span><span class="o">&gt; =</span> <span class="s">"a,b,c"</span><span class="o">.</span><span class="f">split</span><span class="o">(</span><span class="s">','</span><span class="o">).</span><span class="f">collect</span><span class="o">();</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"{parts:?}"</span><span class="o">);</span>
+<span class="o">}</span></pre>
+</div>
+<div class="tab-pane" id="e6">
+<p><span class="badge bok">예제 10</span> <strong>수명 명시 기본</strong></p>
+<pre><span class="k">fn</span> <span class="f">longest</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">&gt;(</span><span class="l">x</span><span class="o">: &amp;</span><span class="l">'a</span> <span class="t">str</span><span class="o">,</span> <span class="l">y</span><span class="o">: &amp;</span><span class="l">'a</span> <span class="t">str</span><span class="o">) -&gt; &amp;</span><span class="l">'a</span> <span class="t">str</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="l">x</span><span class="o">.</span><span class="f">len</span><span class="o">() &gt;=</span> <span class="l">y</span><span class="o">.</span><span class="f">len</span><span class="o">() {</span> <span class="l">x</span> <span class="o">}</span> <span class="k">else</span> <span class="o">{</span> <span class="l">y</span> <span class="o">}</span>
+<span class="o">}</span>
+<span class="k">struct</span> <span class="t">Excerpt</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">&gt; {</span> <span class="l">part</span><span class="o">: &amp;</span><span class="l">'a</span> <span class="t">str</span> <span class="o">}</span>
+<span class="k">impl</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">&gt;</span> <span class="t">Excerpt</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">&gt; {</span>
+    <span class="k">fn</span> <span class="f">announce</span><span class="o">(&amp;</span><span class="l">self</span><span class="o">,</span> <span class="l">msg</span><span class="o">: &amp;</span><span class="t">str</span><span class="o">) -&gt; &amp;</span><span class="t">str</span> <span class="o">{</span>
+        <span class="m">println!</span><span class="o">(</span><span class="s">"[공지] {msg}"</span><span class="o">);</span> <span class="l">self</span><span class="o">.</span><span class="l">part</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">() {</span>
+    <span class="k">let</span> <span class="l">s1</span> <span class="o">=</span> <span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"long string"</span><span class="o">);</span>
+    <span class="o">{</span>
+        <span class="k">let</span> <span class="l">s2</span> <span class="o">=</span> <span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"xyz"</span><span class="o">);</span>
+        <span class="m">println!</span><span class="o">(</span><span class="s">"{}"</span><span class="o">,</span> <span class="f">longest</span><span class="o">(&amp;</span><span class="l">s1</span><span class="o">, &amp;</span><span class="l">s2</span><span class="o">));</span>
+    <span class="o">}</span>
+    <span class="k">let</span> <span class="l">novel</span> <span class="o">=</span> <span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"옛날. 두 번째."</span><span class="o">);</span>
+    <span class="k">let</span> <span class="l">ex</span> <span class="o">=</span> <span class="t">Excerpt</span> <span class="o">{</span> <span class="l">part</span><span class="o">:</span> <span class="l">novel</span><span class="o">.</span><span class="f">split</span><span class="o">(</span><span class="s">'.'</span><span class="o">).</span><span class="f">next</span><span class="o">().</span><span class="f">unwrap</span><span class="o">() };</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"{}"</span><span class="o">,</span> <span class="l">ex</span><span class="o">.</span><span class="f">announce</span><span class="o">(</span><span class="s">"발췌"</span><span class="o">));</span>
+<span class="o">}</span></pre>
+</div>
+<div class="tab-pane" id="e7">
+<p><span class="badge bok">예제 11</span> <strong>'static 수명 두 가지 용법</strong></p>
+<pre><span class="k">fn</span> <span class="f">print_static</span><span class="o">&lt;</span><span class="t">T</span><span class="o">:</span> <span class="t">std</span><span class="o">::</span><span class="t">fmt</span><span class="o">::</span><span class="t">Display</span> <span class="o">+</span> <span class="l">'static</span><span class="o">&gt;(</span><span class="l">v</span><span class="o">: &amp;</span><span class="t">T</span><span class="o">) {</span> <span class="m">println!</span><span class="o">(</span><span class="s">"{v}"</span><span class="o">); }</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">() {</span>
+    <span class="k">let</span> <span class="l">s</span><span class="o">: &amp;</span><span class="l">'static</span> <span class="t">str</span> <span class="o">=</span> <span class="s">"forever"</span><span class="o">;</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"{s}"</span><span class="o">);</span>
+    <span class="f">print_static</span><span class="o">(&amp;</span><span class="n">42i32</span><span class="o">);</span>      <span class="c">// i32: 'static ✓</span>
+    <span class="f">print_static</span><span class="o">(&amp;</span><span class="s">"literal"</span><span class="o">);</span>  <span class="c">// &amp;str: 'static ✓</span>
+    <span class="k">let</span> <span class="l">owned</span> <span class="o">=</span> <span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"owned"</span><span class="o">);</span>
+    <span class="f">print_static</span><span class="o">(&amp;</span><span class="l">owned</span><span class="o">);</span>      <span class="c">// String: 'static ✓ (참조 없음)</span>
+    <span class="k">let</span> <span class="l">msg</span> <span class="o">=</span> <span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"hi"</span><span class="o">);</span>
+    <span class="t">std</span><span class="o">::</span><span class="t">thread</span><span class="o">::</span><span class="f">spawn</span><span class="o">(</span><span class="k">move</span> <span class="o">|| {</span> <span class="m">println!</span><span class="o">(</span><span class="s">"{msg}"</span><span class="o">); }).</span><span class="f">join</span><span class="o">().</span><span class="f">unwrap</span><span class="o">();</span>
+<span class="o">}</span></pre>
+</div>
+</div>
+</div>
+</div><!-- /part1 -->
+
+<!-- ════════ PART 3 ════════ -->
+<div class="part-panel" id="part2">
+<h2 style="margin-top:0">심화 예제 — fn main() 포함, 실행 가능</h2>
+<div class="tab-wrap">
+<div class="tab-btns" id="atab-btns">
+  <div class="tab-btn active" onclick="ashow(0)">① 다중수명</div>
+  <div class="tab-btn" onclick="ashow(1)">② Iterator</div>
+  <div class="tab-btn" onclick="ashow(2)">③ Rc/RefCell</div>
+  <div class="tab-btn" onclick="ashow(3)">④ 클로저</div>
+  <div class="tab-btn" onclick="ashow(4)">⑤ dyn Trait</div>
+  <div class="tab-btn" onclick="ashow(5)">⑥ 제네릭+수명</div>
+  <div class="tab-btn" onclick="ashow(6)">⑦ Parser</div>
+  <div class="tab-btn" onclick="ashow(7)">⑧ Arena</div>
+  <div class="tab-btn" onclick="ashow(8)">⑨ 스레드</div>
+  <div class="tab-btn" onclick="ashow(9)">⑩ Pin</div>
+</div>
+<div class="tab-panes">
+<div class="tab-pane active" id="a0">
+<p><span class="badge badv">심화 01</span> <strong>다중 수명 파라미터</strong></p>
+<div class="rule info"><p><code>'a: 'b</code>는 'a가 'b보다 오래 산다는 수명 바운드입니다.</p></div>
+<pre><span class="k">fn</span> <span class="f">first_of</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">,</span><span class="l">'b</span><span class="o">&gt;(</span><span class="l">x</span><span class="o">: &amp;</span><span class="l">'a</span> <span class="t">str</span><span class="o">,</span> <span class="l">_y</span><span class="o">: &amp;</span><span class="l">'b</span> <span class="t">str</span><span class="o">) -&gt; &amp;</span><span class="l">'a</span> <span class="t">str</span> <span class="o">{</span> <span class="l">x</span> <span class="o">}</span>
+<span class="k">struct</span> <span class="t">Context</span><span class="o">&lt;</span><span class="l">'src</span><span class="o">,</span><span class="l">'tok</span><span class="o">&gt; {</span> <span class="l">source</span><span class="o">: &amp;</span><span class="l">'src</span> <span class="t">str</span><span class="o">,</span> <span class="l">token</span><span class="o">: &amp;</span><span class="l">'tok</span> <span class="t">str</span> <span class="o">}</span>
+<span class="k">impl</span><span class="o">&lt;</span><span class="l">'src</span><span class="o">,</span><span class="l">'tok</span><span class="o">&gt;</span> <span class="t">Context</span><span class="o">&lt;</span><span class="l">'src</span><span class="o">,</span><span class="l">'tok</span><span class="o">&gt; {</span>
+    <span class="k">fn</span> <span class="f">new</span><span class="o">(</span><span class="l">s</span><span class="o">: &amp;</span><span class="l">'src</span> <span class="t">str</span><span class="o">,</span> <span class="l">t</span><span class="o">: &amp;</span><span class="l">'tok</span> <span class="t">str</span><span class="o">) -&gt;</span> <span class="t">Self</span> <span class="o">{</span> <span class="t">Self</span><span class="o">{</span><span class="l">source</span><span class="o">:</span><span class="l">s</span><span class="o">,</span><span class="l">token</span><span class="o">:</span><span class="l">t</span><span class="o">} }</span>
+    <span class="k">fn</span> <span class="f">source</span><span class="o">(&amp;</span><span class="l">self</span><span class="o">) -&gt; &amp;</span><span class="l">'src</span> <span class="t">str</span> <span class="o">{</span> <span class="l">self</span><span class="o">.</span><span class="l">source</span> <span class="o">}</span>
+    <span class="k">fn</span> <span class="f">token</span><span class="o">(&amp;</span><span class="l">self</span><span class="o">) -&gt; &amp;</span><span class="l">'tok</span> <span class="t">str</span>  <span class="o">{</span> <span class="l">self</span><span class="o">.</span><span class="l">token</span> <span class="o">}</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">longer</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">:</span><span class="l">'b</span><span class="o">,</span><span class="l">'b</span><span class="o">&gt;(</span><span class="l">x</span><span class="o">: &amp;</span><span class="l">'a</span> <span class="t">str</span><span class="o">,</span> <span class="l">y</span><span class="o">: &amp;</span><span class="l">'b</span> <span class="t">str</span><span class="o">) -&gt; &amp;</span><span class="l">'b</span> <span class="t">str</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="l">x</span><span class="o">.</span><span class="f">len</span><span class="o">() &gt;</span> <span class="l">y</span><span class="o">.</span><span class="f">len</span><span class="o">() {</span> <span class="l">x</span> <span class="o">}</span> <span class="k">else</span> <span class="o">{</span> <span class="l">y</span> <span class="o">}</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">() {</span>
+    <span class="k">let</span> <span class="l">src</span> <span class="o">=</span> <span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"fn main() {}"</span><span class="o">);</span>
+    <span class="k">let</span> <span class="l">result</span><span class="o">;</span>
+    <span class="o">{</span>
+        <span class="k">let</span> <span class="l">tok</span> <span class="o">=</span> <span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"fn"</span><span class="o">);</span>
+        <span class="k">let</span> <span class="l">ctx</span> <span class="o">=</span> <span class="t">Context</span><span class="o">::</span><span class="f">new</span><span class="o">(&amp;</span><span class="l">src</span><span class="o">, &amp;</span><span class="l">tok</span><span class="o">);</span>
+        <span class="m">println!</span><span class="o">(</span><span class="s">"src={}, tok={}"</span><span class="o">,</span> <span class="l">ctx</span><span class="o">.</span><span class="f">source</span><span class="o">(),</span> <span class="l">ctx</span><span class="o">.</span><span class="f">token</span><span class="o">());</span>
+        <span class="l">result</span> <span class="o">=</span> <span class="f">first_of</span><span class="o">(&amp;</span><span class="l">src</span><span class="o">, &amp;</span><span class="l">tok</span><span class="o">);</span>
+    <span class="o">}</span> <span class="c">// tok drop, result는 src 수명이라 OK</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"result: {result}"</span><span class="o">);</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"longer: {}"</span><span class="o">,</span> <span class="f">longer</span><span class="o">(&amp;</span><span class="l">src</span><span class="o">,</span> <span class="s">"x"</span><span class="o">));</span>
+<span class="o">}</span></pre>
+</div>
+<div class="tab-pane" id="a1">
+<p><span class="badge badv">심화 02</span> <strong>수명을 가진 커스텀 Iterator</strong></p>
+<div class="rule info"><p>Item 타입에 수명을 붙이면 반환 슬라이스가 원본에 묶여 zero-copy 이터레이션이 가능합니다.</p></div>
+<pre><span class="k">struct</span> <span class="t">WordIter</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">&gt; {</span> <span class="l">text</span><span class="o">: &amp;</span><span class="l">'a</span> <span class="t">str</span><span class="o">,</span> <span class="l">pos</span><span class="o">:</span> <span class="t">usize</span> <span class="o">}</span>
+<span class="k">impl</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">&gt;</span> <span class="t">WordIter</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">&gt; {</span>
+    <span class="k">fn</span> <span class="f">new</span><span class="o">(</span><span class="l">t</span><span class="o">: &amp;</span><span class="l">'a</span> <span class="t">str</span><span class="o">) -&gt;</span> <span class="t">Self</span> <span class="o">{</span> <span class="t">Self</span><span class="o">{</span><span class="l">text</span><span class="o">:</span><span class="l">t</span><span class="o">,</span><span class="l">pos</span><span class="o">:</span><span class="n">0</span><span class="o">} }</span>
+<span class="o">}</span>
+<span class="k">impl</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">&gt;</span> <span class="t">Iterator</span> <span class="k">for</span> <span class="t">WordIter</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">&gt; {</span>
+    <span class="k">type</span> <span class="t">Item</span> <span class="o">= &amp;</span><span class="l">'a</span> <span class="t">str</span><span class="o">;</span>
+    <span class="k">fn</span> <span class="f">next</span><span class="o">(&amp;</span><span class="k">mut</span> <span class="l">self</span><span class="o">) -&gt;</span> <span class="t">Option</span><span class="o">&lt;</span><span class="t">Self</span><span class="o">::</span><span class="t">Item</span><span class="o">&gt; {</span>
+        <span class="k">if</span> <span class="l">self</span><span class="o">.</span><span class="l">pos</span> <span class="o">&gt;=</span> <span class="l">self</span><span class="o">.</span><span class="l">text</span><span class="o">.</span><span class="f">len</span><span class="o">() {</span> <span class="k">return</span> <span class="e">None</span><span class="o">; }</span>
+        <span class="k">let</span> <span class="l">rest</span> <span class="o">= &amp;</span><span class="l">self</span><span class="o">.</span><span class="l">text</span><span class="o">[</span><span class="l">self</span><span class="o">.</span><span class="l">pos</span><span class="o">..];</span>
+        <span class="k">match</span> <span class="l">rest</span><span class="o">.</span><span class="f">find</span><span class="o">(</span><span class="s">' '</span><span class="o">) {</span>
+            <span class="e">Some</span><span class="o">(</span><span class="l">i</span><span class="o">) =&gt; {</span> <span class="k">let</span> <span class="l">w</span><span class="o">=&amp;</span><span class="l">rest</span><span class="o">[..</span><span class="l">i</span><span class="o">];</span> <span class="l">self</span><span class="o">.</span><span class="l">pos</span><span class="o">+=</span><span class="l">i</span><span class="o">+</span><span class="n">1</span><span class="o">;</span> <span class="e">Some</span><span class="o">(</span><span class="l">w</span><span class="o">) }</span>
+            <span class="e">None</span>    <span class="o">=&gt; {</span> <span class="l">self</span><span class="o">.</span><span class="l">pos</span><span class="o">=</span><span class="l">self</span><span class="o">.</span><span class="l">text</span><span class="o">.</span><span class="f">len</span><span class="o">();</span> <span class="e">Some</span><span class="o">(</span><span class="l">rest</span><span class="o">) }</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">() {</span>
+    <span class="k">let</span> <span class="l">text</span> <span class="o">=</span> <span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"the quick brown fox"</span><span class="o">);</span>
+    <span class="k">for</span> <span class="l">w</span> <span class="k">in</span> <span class="t">WordIter</span><span class="o">::</span><span class="f">new</span><span class="o">(&amp;</span><span class="l">text</span><span class="o">) {</span> <span class="m">print!</span><span class="o">(</span><span class="s">"[{w}]"</span><span class="o">); }</span>
+    <span class="m">println!</span><span class="o">();</span>
+    <span class="k">let</span> <span class="l">long</span><span class="o">:</span> <span class="t">Vec</span><span class="o">&lt;&amp;</span><span class="t">str</span><span class="o">&gt; =</span> <span class="t">WordIter</span><span class="o">::</span><span class="f">new</span><span class="o">(&amp;</span><span class="l">text</span><span class="o">).</span><span class="f">filter</span><span class="o">(|</span><span class="l">w</span><span class="o">|</span> <span class="l">w</span><span class="o">.</span><span class="f">len</span><span class="o">()&gt;</span><span class="n">3</span><span class="o">).</span><span class="f">collect</span><span class="o">();</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"{long:?}"</span><span class="o">);</span>
+<span class="o">}</span></pre>
+</div>
+<div class="tab-pane" id="a2">
+<p><span class="badge badv">심화 03</span> <strong>Rc / RefCell / Weak</strong></p>
+<div class="rule info"><p>Rc: 단일 스레드 참조 카운팅. RefCell: 런타임 차용 검사. Weak: 순환 참조 방지.</p></div>
+<pre><span class="k">use</span> <span class="t">std</span><span class="o">::</span><span class="t">cell</span><span class="o">::</span><span class="t">RefCell</span><span class="o">;</span>
+<span class="k">use</span> <span class="t">std</span><span class="o">::</span><span class="t">rc</span><span class="o">::{</span><span class="t">Rc</span><span class="o">,</span><span class="t">Weak</span><span class="o">};</span>
+<span class="k">struct</span> <span class="t">Node</span> <span class="o">{</span>
+    <span class="l">val</span><span class="o">:</span><span class="t">i32</span><span class="o">,</span>
+    <span class="l">children</span><span class="o">:</span><span class="t">RefCell</span><span class="o">&lt;</span><span class="t">Vec</span><span class="o">&lt;</span><span class="t">Rc</span><span class="o">&lt;</span><span class="t">Node</span><span class="o">&gt;&gt;&gt;,</span>
+    <span class="l">parent</span><span class="o">:</span><span class="t">RefCell</span><span class="o">&lt;</span><span class="t">Weak</span><span class="o">&lt;</span><span class="t">Node</span><span class="o">&gt;&gt;,</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">() {</span>
+    <span class="k">let</span> <span class="l">a</span> <span class="o">=</span> <span class="t">Rc</span><span class="o">::</span><span class="f">new</span><span class="o">(</span><span class="s">"shared"</span><span class="o">.</span><span class="f">to_string</span><span class="o">());</span>
+    <span class="k">let</span> <span class="l">b</span> <span class="o">=</span> <span class="t">Rc</span><span class="o">::</span><span class="f">clone</span><span class="o">(&amp;</span><span class="l">a</span><span class="o">);</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"count={}"</span><span class="o">,</span><span class="t">Rc</span><span class="o">::</span><span class="f">strong_count</span><span class="o">(&amp;</span><span class="l">a</span><span class="o">));</span>  <span class="c">// 2</span>
+    <span class="f">drop</span><span class="o">(</span><span class="l">b</span><span class="o">);</span>
+    <span class="k">let</span> <span class="l">shared</span> <span class="o">=</span> <span class="t">Rc</span><span class="o">::</span><span class="f">new</span><span class="o">(</span><span class="t">RefCell</span><span class="o">::</span><span class="f">new</span><span class="o">(</span><span class="m">vec!</span><span class="o">[</span><span class="n">0</span><span class="o">]));</span>
+    <span class="t">Rc</span><span class="o">::</span><span class="f">clone</span><span class="o">(&amp;</span><span class="l">shared</span><span class="o">).</span><span class="f">borrow_mut</span><span class="o">().</span><span class="f">push</span><span class="o">(</span><span class="n">1</span><span class="o">);</span>
+    <span class="t">Rc</span><span class="o">::</span><span class="f">clone</span><span class="o">(&amp;</span><span class="l">shared</span><span class="o">).</span><span class="f">borrow_mut</span><span class="o">().</span><span class="f">push</span><span class="o">(</span><span class="n">2</span><span class="o">);</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"{:?}"</span><span class="o">,</span><span class="l">shared</span><span class="o">.</span><span class="f">borrow</span><span class="o">());</span>  <span class="c">// [0,1,2]</span>
+    <span class="k">let</span> <span class="l">root</span> <span class="o">=</span> <span class="t">Rc</span><span class="o">::</span><span class="f">new</span><span class="o">(</span><span class="t">Node</span><span class="o">{</span><span class="l">val</span><span class="o">:</span><span class="n">1</span><span class="o">,</span><span class="l">children</span><span class="o">:</span><span class="t">RefCell</span><span class="o">::</span><span class="f">new</span><span class="o">(</span><span class="m">vec!</span><span class="o">[]),</span><span class="l">parent</span><span class="o">:</span><span class="t">RefCell</span><span class="o">::</span><span class="f">new</span><span class="o">(</span><span class="t">Weak</span><span class="o">::</span><span class="f">new</span><span class="o">())});</span>
+    <span class="k">let</span> <span class="l">child</span> <span class="o">=</span> <span class="t">Rc</span><span class="o">::</span><span class="f">new</span><span class="o">(</span><span class="t">Node</span><span class="o">{</span><span class="l">val</span><span class="o">:</span><span class="n">2</span><span class="o">,</span><span class="l">children</span><span class="o">:</span><span class="t">RefCell</span><span class="o">::</span><span class="f">new</span><span class="o">(</span><span class="m">vec!</span><span class="o">[]),</span><span class="l">parent</span><span class="o">:</span><span class="t">RefCell</span><span class="o">::</span><span class="f">new</span><span class="o">(</span><span class="t">Rc</span><span class="o">::</span><span class="f">downgrade</span><span class="o">(&amp;</span><span class="l">root</span><span class="o">))});</span>
+    <span class="l">root</span><span class="o">.</span><span class="l">children</span><span class="o">.</span><span class="f">borrow_mut</span><span class="o">().</span><span class="f">push</span><span class="o">(</span><span class="t">Rc</span><span class="o">::</span><span class="f">clone</span><span class="o">(&amp;</span><span class="l">child</span><span class="o">));</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"strong={} weak={}"</span><span class="o">,</span><span class="t">Rc</span><span class="o">::</span><span class="f">strong_count</span><span class="o">(&amp;</span><span class="l">root</span><span class="o">),</span><span class="t">Rc</span><span class="o">::</span><span class="f">weak_count</span><span class="o">(&amp;</span><span class="l">root</span><span class="o">));</span>
+<span class="o">}</span></pre>
+</div>
+<div class="tab-pane" id="a3">
+<p><span class="badge badv">심화 04</span> <strong>클로저와 수명 — Fn/FnMut/FnOnce</strong></p>
+<div class="rule info"><p>move로 소유권을 캡처하면 'static을 충족합니다. 참조를 캡처하면 클로저 수명이 참조에 묶입니다.</p></div>
+<pre><span class="k">fn</span> <span class="f">make_adder</span><span class="o">(</span><span class="l">x</span><span class="o">:</span><span class="t">i32</span><span class="o">) -&gt;</span> <span class="k">impl</span> <span class="t">Fn</span><span class="o">(</span><span class="t">i32</span><span class="o">)-&gt;</span><span class="t">i32</span> <span class="o">{</span> <span class="k">move</span> <span class="o">|</span><span class="l">y</span><span class="o">|</span> <span class="l">x</span><span class="o">+</span><span class="l">y</span> <span class="o">}</span>
+<span class="k">fn</span> <span class="f">make_checker</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">&gt;(</span><span class="l">list</span><span class="o">: &amp;</span><span class="l">'a</span> <span class="o">[</span><span class="t">i32</span><span class="o">]) -&gt;</span> <span class="k">impl</span> <span class="t">Fn</span><span class="o">(</span><span class="t">i32</span><span class="o">)-&gt;</span><span class="t">bool</span> <span class="o">+</span> <span class="l">'a</span> <span class="o">{</span>
+    <span class="k">move</span> <span class="o">|</span><span class="l">x</span><span class="o">|</span> <span class="l">list</span><span class="o">.</span><span class="f">contains</span><span class="o">(&amp;</span><span class="l">x</span><span class="o">)</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">apply_once</span><span class="o">&lt;</span><span class="t">F</span><span class="o">:</span><span class="t">FnOnce</span><span class="o">()-&gt;</span><span class="t">String</span><span class="o">&gt;(</span><span class="l">f</span><span class="o">:</span><span class="t">F</span><span class="o">)-&gt;</span><span class="t">String</span> <span class="o">{</span> <span class="f">f</span><span class="o">() }</span>
+<span class="k">fn</span> <span class="f">make_greeting</span><span class="o">(</span><span class="l">pre</span><span class="o">:</span><span class="t">String</span><span class="o">)-&gt;</span><span class="t">Box</span><span class="o">&lt;</span><span class="k">dyn</span> <span class="t">Fn</span><span class="o">(&amp;</span><span class="t">str</span><span class="o">)-&gt;</span><span class="t">String</span><span class="o">&gt; {</span>
+    <span class="t">Box</span><span class="o">::</span><span class="f">new</span><span class="o">(</span><span class="k">move</span> <span class="o">|</span><span class="l">name</span><span class="o">|</span> <span class="m">format!</span><span class="o">(</span><span class="s">"{pre}, {name}!"</span><span class="o">))</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">() {</span>
+    <span class="k">let</span> <span class="l">add5</span> <span class="o">=</span> <span class="f">make_adder</span><span class="o">(</span><span class="n">5</span><span class="o">);</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"3+5={}"</span><span class="o">,</span><span class="f">add5</span><span class="o">(</span><span class="n">3</span><span class="o">));</span>
+    <span class="k">let</span> <span class="l">primes</span> <span class="o">=</span> <span class="m">vec!</span><span class="o">[</span><span class="n">2</span><span class="o">,</span><span class="n">3</span><span class="o">,</span><span class="n">5</span><span class="o">,</span><span class="n">7</span><span class="o">,</span><span class="n">11</span><span class="o">];</span>
+    <span class="k">let</span> <span class="l">is_prime</span> <span class="o">=</span> <span class="f">make_checker</span><span class="o">(&amp;</span><span class="l">primes</span><span class="o">);</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"5={}, 6={}"</span><span class="o">,</span><span class="f">is_prime</span><span class="o">(</span><span class="n">5</span><span class="o">),</span><span class="f">is_prime</span><span class="o">(</span><span class="n">6</span><span class="o">));</span>
+    <span class="k">let</span> <span class="l">msg</span> <span class="o">=</span> <span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"한번만"</span><span class="o">);</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"{}"</span><span class="o">,</span><span class="f">apply_once</span><span class="o">(</span><span class="k">move</span> <span class="o">||</span><span class="l">msg</span><span class="o">));</span>
+    <span class="k">let</span> <span class="l">hi</span> <span class="o">=</span> <span class="f">make_greeting</span><span class="o">(</span><span class="s">"Hello"</span><span class="o">.</span><span class="f">into</span><span class="o">());</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"{}"</span><span class="o">,</span><span class="f">hi</span><span class="o">(</span><span class="s">"Rust"</span><span class="o">));</span>
+<span class="o">}</span></pre>
+</div>
+<div class="tab-pane" id="a4">
+<p><span class="badge badv">심화 05</span> <strong>dyn Trait + impl Trait + 수명</strong></p>
+<pre><span class="k">trait</span> <span class="t">Summarize</span> <span class="o">{</span> <span class="k">fn</span> <span class="f">summary</span><span class="o">(&amp;</span><span class="l">self</span><span class="o">)-&gt;</span><span class="t">String</span><span class="o">; }</span>
+<span class="k">struct</span> <span class="t">Article</span><span class="o">{</span><span class="l">title</span><span class="o">:</span><span class="t">String</span><span class="o">,</span><span class="l">body</span><span class="o">:</span><span class="t">String</span><span class="o">}</span>
+<span class="k">struct</span> <span class="t">Tweet</span><span class="o">{</span><span class="l">user</span><span class="o">:</span><span class="t">String</span><span class="o">,</span><span class="l">text</span><span class="o">:</span><span class="t">String</span><span class="o">}</span>
+<span class="k">impl</span> <span class="t">Summarize</span> <span class="k">for</span> <span class="t">Article</span><span class="o">{</span>
+    <span class="k">fn</span> <span class="f">summary</span><span class="o">(&amp;</span><span class="l">self</span><span class="o">)-&gt;</span><span class="t">String</span><span class="o">{</span><span class="m">format!</span><span class="o">(</span><span class="s">"[기사] {}: {}..."</span><span class="o">,</span><span class="l">self</span><span class="o">.</span><span class="l">title</span><span class="o">,&amp;</span><span class="l">self</span><span class="o">.</span><span class="l">body</span><span class="o">[..</span><span class="l">self</span><span class="o">.</span><span class="l">body</span><span class="o">.</span><span class="f">len</span><span class="o">().</span><span class="f">min</span><span class="o">(</span><span class="n">20</span><span class="o">)])}</span>
+<span class="o">}</span>
+<span class="k">impl</span> <span class="t">Summarize</span> <span class="k">for</span> <span class="t">Tweet</span><span class="o">{</span>
+    <span class="k">fn</span> <span class="f">summary</span><span class="o">(&amp;</span><span class="l">self</span><span class="o">)-&gt;</span><span class="t">String</span><span class="o">{</span><span class="m">format!</span><span class="o">(</span><span class="s">"@{}: {}"</span><span class="o">,</span><span class="l">self</span><span class="o">.</span><span class="l">user</span><span class="o">,</span><span class="l">self</span><span class="o">.</span><span class="l">text</span><span class="o">)}</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">notify</span><span class="o">(</span><span class="l">x</span><span class="o">:&amp;</span><span class="k">impl</span> <span class="t">Summarize</span><span class="o">){</span><span class="m">println!</span><span class="o">(</span><span class="s">"알림: {}"</span><span class="o">,</span><span class="l">x</span><span class="o">.</span><span class="f">summary</span><span class="o">());}</span>
+<span class="k">fn</span> <span class="f">make</span><span class="o">(</span><span class="l">k</span><span class="o">:&amp;</span><span class="t">str</span><span class="o">)-&gt;</span><span class="t">Box</span><span class="o">&lt;</span><span class="k">dyn</span> <span class="t">Summarize</span><span class="o">&gt;{</span>
+    <span class="k">if</span> <span class="l">k</span><span class="o">==</span><span class="s">"a"</span><span class="o">{</span><span class="t">Box</span><span class="o">::</span><span class="f">new</span><span class="o">(</span><span class="t">Article</span><span class="o">{</span><span class="l">title</span><span class="o">:</span><span class="s">"뉴스"</span><span class="o">.</span><span class="f">into</span><span class="o">(),</span><span class="l">body</span><span class="o">:</span><span class="s">"내용"</span><span class="o">.</span><span class="f">into</span><span class="o">()})}</span>
+    <span class="k">else</span><span class="o">{</span><span class="t">Box</span><span class="o">::</span><span class="f">new</span><span class="o">(</span><span class="t">Tweet</span><span class="o">{</span><span class="l">user</span><span class="o">:</span><span class="s">"rust"</span><span class="o">.</span><span class="f">into</span><span class="o">(),</span><span class="l">text</span><span class="o">:</span><span class="s">"New!"</span><span class="o">.</span><span class="f">into</span><span class="o">()})}</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">print_all</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">&gt;(</span><span class="l">items</span><span class="o">:&amp;[&amp;</span><span class="l">'a</span> <span class="k">dyn</span> <span class="t">Summarize</span><span class="o">]){</span>
+    <span class="k">for</span><span class="o">(</span><span class="l">i</span><span class="o">,</span><span class="l">x</span><span class="o">)</span><span class="k">in</span><span class="l">items</span><span class="o">.</span><span class="f">iter</span><span class="o">().</span><span class="f">enumerate</span><span class="o">(){</span><span class="m">println!</span><span class="o">(</span><span class="s">"[{}] {}"</span><span class="o">,</span><span class="l">i</span><span class="o">+</span><span class="n">1</span><span class="o">,</span><span class="l">x</span><span class="o">.</span><span class="f">summary</span><span class="o">());}</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">(){</span>
+    <span class="k">let</span> <span class="l">items</span><span class="o">:</span><span class="t">Vec</span><span class="o">&lt;</span><span class="t">Box</span><span class="o">&lt;</span><span class="k">dyn</span> <span class="t">Summarize</span><span class="o">&gt;&gt;=</span><span class="m">vec!</span><span class="o">[</span><span class="f">make</span><span class="o">(</span><span class="s">"a"</span><span class="o">),</span><span class="f">make</span><span class="o">(</span><span class="s">"t"</span><span class="o">)];</span>
+    <span class="k">let</span> <span class="l">refs</span><span class="o">:</span><span class="t">Vec</span><span class="o">&lt;&amp;</span><span class="k">dyn</span> <span class="t">Summarize</span><span class="o">&gt;=</span><span class="l">items</span><span class="o">.</span><span class="f">iter</span><span class="o">().</span><span class="f">map</span><span class="o">(|</span><span class="l">b</span><span class="o">|</span><span class="l">b</span><span class="o">.</span><span class="f">as_ref</span><span class="o">()).</span><span class="f">collect</span><span class="o">();</span>
+    <span class="f">print_all</span><span class="o">(&amp;</span><span class="l">refs</span><span class="o">);</span>
+    <span class="k">let</span> <span class="l">t</span><span class="o">=</span><span class="t">Tweet</span><span class="o">{</span><span class="l">user</span><span class="o">:</span><span class="s">"bob"</span><span class="o">.</span><span class="f">into</span><span class="o">(),</span><span class="l">text</span><span class="o">:</span><span class="s">"rocks"</span><span class="o">.</span><span class="f">into</span><span class="o">()};</span>
+    <span class="f">notify</span><span class="o">(&amp;</span><span class="l">t</span><span class="o">);</span>
+<span class="o">}</span></pre>
+</div>
+<div class="tab-pane" id="a5">
+<p><span class="badge badv">심화 06</span> <strong>수명 + 제네릭 + 트레이트 바운드 혼합</strong></p>
+<pre><span class="k">use</span> <span class="t">std</span><span class="o">::</span><span class="t">fmt</span><span class="o">;</span>
+<span class="k">fn</span> <span class="f">longest_ann</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">,</span><span class="t">T</span><span class="o">:</span><span class="t">fmt</span><span class="o">::</span><span class="t">Display</span><span class="o">&gt;(</span><span class="l">x</span><span class="o">:&amp;</span><span class="l">'a</span> <span class="t">str</span><span class="o">,</span><span class="l">y</span><span class="o">:&amp;</span><span class="l">'a</span> <span class="t">str</span><span class="o">,</span><span class="l">ann</span><span class="o">:</span><span class="t">T</span><span class="o">)-&gt;&amp;</span><span class="l">'a</span> <span class="t">str</span><span class="o">{</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"공지: {ann}"</span><span class="o">);</span>
+    <span class="k">if</span> <span class="l">x</span><span class="o">.</span><span class="f">len</span><span class="o">()&gt;=</span><span class="l">y</span><span class="o">.</span><span class="f">len</span><span class="o">(){</span><span class="l">x</span><span class="o">}</span><span class="k">else</span><span class="o">{</span><span class="l">y</span><span class="o">}</span>
+<span class="o">}</span>
+<span class="k">struct</span> <span class="t">Wrapper</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">,</span><span class="t">T</span><span class="o">:</span><span class="t">fmt</span><span class="o">::</span><span class="t">Display</span><span class="o">+</span><span class="l">'a</span><span class="o">&gt;{</span><span class="l">val</span><span class="o">:&amp;</span><span class="l">'a</span> <span class="t">T</span><span class="o">}</span>
+<span class="k">impl</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">,</span><span class="t">T</span><span class="o">:</span><span class="t">fmt</span><span class="o">::</span><span class="t">Display</span><span class="o">+</span><span class="l">'a</span><span class="o">&gt;</span> <span class="t">Wrapper</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">,</span><span class="t">T</span><span class="o">&gt;{</span>
+    <span class="k">fn</span> <span class="f">new</span><span class="o">(</span><span class="l">v</span><span class="o">:&amp;</span><span class="l">'a</span> <span class="t">T</span><span class="o">)-&gt;</span><span class="t">Self</span><span class="o">{</span><span class="t">Wrapper</span><span class="o">{</span><span class="l">val</span><span class="o">:</span><span class="l">v</span><span class="o">}}</span>
+    <span class="k">fn</span> <span class="f">show</span><span class="o">(&amp;</span><span class="l">self</span><span class="o">){</span><span class="m">println!</span><span class="o">(</span><span class="s">"값: {}"</span><span class="o">,</span><span class="l">self</span><span class="o">.</span><span class="l">val</span><span class="o">);}</span>
+    <span class="k">fn</span> <span class="f">get</span><span class="o">(&amp;</span><span class="l">self</span><span class="o">)-&gt;&amp;</span><span class="l">'a</span> <span class="t">T</span><span class="o">{</span><span class="l">self</span><span class="o">.</span><span class="l">val</span><span class="o">}</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">(){</span>
+    <span class="k">let</span> <span class="l">s1</span><span class="o">=</span><span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"long"</span><span class="o">);</span>
+    <span class="k">let</span> <span class="l">s2</span><span class="o">=</span><span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"x"</span><span class="o">);</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"{}"</span><span class="o">,</span><span class="f">longest_ann</span><span class="o">(&amp;</span><span class="l">s1</span><span class="o">,&amp;</span><span class="l">s2</span><span class="o">,</span><span class="n">42u32</span><span class="o">));</span>
+    <span class="k">let</span> <span class="l">n</span><span class="o">=</span><span class="n">100i32</span><span class="o">;</span>
+    <span class="k">let</span> <span class="l">w</span><span class="o">=</span><span class="t">Wrapper</span><span class="o">::</span><span class="f">new</span><span class="o">(&amp;</span><span class="l">n</span><span class="o">);</span>
+    <span class="l">w</span><span class="o">.</span><span class="f">show</span><span class="o">();</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"get={}"</span><span class="o">,</span><span class="l">w</span><span class="o">.</span><span class="f">get</span><span class="o">());</span>
+<span class="o">}</span></pre>
+</div>
+<div class="tab-pane" id="a6">
+<p><span class="badge badv">심화 07</span> <strong>Zero-copy Parser</strong></p>
+<pre><span class="k">struct</span> <span class="t">Parser</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">&gt;{</span><span class="l">input</span><span class="o">:&amp;</span><span class="l">'a</span> <span class="t">str</span><span class="o">,</span><span class="l">pos</span><span class="o">:</span><span class="t">usize</span><span class="o">}</span>
+<span class="k">impl</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">&gt;</span> <span class="t">Parser</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">&gt;{</span>
+    <span class="k">fn</span> <span class="f">new</span><span class="o">(</span><span class="l">s</span><span class="o">:&amp;</span><span class="l">'a</span> <span class="t">str</span><span class="o">)-&gt;</span><span class="t">Self</span><span class="o">{</span><span class="t">Self</span><span class="o">{</span><span class="l">input</span><span class="o">:</span><span class="l">s</span><span class="o">,</span><span class="l">pos</span><span class="o">:</span><span class="n">0</span><span class="o">}}</span>
+    <span class="k">fn</span> <span class="f">peek</span><span class="o">(&amp;</span><span class="l">self</span><span class="o">)-&gt;</span><span class="t">Option</span><span class="o">&lt;</span><span class="t">char</span><span class="o">&gt;{</span><span class="l">self</span><span class="o">.</span><span class="l">input</span><span class="o">[</span><span class="l">self</span><span class="o">.</span><span class="l">pos</span><span class="o">..].</span><span class="f">chars</span><span class="o">().</span><span class="f">next</span><span class="o">()}</span>
+    <span class="k">fn</span> <span class="f">skip_ws</span><span class="o">(&amp;</span><span class="k">mut</span> <span class="l">self</span><span class="o">){</span>
+        <span class="k">while</span> <span class="l">self</span><span class="o">.</span><span class="f">peek</span><span class="o">().</span><span class="f">map_or</span><span class="o">(</span><span class="k">false</span><span class="o">,|</span><span class="l">c</span><span class="o">|</span><span class="l">c</span><span class="o">.</span><span class="f">is_whitespace</span><span class="o">()){</span>
+            <span class="l">self</span><span class="o">.</span><span class="l">pos</span><span class="o">+=</span><span class="l">self</span><span class="o">.</span><span class="f">peek</span><span class="o">().</span><span class="f">unwrap</span><span class="o">().</span><span class="f">len_utf8</span><span class="o">();</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="k">fn</span> <span class="f">parse_word</span><span class="o">(&amp;</span><span class="k">mut</span> <span class="l">self</span><span class="o">)-&gt;</span><span class="t">Option</span><span class="o">&lt;&amp;</span><span class="l">'a</span> <span class="t">str</span><span class="o">&gt;{</span>
+        <span class="l">self</span><span class="o">.</span><span class="f">skip_ws</span><span class="o">();</span>
+        <span class="k">let</span> <span class="l">start</span><span class="o">=</span><span class="l">self</span><span class="o">.</span><span class="l">pos</span><span class="o">;</span>
+        <span class="k">while</span> <span class="l">self</span><span class="o">.</span><span class="f">peek</span><span class="o">().</span><span class="f">map_or</span><span class="o">(</span><span class="k">false</span><span class="o">,|</span><span class="l">c</span><span class="o">|!</span><span class="l">c</span><span class="o">.</span><span class="f">is_whitespace</span><span class="o">()){</span>
+            <span class="l">self</span><span class="o">.</span><span class="l">pos</span><span class="o">+=</span><span class="l">self</span><span class="o">.</span><span class="f">peek</span><span class="o">().</span><span class="f">unwrap</span><span class="o">().</span><span class="f">len_utf8</span><span class="o">();</span>
+        <span class="o">}</span>
+        <span class="k">if</span> <span class="l">self</span><span class="o">.</span><span class="l">pos</span><span class="o">&gt;</span><span class="l">start</span><span class="o">{</span><span class="e">Some</span><span class="o">(&amp;</span><span class="l">self</span><span class="o">.</span><span class="l">input</span><span class="o">[</span><span class="l">start</span><span class="o">..</span><span class="l">self</span><span class="o">.</span><span class="l">pos</span><span class="o">])}</span><span class="k">else</span><span class="o">{</span><span class="e">None</span><span class="o">}</span>
+    <span class="o">}</span>
+    <span class="k">fn</span> <span class="f">parse_all</span><span class="o">(&amp;</span><span class="k">mut</span> <span class="l">self</span><span class="o">)-&gt;</span><span class="t">Vec</span><span class="o">&lt;&amp;</span><span class="l">'a</span> <span class="t">str</span><span class="o">&gt;{</span>
+        <span class="k">let mut</span> <span class="l">v</span><span class="o">=</span><span class="m">vec!</span><span class="o">[];</span>
+        <span class="k">while let</span> <span class="e">Some</span><span class="o">(</span><span class="l">w</span><span class="o">)=</span><span class="l">self</span><span class="o">.</span><span class="f">parse_word</span><span class="o">(){</span><span class="l">v</span><span class="o">.</span><span class="f">push</span><span class="o">(</span><span class="l">w</span><span class="o">);}</span><span class="l">v</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">parse_kv</span><span class="o">&lt;</span><span class="l">'a</span><span class="o">&gt;(</span><span class="l">s</span><span class="o">:&amp;</span><span class="l">'a</span> <span class="t">str</span><span class="o">)-&gt;</span><span class="t">Vec</span><span class="o">&lt;(&amp;</span><span class="l">'a</span> <span class="t">str</span><span class="o">,&amp;</span><span class="l">'a</span> <span class="t">str</span><span class="o">)&gt;{</span>
+    <span class="l">s</span><span class="o">.</span><span class="f">lines</span><span class="o">().</span><span class="f">filter_map</span><span class="o">(|</span><span class="l">l</span><span class="o">|{</span>
+        <span class="k">let mut</span> <span class="l">p</span><span class="o">=</span><span class="l">l</span><span class="o">.</span><span class="f">splitn</span><span class="o">(</span><span class="n">2</span><span class="o">,</span><span class="s">'='</span><span class="o">);</span>
+        <span class="e">Some</span><span class="o">((</span><span class="l">p</span><span class="o">.</span><span class="f">next</span><span class="o">()?.</span><span class="f">trim</span><span class="o">(),</span><span class="l">p</span><span class="o">.</span><span class="f">next</span><span class="o">()?.</span><span class="f">trim</span><span class="o">()))</span>
+    <span class="o">}).</span><span class="f">collect</span><span class="o">()</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">(){</span>
+    <span class="k">let</span> <span class="l">text</span><span class="o">=</span><span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"  hello   world  rust  "</span><span class="o">);</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"{:?}"</span><span class="o">,</span><span class="t">Parser</span><span class="o">::</span><span class="f">new</span><span class="o">(&amp;</span><span class="l">text</span><span class="o">).</span><span class="f">parse_all</span><span class="o">());</span>
+    <span class="k">let</span> <span class="l">cfg</span><span class="o">=</span><span class="s">"host=localhost\nport=8080"</span><span class="o">;</span>
+    <span class="k">for</span><span class="o">(</span><span class="l">k</span><span class="o">,</span><span class="l">v</span><span class="o">)</span><span class="k">in</span><span class="f">parse_kv</span><span class="o">(</span><span class="l">cfg</span><span class="o">){</span><span class="m">println!</span><span class="o">(</span><span class="s">"{k}={v}"</span><span class="o">);}</span>
+<span class="o">}</span></pre>
+</div>
+<div class="tab-pane" id="a7">
+<p><span class="badge badv">심화 08</span> <strong>Arena 패턴</strong></p>
+<pre><span class="k">struct</span> <span class="t">NodeId</span><span class="o">(</span><span class="t">usize</span><span class="o">);</span>
+<span class="k">struct</span> <span class="t">Node</span><span class="o">{</span><span class="l">val</span><span class="o">:</span><span class="t">i32</span><span class="o">,</span><span class="l">children</span><span class="o">:</span><span class="t">Vec</span><span class="o">&lt;</span><span class="t">NodeId</span><span class="o">&gt;,</span><span class="l">parent</span><span class="o">:</span><span class="t">Option</span><span class="o">&lt;</span><span class="t">usize</span><span class="o">&gt;}</span>
+<span class="k">struct</span> <span class="t">Arena</span><span class="o">{</span><span class="l">nodes</span><span class="o">:</span><span class="t">Vec</span><span class="o">&lt;</span><span class="t">Node</span><span class="o">&gt;}</span>
+<span class="k">impl</span> <span class="t">Arena</span><span class="o">{</span>
+    <span class="k">fn</span> <span class="f">new</span><span class="o">()-&gt;</span><span class="t">Self</span><span class="o">{</span><span class="t">Arena</span><span class="o">{</span><span class="l">nodes</span><span class="o">:</span><span class="m">vec!</span><span class="o">[]}}</span>
+    <span class="k">fn</span> <span class="f">add</span><span class="o">(&amp;</span><span class="k">mut</span> <span class="l">self</span><span class="o">,</span><span class="l">val</span><span class="o">:</span><span class="t">i32</span><span class="o">,</span><span class="l">par</span><span class="o">:</span><span class="t">Option</span><span class="o">&lt;</span><span class="t">usize</span><span class="o">&gt;)-&gt;</span><span class="t">NodeId</span><span class="o">{</span>
+        <span class="k">let</span> <span class="l">id</span><span class="o">=</span><span class="l">self</span><span class="o">.</span><span class="l">nodes</span><span class="o">.</span><span class="f">len</span><span class="o">();</span>
+        <span class="l">self</span><span class="o">.</span><span class="l">nodes</span><span class="o">.</span><span class="f">push</span><span class="o">(</span><span class="t">Node</span><span class="o">{</span><span class="l">val</span><span class="o">,</span><span class="l">children</span><span class="o">:</span><span class="m">vec!</span><span class="o">[],</span><span class="l">parent</span><span class="o">:</span><span class="l">par</span><span class="o">});</span>
+        <span class="t">NodeId</span><span class="o">(</span><span class="l">id</span><span class="o">)</span>
+    <span class="o">}</span>
+    <span class="k">fn</span> <span class="f">link</span><span class="o">(&amp;</span><span class="k">mut</span> <span class="l">self</span><span class="o">,</span><span class="l">par</span><span class="o">:</span><span class="t">usize</span><span class="o">,</span><span class="l">child</span><span class="o">:</span><span class="t">NodeId</span><span class="o">){</span><span class="l">self</span><span class="o">.</span><span class="l">nodes</span><span class="o">[</span><span class="l">par</span><span class="o">].</span><span class="l">children</span><span class="o">.</span><span class="f">push</span><span class="o">(</span><span class="l">child</span><span class="o">);}</span>
+    <span class="k">fn</span> <span class="f">dfs</span><span class="o">(&amp;</span><span class="l">self</span><span class="o">,</span><span class="l">id</span><span class="o">:</span><span class="t">usize</span><span class="o">,</span><span class="l">d</span><span class="o">:</span><span class="t">usize</span><span class="o">){</span>
+        <span class="m">println!</span><span class="o">(</span><span class="s">"{}{}"</span><span class="o">,</span><span class="s">"  "</span><span class="o">.</span><span class="f">repeat</span><span class="o">(</span><span class="l">d</span><span class="o">),</span><span class="l">self</span><span class="o">.</span><span class="l">nodes</span><span class="o">[</span><span class="l">id</span><span class="o">].</span><span class="l">val</span><span class="o">);</span>
+        <span class="k">for</span> <span class="t">NodeId</span><span class="o">(</span><span class="l">c</span><span class="o">)</span><span class="k">in</span><span class="o">&amp;</span><span class="l">self</span><span class="o">.</span><span class="l">nodes</span><span class="o">[</span><span class="l">id</span><span class="o">].</span><span class="l">children</span><span class="o">{</span><span class="l">self</span><span class="o">.</span><span class="f">dfs</span><span class="o">(*</span><span class="l">c</span><span class="o">,</span><span class="l">d</span><span class="o">+</span><span class="n">1</span><span class="o">);}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">(){</span>
+    <span class="k">let mut</span> <span class="l">a</span><span class="o">=</span><span class="t">Arena</span><span class="o">::</span><span class="f">new</span><span class="o">();</span>
+    <span class="k">let</span> <span class="t">NodeId</span><span class="o">(</span><span class="l">r</span><span class="o">)=</span><span class="l">a</span><span class="o">.</span><span class="f">add</span><span class="o">(</span><span class="n">1</span><span class="o">,</span><span class="e">None</span><span class="o">);</span>
+    <span class="k">let</span> <span class="l">c1</span><span class="o">=</span><span class="l">a</span><span class="o">.</span><span class="f">add</span><span class="o">(</span><span class="n">2</span><span class="o">,</span><span class="e">Some</span><span class="o">(</span><span class="l">r</span><span class="o">));</span>
+    <span class="k">let</span> <span class="l">c2</span><span class="o">=</span><span class="l">a</span><span class="o">.</span><span class="f">add</span><span class="o">(</span><span class="n">3</span><span class="o">,</span><span class="e">Some</span><span class="o">(</span><span class="l">r</span><span class="o">));</span>
+    <span class="l">a</span><span class="o">.</span><span class="f">link</span><span class="o">(</span><span class="l">r</span><span class="o">,</span><span class="l">c1</span><span class="o">);</span><span class="l">a</span><span class="o">.</span><span class="f">link</span><span class="o">(</span><span class="l">r</span><span class="o">,</span><span class="l">c2</span><span class="o">);</span>
+    <span class="l">a</span><span class="o">.</span><span class="f">dfs</span><span class="o">(</span><span class="l">r</span><span class="o">,</span><span class="n">0</span><span class="o">);</span>
+<span class="o">}</span></pre>
+</div>
+<div class="tab-pane" id="a8">
+<p><span class="badge badv">심화 09</span> <strong>스레드 + 'static + thread::scope</strong></p>
+<div class="rule info"><p>thread::spawn은 Send+'static을 요구합니다. thread::scope(Rust 1.63+)는 non-static 참조를 안전하게 공유합니다.</p></div>
+<pre><span class="k">use</span> <span class="t">std</span><span class="o">::</span><span class="t">sync</span><span class="o">::{</span><span class="t">Arc</span><span class="o">,</span><span class="t">Mutex</span><span class="o">};</span>
+<span class="k">use</span> <span class="t">std</span><span class="o">::</span><span class="t">thread</span><span class="o">;</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">(){</span>
+    <span class="k">let</span> <span class="l">msg</span><span class="o">=</span><span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"hello"</span><span class="o">);</span>
+    <span class="t">thread</span><span class="o">::</span><span class="f">spawn</span><span class="o">(</span><span class="k">move</span> <span class="o">||</span><span class="m">println!</span><span class="o">(</span><span class="s">"{msg}"</span><span class="o">)).</span><span class="f">join</span><span class="o">().</span><span class="f">unwrap</span><span class="o">();</span>
+    <span class="k">let</span> <span class="l">counter</span><span class="o">=</span><span class="t">Arc</span><span class="o">::</span><span class="f">new</span><span class="o">(</span><span class="t">Mutex</span><span class="o">::</span><span class="f">new</span><span class="o">(</span><span class="n">0i32</span><span class="o">));</span>
+    <span class="k">let mut</span> <span class="l">handles</span><span class="o">=</span><span class="m">vec!</span><span class="o">[];</span>
+    <span class="k">for</span> <span class="l">i</span> <span class="k">in</span> <span class="n">0</span><span class="o">..</span><span class="n">5</span><span class="o">{</span>
+        <span class="k">let</span> <span class="l">c</span><span class="o">=</span><span class="t">Arc</span><span class="o">::</span><span class="f">clone</span><span class="o">(&amp;</span><span class="l">counter</span><span class="o">);</span>
+        <span class="l">handles</span><span class="o">.</span><span class="f">push</span><span class="o">(</span><span class="t">thread</span><span class="o">::</span><span class="f">spawn</span><span class="o">(</span><span class="k">move</span> <span class="o">||{*</span><span class="l">c</span><span class="o">.</span><span class="f">lock</span><span class="o">().</span><span class="f">unwrap</span><span class="o">()+=</span><span class="l">i</span><span class="o">;}));</span>
+    <span class="o">}</span>
+    <span class="k">for</span> <span class="l">h</span> <span class="k">in</span> <span class="l">handles</span><span class="o">{</span><span class="l">h</span><span class="o">.</span><span class="f">join</span><span class="o">().</span><span class="f">unwrap</span><span class="o">();}</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"합계: {}"</span><span class="o">,*</span><span class="l">counter</span><span class="o">.</span><span class="f">lock</span><span class="o">().</span><span class="f">unwrap</span><span class="o">());</span>
+    <span class="k">let</span> <span class="l">data</span><span class="o">=</span><span class="m">vec!</span><span class="o">[</span><span class="n">1</span><span class="o">,</span><span class="n">2</span><span class="o">,</span><span class="n">3</span><span class="o">,</span><span class="n">4</span><span class="o">,</span><span class="n">5</span><span class="o">];</span>
+    <span class="k">let mut</span> <span class="l">result</span><span class="o">=</span><span class="n">0i32</span><span class="o">;</span>
+    <span class="t">thread</span><span class="o">::</span><span class="f">scope</span><span class="o">(|</span><span class="l">s</span><span class="o">|{</span>
+        <span class="l">s</span><span class="o">.</span><span class="f">spawn</span><span class="o">(||{</span><span class="l">result</span><span class="o">=</span><span class="l">data</span><span class="o">.</span><span class="f">iter</span><span class="o">().</span><span class="f">sum</span><span class="o">();});</span>
+    <span class="o">});</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"scoped sum: {result}"</span><span class="o">);</span>
+<span class="o">}</span></pre>
+</div>
+<div class="tab-pane" id="a9">
+<p><span class="badge badv">심화 10</span> <strong>Pin — 자기참조 구조체와 async/await 원리</strong></p>
+<div class="rule info"><p>Pin은 데이터를 메모리에 고정합니다. async fn은 내부적으로 자기참조 Future로 컴파일되며 Pin이 필요합니다.</p></div>
+<pre><span class="k">use</span> <span class="t">std</span><span class="o">::</span><span class="t">pin</span><span class="o">::</span><span class="t">Pin</span><span class="o">;</span>
+<span class="k">use</span> <span class="t">std</span><span class="o">::</span><span class="t">marker</span><span class="o">::</span><span class="t">PhantomPinned</span><span class="o">;</span>
+<span class="k">struct</span> <span class="t">SelfRef</span><span class="o">{</span>
+    <span class="l">data</span><span class="o">:</span><span class="t">String</span><span class="o">,</span>
+    <span class="l">ptr</span><span class="o">:*</span><span class="k">const</span> <span class="t">u8</span><span class="o">,</span>
+    <span class="l">_pin</span><span class="o">:</span><span class="t">PhantomPinned</span><span class="o">,</span>
+<span class="o">}</span>
+<span class="k">impl</span> <span class="t">SelfRef</span><span class="o">{</span>
+    <span class="k">fn</span> <span class="f">new</span><span class="o">(</span><span class="l">s</span><span class="o">:&amp;</span><span class="t">str</span><span class="o">)-&gt;</span><span class="t">Pin</span><span class="o">&lt;</span><span class="t">Box</span><span class="o">&lt;</span><span class="t">Self</span><span class="o">&gt;&gt;{</span>
+        <span class="k">let mut</span> <span class="l">p</span><span class="o">=</span><span class="t">Box</span><span class="o">::</span><span class="f">pin</span><span class="o">(</span><span class="t">SelfRef</span><span class="o">{</span><span class="l">data</span><span class="o">:</span><span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="l">s</span><span class="o">),</span><span class="l">ptr</span><span class="o">:</span><span class="t">std</span><span class="o">::</span><span class="t">ptr</span><span class="o">::</span><span class="f">null</span><span class="o">(),</span><span class="l">_pin</span><span class="o">:</span><span class="t">PhantomPinned</span><span class="o">});</span>
+        <span class="k">let</span> <span class="l">ptr</span><span class="o">=</span><span class="l">p</span><span class="o">.</span><span class="l">data</span><span class="o">.</span><span class="f">as_ptr</span><span class="o">();</span>
+        <span class="k">unsafe</span><span class="o">{</span><span class="l">p</span><span class="o">.</span><span class="f">as_mut</span><span class="o">().</span><span class="f">get_unchecked_mut</span><span class="o">().</span><span class="l">ptr</span><span class="o">=</span><span class="l">ptr</span><span class="o">;}</span>
+        <span class="l">p</span>
+    <span class="o">}</span>
+    <span class="k">fn</span> <span class="f">data</span><span class="o">(</span><span class="l">self</span><span class="o">:</span><span class="t">Pin</span><span class="o">&lt;&amp;</span><span class="t">Self</span><span class="o">&gt;)-&gt;&amp;</span><span class="t">str</span><span class="o">{&amp;</span><span class="l">self</span><span class="o">.</span><span class="l">data</span><span class="o">}</span>
+    <span class="k">fn</span> <span class="f">valid</span><span class="o">(</span><span class="l">self</span><span class="o">:</span><span class="t">Pin</span><span class="o">&lt;&amp;</span><span class="t">Self</span><span class="o">&gt;)-&gt;</span><span class="t">bool</span><span class="o">{</span><span class="l">self</span><span class="o">.</span><span class="l">data</span><span class="o">.</span><span class="f">as_ptr</span><span class="o">()==</span><span class="l">self</span><span class="o">.</span><span class="l">ptr</span><span class="o">}</span>
+<span class="o">}</span>
+<span class="k">fn</span> <span class="f">main</span><span class="o">(){</span>
+    <span class="k">let</span> <span class="l">s</span><span class="o">=</span><span class="t">SelfRef</span><span class="o">::</span><span class="f">new</span><span class="o">(</span><span class="s">"pinned"</span><span class="o">);</span>
+    <span class="m">println!</span><span class="o">(</span><span class="s">"data={}, valid={}"</span><span class="o">,</span><span class="l">s</span><span class="o">.</span><span class="f">as_ref</span><span class="o">().</span><span class="f">data</span><span class="o">(),</span><span class="l">s</span><span class="o">.</span><span class="f">as_ref</span><span class="o">().</span><span class="f">valid</span><span class="o">());</span>
+<span class="o">}</span></pre>
+</div>
+</div>
+</div>
+</div><!-- /part2 -->
+
+<!-- ════════ PART 4 ════════ -->
+<div class="part-panel" id="part3">
+<h2 style="margin-top:0">컴파일러 에러 해석 가이드</h2>
+<div class="egrid">
+<div id="e382" style="background:var(--card);border:1px solid var(--rule-err-bd);border-radius:8px;padding:14px">
+<div style="font-size:12px;font-weight:700;color:var(--rd);margin-bottom:8px">❌ E0382 — use of moved value</div>
+<pre><span class="k">let</span> <span class="l">s1</span><span class="o">=</span><span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"hi"</span><span class="o">);</span>
+<span class="k">let</span> <span class="l">s2</span><span class="o">=</span><span class="l">s1</span><span class="o">;</span>
+<span class="m">println!</span><span class="o">(</span><span class="s">"{s1}"</span><span class="o">);</span> <span class="c">// ❌</span></pre>
+<p style="font-size:12px;color:var(--mu);margin-top:8px"><strong>원인:</strong> String은 Move 타입. s1→s2 소유권 이전.<br><strong>해결:</strong> <code>s1.clone()</code> 또는 <code>&amp;s1</code></p>
+</div>
+<div id="e505" style="background:var(--card);border:1px solid var(--rule-err-bd);border-radius:8px;padding:14px">
+<div style="font-size:12px;font-weight:700;color:var(--rd);margin-bottom:8px">❌ E0505 — cannot move out of borrow</div>
+<pre><span class="k">let</span> <span class="l">r</span><span class="o">=&amp;</span><span class="l">s</span><span class="o">;</span>
+<span class="k">let</span> <span class="l">s2</span><span class="o">=</span><span class="l">s</span><span class="o">;</span> <span class="c">// ❌ r이 빌리는 중</span></pre>
+<p style="font-size:12px;color:var(--mu);margin-top:8px"><strong>원인:</strong> 차용 중인 값 이동 불가.<br><strong>해결:</strong> r 사용 종료 후 이동 또는 clone</p>
+</div>
+<div id="e502" style="background:var(--card);border:1px solid var(--rule-err-bd);border-radius:8px;padding:14px">
+<div style="font-size:12px;font-weight:700;color:var(--rd);margin-bottom:8px">❌ E0502 — cannot borrow as mutable</div>
+<pre><span class="k">let</span> <span class="l">r1</span><span class="o">=&amp;</span><span class="l">s</span><span class="o">;</span>
+<span class="k">let</span> <span class="l">r2</span><span class="o">=&amp;</span><span class="k">mut</span> <span class="l">s</span><span class="o">;</span> <span class="c">// ❌</span>
+<span class="m">println!</span><span class="o">(</span><span class="s">"{r1}"</span><span class="o">);</span></pre>
+<p style="font-size:12px;color:var(--mu);margin-top:8px"><strong>원인:</strong> 불변 참조 유효 중 가변 참조 불가.<br><strong>해결:</strong> r1 마지막 사용 후 &amp;mut (NLL)</p>
+</div>
+<div id="e499" style="background:var(--card);border:1px solid var(--rule-err-bd);border-radius:8px;padding:14px">
+<div style="font-size:12px;font-weight:700;color:var(--rd);margin-bottom:8px">❌ E0499 — 가변 참조 두 개 동시</div>
+<pre><span class="k">let</span> <span class="l">r1</span><span class="o">=&amp;</span><span class="k">mut</span> <span class="l">s</span><span class="o">;</span>
+<span class="k">let</span> <span class="l">r2</span><span class="o">=&amp;</span><span class="k">mut</span> <span class="l">s</span><span class="o">;</span> <span class="c">// ❌</span></pre>
+<p style="font-size:12px;color:var(--mu);margin-top:8px"><strong>원인:</strong> 가변 참조는 한 번에 하나.<br><strong>해결:</strong> r1 사용 완료 후 r2 생성</p>
+</div>
+<div id="e106" style="background:var(--card);border:1px solid var(--rule-err-bd);border-radius:8px;padding:14px">
+<div style="font-size:12px;font-weight:700;color:var(--rd);margin-bottom:8px">❌ E0106 — missing lifetime specifier</div>
+<pre><span class="k">fn</span> <span class="f">foo</span><span class="o">(</span><span class="l">x</span><span class="o">:&amp;</span><span class="t">str</span><span class="o">,</span><span class="l">y</span><span class="o">:&amp;</span><span class="t">str</span><span class="o">)-&gt;&amp;</span><span class="t">str</span><span class="o">{</span>
+    <span class="l">x</span> <span class="c">// 어느 수명? 모호</span>
+<span class="o">}</span></pre>
+<p style="font-size:12px;color:var(--mu);margin-top:8px"><strong>원인:</strong> 생략 규칙으로 추론 불가.<br><strong>해결:</strong> <code>fn foo&lt;'a&gt;(x:&amp;'a str,..)-&gt;&amp;'a str</code></p>
+</div>
+<div id="e597" style="background:var(--card);border:1px solid var(--rule-err-bd);border-radius:8px;padding:14px">
+<div style="font-size:12px;font-weight:700;color:var(--rd);margin-bottom:8px">❌ E0597 — does not live long enough</div>
+<pre><span class="k">let</span> <span class="l">r</span><span class="o">;</span>
+<span class="o">{</span><span class="k">let</span> <span class="l">x</span><span class="o">=</span><span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"x"</span><span class="o">);</span>
+ <span class="l">r</span><span class="o">=&amp;</span><span class="l">x</span><span class="o">;}</span> <span class="c">// x drop → 댕글링!</span></pre>
+<p style="font-size:12px;color:var(--mu);margin-top:8px"><strong>원인:</strong> x가 r보다 먼저 drop.<br><strong>해결:</strong> 같은 스코프 또는 String 반환</p>
+</div>
+<div id="e716" style="background:var(--card);border:1px solid var(--rule-err-bd);border-radius:8px;padding:14px">
+<div style="font-size:12px;font-weight:700;color:var(--rd);margin-bottom:8px">❌ E0716 — temporary dropped while borrowed</div>
+<pre><span class="k">let</span> <span class="l">s</span><span class="o">=&amp;</span><span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"hi"</span><span class="o">);</span>
+<span class="c">// 임시값 즉시 drop → 댕글링!</span></pre>
+<p style="font-size:12px;color:var(--mu);margin-top:8px"><strong>원인:</strong> 임시 String이 문장 끝에서 drop.<br><strong>해결:</strong> <code>let owned=...; let s=&amp;owned;</code></p>
+</div>
+<div id="e310" style="background:var(--card);border:1px solid var(--rule-err-bd);border-radius:8px;padding:14px">
+<div style="font-size:12px;font-weight:700;color:var(--rd);margin-bottom:8px">❌ E0310 — 'static 바운드 미충족</div>
+<pre><span class="k">fn</span> <span class="f">needs</span><span class="o">(</span><span class="l">s</span><span class="o">:&amp;</span><span class="l">'static</span> <span class="t">str</span><span class="o">){..}</span>
+<span class="k">let</span> <span class="l">owned</span><span class="o">=</span><span class="t">String</span><span class="o">::</span><span class="f">from</span><span class="o">(</span><span class="s">"hi"</span><span class="o">);</span>
+<span class="f">needs</span><span class="o">(&amp;</span><span class="l">owned</span><span class="o">);</span> <span class="c">// ❌</span></pre>
+<p style="font-size:12px;color:var(--mu);margin-top:8px"><strong>원인:</strong> owned는 'static이 아님.<br><strong>해결:</strong> 리터럴 사용 또는 함수 시그니처 변경</p>
+</div>
+</div>
+
+<div id="decision" class="rule ok" style="margin-top:20px">
+<p><strong>수명 명시 결정 트리</strong></p>
+<p>→ &amp;를 반환하지 않는가? → <strong>명시 불필요</strong></p>
+<p>→ &amp;를 반환, 입력 참조 1개뿐? → <strong>생략 규칙 자동 적용</strong></p>
+<p>→ &amp;를 반환, 입력 여럿 중 하나에서 나옴? → <strong>'a 명시 필요</strong></p>
+<p>→ &amp;를 반환, 함수 내부 생성? → <strong>불가! String 등 소유 타입 반환</strong></p>
+</div>
+<hr>
+<p style="text-align:center;color:var(--mu);font-size:12px">🦀 Rust 수명 완전 가이드 · 공식문서 기반 · Part 1~4</p>
+</div><!-- /part3 -->
+
+</main>
+</div><!-- /layout -->
+
+<script>
+/* 테마 */
+function toggleTheme(){
+  var b=document.body,btn=document.getElementById('themeBtn');
+  if(b.getAttribute('data-theme')==='dark'){b.setAttribute('data-theme','light');btn.textContent='🌙 Dark';}
+  else{b.setAttribute('data-theme','dark');btn.textContent='☀ Light';}
+}
+
+/* 파트 전환 */
+function showPart(n){
+  document.querySelectorAll('.part-tab').forEach(function(t,i){t.classList.toggle('active',i===n);});
+  document.querySelectorAll('.part-panel').forEach(function(p,i){p.classList.toggle('active',i===n);});
+  /* 사이드바 전환 */
+  for(var i=0;i<4;i++){
+    var el=document.getElementById('sb'+i);
+    if(el) el.style.display=(i===n)?'block':'none';
+  }
+}
+
+/* 탭 전환 공통 */
+function sw(btnId,pref,n,cnt){
+  document.getElementById(btnId).querySelectorAll('.tab-btn').forEach(function(t,i){t.classList.toggle('active',i===n);});
+  for(var i=0;i<cnt;i++){var el=document.getElementById(pref+i);if(el)el.classList.toggle('active',i===n);}
+  /* 사이드바 링크 하이라이트 */
+  var sb=document.getElementById('sb'+({etab:'1',atab:'2'}[btnId.replace('-btns','')]||'0'));
+  if(sb){sb.querySelectorAll('.sb-link').forEach(function(a,i){a.classList.toggle('cur',i===n);});}
+}
+function vshow(n){document.getElementById('vtab-btns').querySelectorAll('.tab-btn').forEach(function(t,i){t.classList.toggle('active',i===n);});renderViz(n);}
+function eshow(n){sw('etab-btns','e',n,8);}
+function ashow(n){sw('atab-btns','a',n,10);}
+
+/* 타임라인 */
+var VIZ=[
+  {bars:[{l:"main()",s:2,e:98,c:"#3e3e42",y:28},{l:"x: i32",s:8,e:92,c:"#56d364",y:66},{l:"s: String",s:20,e:55,c:"#f0883e",y:104}],evts:[{x:55,t:"s drop!",c:"#ff7b72"},{x:92,t:"x drop",c:"#56d364"}],code:'fn main() {\n    let x = 5;                    // 스택 할당\n    {\n        let s = String::from("hi"); // 힙 할당\n        println!("{s}");\n    }   // ← s drop! 힙 해제 (LIFO)\n    println!("{x}"); // x는 유효\n}'},
+  {bars:[{l:"s (mut)",s:2,e:98,c:"#56d364",y:28},{l:"r1: &s",s:12,e:46,c:"#79c0ff",y:66},{l:"r2: &s",s:20,e:46,c:"#79c0ff",y:104},{l:"r3: &mut s",s:54,e:84,c:"#f0883e",y:142}],evts:[{x:46,t:"r1,r2 NLL종료",c:"#79c0ff"},{x:84,t:"r3 종료",c:"#f0883e"}],code:'let r1 = &s;\nlet r2 = &s;\nprintln!("{r1} {r2}"); // ← NLL: r1,r2 수명 종료\n// 이 시점부터 &mut 가능 (NLL)\nlet r3 = &mut s;\nr3.push_str("!");'},
+  {bars:[{l:"s1: String",s:4,e:96,c:"#56d364",y:28},{l:"s2: String",s:28,e:62,c:"#e3b341",y:66},{l:"result: &str",s:36,e:62,c:"#79c0ff",y:104}],evts:[{x:62,t:"s2 drop→result 무효",c:"#ff7b72"}],code:"fn longest<'a>(x: &'a str, y: &'a str) -> &'a str { .. }\nlet s1 = String::from(\"long\");\nlet result;\n{ let s2 = String::from(\"x\");\n  result = longest(&s1, &s2);\n  println!(\"{result}\"); // ✓ s2 살아있음\n} // s2 drop → result 무효"},
+  {bars:[{l:"novel: String",s:4,e:96,c:"#56d364",y:28},{l:"first: &str",s:24,e:96,c:"#79c0ff",y:66},{l:"ex: Excerpt<'a>",s:32,e:94,c:"#d2a8ff",y:104}],evts:[],code:"struct Excerpt<'a> { content: &'a str }\nlet novel = String::from(\"옛날. 두 번째.\");\nlet first = novel.split('.').next().unwrap();\nlet ex = Excerpt { content: first };\nprintln!(\"{}\", ex.content); // novel 생존 동안 OK"}
+];
+function renderViz(n){
+  var d=VIZ[n],W=700,H=185,ml=122,mr=16,mt=14,mb=34,pw=W-ml-mr;
+  var svg='<rect width="'+W+'" height="'+H+'" fill="#1e1e1e" rx="6"/>';
+  svg+='<line x1="'+ml+'" y1="'+mt+'" x2="'+ml+'" y2="'+(H-mb)+'" stroke="#3e3e42"/>';
+  svg+='<line x1="'+ml+'" y1="'+(H-mb)+'" x2="'+(W-mr)+'" y2="'+(H-mb)+'" stroke="#3e3e42"/>';
+  for(var i=0;i<=100;i+=20){
+    var x=ml+i/100*pw;
+    svg+='<line x1="'+x+'" y1="'+(H-mb)+'" x2="'+x+'" y2="'+(H-mb+4)+'" stroke="#3e3e42"/>';
+    svg+='<text x="'+x+'" y="'+(H-mb+14)+'" text-anchor="middle" fill="#6a9955" font-size="10" font-family="monospace">'+i+'</text>';
+  }
+  d.bars.forEach(function(b){
+    var x=ml+b.s/100*pw,w=(b.e-b.s)/100*pw;
+    svg+='<rect x="'+x+'" y="'+b.y+'" width="'+w+'" height="22" rx="4" fill="'+b.c+'" opacity="0.85"/>';
+    svg+='<text x="'+(ml-6)+'" y="'+(b.y+15)+'" text-anchor="end" fill="#9d9d9d" font-size="11" font-family="monospace">'+b.l+'</text>';
+  });
+  d.evts.forEach(function(e){
+    var x=ml+e.x/100*pw;
+    svg+='<line x1="'+x+'" y1="'+mt+'" x2="'+x+'" y2="'+(H-mb)+'" stroke="'+e.c+'" stroke-width="1.5" stroke-dasharray="4 2"/>';
+    svg+='<text x="'+(x+3)+'" y="'+(mt+11)+'" fill="'+e.c+'" font-size="10" font-family="monospace">'+e.t+'</text>';
+  });
+  document.getElementById('vsvg').innerHTML=svg;
+  document.getElementById('vcode').textContent=d.code;
+}
+
+renderViz(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Rust 라이프타임 완전 가이드</title>
+<style>
+/* ── 테마 변수 ── */
+[data-theme="light"] {
+  --bg:       #f8f7f4;
+  --bg2:      #ffffff;
+  --bg3:      #f2f0ec;
+  --bg4:      #e8e5df;
+  --border:   #ddd9d0;
+  --border2:  #ccc8be;
+  --text:     #1a1916;
+  --text2:    #3d3b35;
+  --text3:    #6b6860;
+  --muted:    #8a8680;
+
+  --purple:   #5b34c4;  --purple-bg:  #eeebfb;  --purple-t:  #3d2390;
+  --teal:     #0d7a65;  --teal-bg:    #e4f4f0;  --teal-t:    #095c4c;
+  --coral:    #c03840;  --coral-bg:   #fdedef;  --coral-t:   #8f1f26;
+  --amber:    #a05c00;  --amber-bg:   #fef3e0;  --amber-t:   #7a4400;
+  --blue:     #1a5fad;  --blue-bg:    #e6f0fb;  --blue-t:    #0f3d7a;
+  --green:    #1b6e35;  --green-bg:   #e6f4eb;  --green-t:   #124a24;
+
+  --code-bg:  #f0ede8;
+  --code-border: #ddd9d0;
+  --code-text: #2a2825;
+  --kw:  #7c3aed;
+  --fn:  #1a5fad;
+  --ty:  #b83838;
+  --lt:  #1b6e35;
+  --str: #186b3d;
+  --cm:  #8a8680;
+  --num: #a05c00;
+  --mac: #8b4513;
+  --at:  #8b6914;
+
+  --hl-ok-bg:    #e8f8ef;  --hl-ok-border:  #1b6e35;
+  --hl-err-bg:   #fdedef;  --hl-err-border: #c03840;
+  --hl-note-bg:  #fef3e0;  --hl-note-border:#a05c00;
+
+  --ce-bg: #fdedef;  --ce-border: #f5c4ca;
+  --ce-e:  #9b1c24;  --ce-h: #8b4000;  --ce-n: #1a5fad;  --ce-ok: #1b6e35;
+
+  --shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+}
+
+[data-theme="dark"] {
+  --bg:       #111118;
+  --bg2:      #1a1a24;
+  --bg3:      #22222e;
+  --bg4:      #2a2a38;
+  --border:   rgba(255,255,255,0.09);
+  --border2:  rgba(255,255,255,0.15);
+  --text:     #ededf4;
+  --text2:    #c8c6d8;
+  --text3:    #9896aa;
+  --muted:    #6e6c80;
+
+  --purple:   #a78bfa;  --purple-bg:  rgba(167,139,250,0.13);  --purple-t: #c4b5fd;
+  --teal:     #2dd4bf;  --teal-bg:    rgba(45,212,191,0.11);   --teal-t:   #5eead4;
+  --coral:    #fb7185;  --coral-bg:   rgba(251,113,133,0.11);  --coral-t:  #fda4af;
+  --amber:    #fbbf24;  --amber-bg:   rgba(251,191,36,0.10);   --amber-t:  #fde68a;
+  --blue:     #60a5fa;  --blue-bg:    rgba(96,165,250,0.11);   --blue-t:   #93c5fd;
+  --green:    #4ade80;  --green-bg:   rgba(74,222,128,0.11);   --green-t:  #86efac;
+
+  --code-bg:     #0e0e18;
+  --code-border: rgba(255,255,255,0.08);
+  --code-text:   #cdd6f4;
+  --kw:  #cba6f7;
+  --fn:  #89b4fa;
+  --ty:  #f38ba8;
+  --lt:  #a6e3a1;
+  --str: #a6e3a1;
+  --cm:  #55556a;
+  --num: #fab387;
+  --mac: #f9e2af;
+  --at:  #f9e2af;
+
+  --hl-ok-bg:    rgba(45,212,191,0.09);   --hl-ok-border:  #2dd4bf;
+  --hl-err-bg:   rgba(251,113,133,0.09);  --hl-err-border: #fb7185;
+  --hl-note-bg:  rgba(251,191,36,0.08);   --hl-note-border:#fbbf24;
+
+  --ce-bg: rgba(251,113,133,0.08);  --ce-border: rgba(251,113,133,0.2);
+  --ce-e:  #f38ba8;  --ce-h: #fab387;  --ce-n: #89b4fa;  --ce-ok: #a6e3a1;
+
+  --shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+/* ── 리셋 & 기본 ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Segoe UI', system-ui, sans-serif;
+  font-size: 15.5px;
+  line-height: 1.85;
+  transition: background .25s, color .25s;
+}
+
+/* ── 상단바 ── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow);
+}
+.topbar-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.topbar-title .rust-badge {
+  background: var(--purple-bg);
+  color: var(--purple);
+  border-radius: 5px;
+  padding: 2px 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.src-links { display: flex; gap: 8px; }
+.src-links a {
+  font-size: 12px;
+  color: var(--teal);
+  text-decoration: none;
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--teal-bg);
+  background: var(--teal-bg);
+  transition: opacity .15s;
+}
+.src-links a:hover { opacity: .75; }
+
+/* 테마 토글 */
+.theme-toggle {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.theme-toggle button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  width: 28px;
+  height: 26px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .2s;
+  color: var(--text3);
+}
+.theme-toggle button.active {
+  background: var(--bg2);
+  box-shadow: var(--shadow);
+  color: var(--text);
+}
+
+/* ── 히어로 ── */
+.hero {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 64px 40px 52px;
+  text-align: center;
+}
+[data-theme="light"] .hero { background: linear-gradient(160deg, #fdfcfa 0%, #f5f2ff 50%, #eef8f5 100%); }
+[data-theme="dark"]  .hero { background: linear-gradient(160deg, #13131e 0%, #1a1230 50%, #0e1c1a 100%); }
+.badge {
+  display: inline-block;
+  background: var(--purple-bg);
+  color: var(--purple);
+  border: 1px solid var(--purple-bg);
+  border-radius: 20px;
+  padding: 4px 16px;
+  font-size: 12px;
+  letter-spacing: .06em;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+.hero h1 { font-size: 2.4rem; font-weight: 800; color: var(--text); margin-bottom: 12px; letter-spacing: -.02em; }
+.hero p { color: var(--text3); font-size: 1rem; max-width: 560px; margin: 0 auto; }
+
+/* ── 레이아웃 ── */
+.page { max-width: 880px; margin: 0 auto; padding: 48px 28px 100px; }
+
+/* ── 목차 ── */
+.toc {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 28px;
+  margin-bottom: 56px;
+  box-shadow: var(--shadow);
+}
+.toc-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin-bottom: 14px; }
+.toc ol { padding-left: 18px; columns: 2; gap: 24px; }
+.toc li { margin: 5px 0; font-size: 14px; break-inside: avoid; }
+.toc a { color: var(--purple); text-decoration: none; font-weight: 500; }
+.toc a:hover { text-decoration: underline; }
+
+/* ── 섹션 ── */
+.section { margin-bottom: 80px; scroll-margin-top: 64px; }
+.sh {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--border);
+}
+.sn {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 16px; flex-shrink: 0;
+}
+.s1 { background: var(--coral-bg);  color: var(--coral); }
+.s2 { background: var(--purple-bg); color: var(--purple); }
+.s3 { background: var(--teal-bg);   color: var(--teal); }
+.s4 { background: var(--amber-bg);  color: var(--amber); }
+.s5 { background: var(--blue-bg);   color: var(--blue); }
+.s6 { background: var(--green-bg);  color: var(--green); }
+.sh h2 { font-size: 1.3rem; font-weight: 700; color: var(--text); }
+
+/* ── 텍스트 ── */
+p { color: var(--text2); margin-bottom: 14px; }
+h3 {
+  font-size: 1.02rem; font-weight: 700; color: var(--text);
+  margin: 36px 0 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+h3::before {
+  content: '';
+  display: inline-block;
+  width: 4px; height: 18px;
+  background: var(--purple);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ── 예제 레이블 ── */
+.ex {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 12px 3px 8px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  letter-spacing: .03em;
+}
+.ex-ok   { background: var(--teal-bg);   color: var(--teal); }
+.ex-err  { background: var(--coral-bg);  color: var(--coral); }
+.ex-note { background: var(--amber-bg);  color: var(--amber); }
+
+/* ── 코드 블록 ── */
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: 12px;
+  padding: 20px 22px;
+  overflow-x: auto;
+  font-family: 'Fira Code', 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 10px 0 20px;
+  color: var(--code-text);
+  box-shadow: var(--shadow);
+  tab-size: 4;
+}
+code {
+  font-family: 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+  font-size: 13px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 5px;
+  color: var(--text);
+}
+.kw  { color: var(--kw);  font-weight: 600; }
+.fn  { color: var(--fn); }
+.ty  { color: var(--ty);  font-weight: 600; }
+.lt  { color: var(--lt);  font-weight: 700; }
+.str { color: var(--str); }
+.cm  { color: var(--cm);  font-style: italic; }
+.num { color: var(--num); }
+.mac { color: var(--mac); }
+.at  { color: var(--at); }
+
+.hl-ok {
+  background: var(--hl-ok-bg);
+  border-left: 3px solid var(--hl-ok-border);
+  display: block;
+  margin: 0 -22px;
+  padding: 0 22px 0 19px;
+}
+.hl-err {
+  background: var(--hl-err-bg);
+  border-left: 3px solid var(--hl-err-border);
+  display: block;
+  margin: 0 -22px;
+  padding: 0 22px 0 19px;
+}
+.hl-note {
+  background: var(--hl-note-bg);
+  border-left: 3px solid var(--hl-note-border);
+  display: block;
+  margin: 0 -22px;
+  padding: 0 22px 0 19px;
+}
+
+/* ── 컴파일러 출력 ── */
+.ce {
+  background: var(--ce-bg);
+  border: 1px solid var(--ce-border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin: 8px 0 20px;
+  font-family: 'Fira Code', Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  box-shadow: var(--shadow);
+}
+.ce-e  { color: var(--ce-e); font-weight: 700; }
+.ce-h  { color: var(--ce-h); }
+.ce-n  { color: var(--ce-n); }
+.ce-ok { color: var(--ce-ok); font-weight: 600; }
+.ce-g  { color: var(--muted); }
+
+/* ── 콜아웃 ── */
+.note {
+  border-left: 3px solid;
+  border-radius: 0 10px 10px 0;
+  padding: 14px 18px;
+  margin: 16px 0;
+  font-size: 14.5px;
+  line-height: 1.75;
+}
+.note p { margin: 0; }
+.note-info { border-color: var(--purple); background: var(--purple-bg); color: var(--purple-t); }
+.note-ok   { border-color: var(--teal);   background: var(--teal-bg);   color: var(--teal-t); }
+.note-warn { border-color: var(--amber);  background: var(--amber-bg);  color: var(--amber-t); }
+.note-err  { border-color: var(--coral);  background: var(--coral-bg);  color: var(--coral-t); }
+
+/* ── 다이어그램 ── */
+.diag {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 16px 20px;
+  margin: 20px 0;
+  overflow-x: auto;
+  box-shadow: var(--shadow);
+}
+.diag-cap {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 10px;
+}
+
+/* ── 테이블 ── */
+.t { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
+.t th {
+  background: var(--bg3);
+  color: var(--text3);
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  padding: 10px 14px;
+  border-bottom: 2px solid var(--border);
+  text-align: left;
+}
+.t td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+  vertical-align: top;
+}
+.t tr:last-child td { border-bottom: none; }
+.t tr:hover td { background: var(--bg3); }
+.tok  { background: var(--teal-bg);  color: var(--teal);  border-radius: 5px; padding: 1px 8px; font-size: 12px; white-space: nowrap; font-weight: 600; }
+.terr { background: var(--coral-bg); color: var(--coral); border-radius: 5px; padding: 1px 8px; font-size: 12px; white-space: nowrap; font-weight: 600; }
+
+/* ── 핵심 포인트 박스 ── */
+.kp {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 24px;
+  margin: 24px 0;
+  box-shadow: var(--shadow);
+}
+.kp h4 {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+.kp ul { list-style: none; padding: 0; }
+.kp li {
+  padding: 6px 0;
+  color: var(--text2);
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 14.5px;
+  border-bottom: 1px solid var(--border);
+}
+.kp li:last-child { border-bottom: none; }
+.kp li::before { content: '›'; color: var(--purple); font-weight: 800; flex-shrink: 0; margin-top: 2px; font-size: 16px; }
+
+.divider { height: 1px; background: var(--border); margin: 36px 0; }
+</style>
+</head>
+<body>
+
+<!-- 상단바 -->
+<header class="topbar">
+  <div class="topbar-title">
+    <span class="rust-badge">Rust</span>
+    라이프타임 완전 가이드
+  </div>
+  <div class="topbar-right">
+    <div class="src-links">
+      <a href="https://doc.rust-lang.org/book/ch10-03-lifetime-syntax.html" target="_blank">The Book</a>
+      <a href="https://doc.rust-lang.org/rust-by-example/scope/lifetime.html" target="_blank">By Example</a>
+      <a href="https://doc.rust-lang.org/nomicon/lifetimes.html" target="_blank">Nomicon</a>
+    </div>
+    <div class="theme-toggle" id="themeToggle">
+      <button id="btn-light" onclick="setTheme('light')" title="라이트 모드">☀️</button>
+      <button id="btn-dark"  onclick="setTheme('dark')"  title="다크 모드">🌙</button>
+    </div>
+  </div>
+</header>
+
+<!-- 히어로 -->
+<div class="hero">
+  <div class="badge">공식 문서 기반 · 예제 중심</div>
+  <h1>Rust 라이프타임 완전 가이드</h1>
+  <p>Borrow Checker 원리부터 'static까지<br>단계별 예제와 SVG 다이어그램으로 완전 이해</p>
+</div>
+
+<div class="page">
+<!-- 목차 -->
+<div class="toc">
+  <div class="toc-label">목차</div>
+  <ol>
+    <li><a href="#s1">왜 필요한가 — Dangling Reference</a></li>
+    <li><a href="#s2">Borrow Checker 작동 원리</a></li>
+    <li><a href="#s3">'a 애노테이션 문법</a></li>
+    <li><a href="#s4">함수에서 라이프타임</a></li>
+    <li><a href="#s5">구조체에서 라이프타임</a></li>
+    <li><a href="#s6">생략 규칙 (Elision)</a></li>
+    <li><a href="#s7">'static 라이프타임</a></li>
+    <li><a href="#s8">제네릭 + 트레잇 + 라이프타임</a></li>
+    <li><a href="#s9">자주 만나는 패턴 &amp; 실수</a></li>
+  </ol>
+</div>
+
+<!-- §1 -->
+<section class="section" id="s1">
+<div class="sh"><div class="sn s1">1</div><h2>왜 라이프타임이 필요한가 — Dangling Reference 문제</h2></div>
+
+<p>Rust의 모든 참조(<code>&amp;T</code>)에는 <strong>라이프타임</strong>이 있습니다. 라이프타임이란 그 참조가 유효한 코드 영역입니다. 라이프타임의 핵심 목적은 <strong>dangling reference(허상 참조)</strong>를 컴파일 타임에 차단하는 것입니다.</p>
+
+<h3>예제 1-1 — 기본 dangling reference (The Book Listing 10-16)</h3>
+<div class="ex ex-err">✕ 컴파일 에러</div>
+<pre><span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> r;              <span class="cm">// r 선언 (아직 아무것도 가리키지 않음)</span>
+
+    {
+        <span class="kw">let</span> x = <span class="num">5</span>;      <span class="cm">// x 생성</span>
+<span class="hl-err">        r = &amp;x;         <span class="cm">// r이 x를 참조 — x는 이 블록이 끝나면 사라짐!</span></span>
+    }                   <span class="cm">// ← x 여기서 drop</span>
+
+<span class="hl-err">    <span class="mac">println!</span>(<span class="str">"r: {r}"</span>); <span class="cm">// r이 가리키는 x는 이미 없음 → dangling reference!</span></span>
+}</pre>
+<div class="ce">
+<span class="ce-e">error[E0597]</span>: `x` does not live long enough<br>
+<span class="ce-g"> --> src/main.rs:6:13</span><br>
+5 |         let x = 5;<br>
+<span class="ce-n">  |             - binding `x` declared here</span><br>
+6 |         r = &amp;x;<br>
+<span class="ce-e">  |             ^^ borrowed value does not live long enough</span><br>
+7 |     }<br>
+<span class="ce-n">  |     - `x` dropped here while still borrowed</span><br>
+9 |     println!("r: {r}");<br>
+<span class="ce-n">  |                   - borrow later used here</span>
+</div>
+
+<h3>예제 1-2 — 올바른 코드 (The Book Listing 10-18)</h3>
+<div class="ex ex-ok">✓ 컴파일 성공</div>
+<pre><span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> x = <span class="num">5</span>;            <span class="cm">// x를 r보다 먼저 선언 → x가 더 오래 삶</span>
+    <span class="kw">let</span> r = &amp;x;           <span class="cm">// r이 x를 참조: x의 수명 ⊇ r의 수명 → OK</span>
+<span class="hl-ok">    <span class="mac">println!</span>(<span class="str">"r: {r}"</span>);  <span class="cm">// ✓ x가 아직 살아있음</span></span>
+}</pre>
+
+<div class="diag">
+<svg width="100%" viewBox="0 0 680 220">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <!-- 제목 -->
+  <text id="diag1-title" x="340" y="22" text-anchor="middle" font-size="13" font-weight="700">라이프타임 비교 — 에러 vs 정상</text>
+  <!-- 에러 케이스 -->
+  <text id="e-label" x="168" y="48" text-anchor="middle" font-size="12">❌ r이 x보다 오래 삶 → 에러</text>
+  <rect x="40" y="56" width="256" height="15" rx="5" fill="#fca5a5" opacity=".6"/>
+  <text id="e-r" x="36" y="68" text-anchor="end" font-size="11">'a (r)</text>
+  <rect x="90" y="76" width="130" height="15" rx="5" fill="#fda4af" opacity=".55"/>
+  <text id="e-x" x="36" y="88" text-anchor="end" font-size="11">'b (x)</text>
+  <line x1="220" y1="54" x2="220" y2="100" stroke="#ef4444" stroke-width="1" stroke-dasharray="3 2"/>
+  <text x="224" y="97" font-size="10">x drop</text>
+  <text x="234" y="111" font-size="10">← r은 살아있는데 x가 없음!</text>
+  <!-- 정상 케이스 -->
+  <text x="520" y="48" text-anchor="middle" font-size="12">✅ x가 r보다 오래 삶 → OK</text>
+  <rect x="400" y="56" width="256" height="15" rx="5" fill="#6ee7b7" opacity=".55"/>
+  <text x="396" y="68" text-anchor="end" font-size="11">'b (x)</text>
+  <rect x="440" y="76" width="170" height="15" rx="5" fill="#a5b4fc" opacity=".55"/>
+  <text x="396" y="88" text-anchor="end" font-size="11">'a (r)</text>
+  <text x="520" y="108" text-anchor="middle" font-size="10">'b ⊇ 'a → 참조 항상 유효</text>
+  <!-- 규칙 박스 -->
+  <rect x="40" y="128" width="600" height="42" rx="10" fill-opacity=".08" fill="#8b5cf6" stroke="#8b5cf6" stroke-opacity=".25" stroke-width="1"/>
+  <text x="340" y="147" text-anchor="middle" font-size="13" font-weight="700" fill="#7c3aed">핵심 규칙</text>
+  <text id="rule-sub" x="340" y="163" text-anchor="middle" font-size="12">참조 r의 라이프타임 ≤ r이 가리키는 값의 라이프타임</text>
+  <!-- 출처 -->
+  <text id="diag1-src" x="340" y="198" text-anchor="middle" font-size="11">런타임 오버헤드 = 0 · 100% 컴파일 타임 검사 · 실행 파일에 라이프타임 정보 없음</text>
+</svg>
+<script>
+// SVG 텍스트 색상을 테마에 맞게
+function updateSvgColors() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const textColor = dark ? '#ededf4' : '#1a1916';
+  const muteColor = dark ? '#6e6c80' : '#8a8680';
+  const purColor  = dark ? '#a78bfa' : '#7c3aed';
+  document.querySelectorAll('svg text').forEach(t => {
+    if (!t.getAttribute('fill')) t.setAttribute('fill', textColor);
+  });
+  ['diag1-title','e-label','e-r','e-x','rule-sub','diag1-src'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute('fill', id.includes('src') || id.includes('sub') ? muteColor : textColor);
+  });
+  const ruleText = document.getElementById('rule-sub');
+  if (ruleText) ruleText.setAttribute('fill', muteColor);
+  document.querySelectorAll('[id^="diag"]').forEach(el => el.setAttribute('fill', textColor));
+}
+</script>
+</div>
+
+<h3>예제 1-3 — C와의 비교 (왜 Rust가 필요한가)</h3>
+<div class="ex ex-note">참고: C언어 — 런타임 버그</div>
+<pre><span class="cm">// C 코드 (참고용, Rust 아님)</span>
+<span class="cm">// int* r;</span>
+<span class="cm">// { int x = 5; r = &amp;x; }  ← x 스택에서 pop</span>
+<span class="cm">// printf("%d", *r);         ← 💥 Undefined Behavior: 해제된 메모리 접근</span>
+<span class="cm">//                              컴파일은 되지만 런타임에 프로그램이 터짐</span>
+
+<span class="cm">// Rust는 동일한 상황을 E0597 에러로 컴파일 타임에 완전히 차단합니다</span></pre>
+</section>
+
+<!-- §2 -->
+<section class="section" id="s2">
+<div class="sh"><div class="sn s1">2</div><h2>Borrow Checker 작동 원리</h2></div>
+
+<p>Rustonomicon에 따르면 모든 <code>let</code> 구문은 암묵적으로 스코프를 도입합니다. Borrow Checker는 이 스코프들을 분석해 참조가 항상 유효한지 확인합니다.</p>
+
+<h3>예제 2-1 — let 구문의 내부 (Rustonomicon)</h3>
+<pre><span class="cm">// 우리가 쓰는 코드</span>
+<span class="kw">let</span> x = <span class="num">0</span>;
+<span class="kw">let</span> y = &amp;x;
+<span class="kw">let</span> z = &amp;y;
+
+<span class="cm">// 컴파일러가 내부적으로 보는 모습 (설명용 의사 코드)</span>
+<span class="cm">// 'a: {</span>
+<span class="cm">//     let x: i32 = 0;</span>
+<span class="cm">//     'b: {</span>
+<span class="cm">//         let y: &amp;'b i32 = &amp;'b x;  // 'b면 충분하므로 최소 'b 선택</span>
+<span class="cm">//         'c: {</span>
+<span class="cm">//             let z: &amp;'c &amp;'b i32 = &amp;'c y;</span>
+<span class="cm">//         }</span>
+<span class="cm">//     }</span>
+<span class="cm">// }</span></pre>
+
+<h3>예제 2-2 — 외부 스코프로 참조 전달 시 라이프타임 확장 (Rustonomicon)</h3>
+<pre><span class="kw">let</span> x = <span class="num">0</span>;
+<span class="kw">let</span> z;
+<span class="kw">let</span> y = &amp;x;
+z = y;   <span class="cm">// y를 z에 대입 → z의 라이프타임('b)에 맞춰 y도 'b로 추론됨</span>
+
+<span class="cm">// 내부 표현:</span>
+<span class="cm">// 'a: {</span>
+<span class="cm">//   let x: i32 = 0;</span>
+<span class="cm">//   'b: {</span>
+<span class="cm">//     let z: &amp;'b i32;</span>
+<span class="cm">//     'c: {</span>
+<span class="cm">//       let y: &amp;'b i32 = &amp;'b x;  // 'b scope로 전달되므로 'b로 추론</span>
+<span class="cm">//       z = y;</span>
+<span class="cm">//     }</span>
+<span class="cm">//   }</span>
+<span class="cm">// }</span></pre>
+
+<h3>예제 2-3 — 가변 참조 vs 공유 참조 충돌 (Rustonomicon)</h3>
+<div class="ex ex-err">✕ 컴파일 에러</div>
+<pre><span class="kw">let</span> <span class="kw">mut</span> data = <span class="mac">vec!</span>[<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>];
+<span class="kw">let</span> x = &amp;data[<span class="num">0</span>];     <span class="cm">// 공유 참조 ('b 동안 유효해야 함)</span>
+<span class="hl-err">data.push(<span class="num">4</span>);         <span class="cm">// ❌ &amp;mut data 필요 — 그러나 x(&amp;data)가 아직 'b 중!</span></span>
+<span class="mac">println!</span>(<span class="str">"{}"</span>, x);   <span class="cm">// x가 여기까지 살아있어야 하므로 'b 안 끝남</span></pre>
+
+<div class="ex ex-ok">✓ 해결 — x의 마지막 사용 이후에 push</div>
+<pre><span class="kw">let</span> <span class="kw">mut</span> data = <span class="mac">vec!</span>[<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>];
+<span class="kw">let</span> x = &amp;data[<span class="num">0</span>];
+<span class="hl-ok"><span class="mac">println!</span>(<span class="str">"{}"</span>, x);   <span class="cm">// ✓ x 마지막 사용 → 이후 borrow 종료 (NLL)</span></span>
+<span class="hl-ok">data.push(<span class="num">4</span>);        <span class="cm">// ✓ 가변 참조 가능</span></span></pre>
+
+<h3>예제 2-4 — Non-Lexical Lifetimes (NLL, Rust 2018+)</h3>
+<p>라이프타임은 변수 스코프 끝이 아닌 <strong>마지막 실제 사용</strong>까지만 유지됩니다.</p>
+<div class="ex ex-ok">✓ 컴파일 성공 (NLL 덕분)</div>
+<pre><span class="kw">let</span> <span class="kw">mut</span> data = <span class="mac">vec!</span>[<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>];
+<span class="kw">let</span> <span class="kw">mut</span> x = &amp;data[<span class="num">0</span>];
+
+<span class="mac">println!</span>(<span class="str">"{}"</span>, x);  <span class="cm">// 첫 번째 borrow 마지막 사용 → 이후 종료</span>
+<span class="hl-ok">data.push(<span class="num">4</span>);       <span class="cm">// ✓ NLL: 이전 borrow 이미 종료됨</span></span>
+<span class="hl-ok">x = &amp;data[<span class="num">3</span>];        <span class="cm">// ✓ 새로운 borrow 시작</span></span>
+<span class="mac">println!</span>(<span class="str">"{}"</span>, x);</pre>
+</section>
+
+<!-- §3 -->
+<section class="section" id="s3">
+<div class="sh"><div class="sn s2">3</div><h2>'a 애노테이션 기본 문법</h2></div>
+
+<div class="note note-info">
+  <p><strong>중요 (The Book §10.3):</strong> 라이프타임 애노테이션은 참조가 실제로 살아있는 시간을 <em>바꾸지 않습니다</em>. 여러 참조의 라이프타임 관계를 컴파일러에게 설명하는 것뿐입니다.</p>
+</div>
+
+<h3>예제 3-1 — 기본 문법 형태 (The Book §10.3)</h3>
+<pre><span class="cm">// &amp; 바로 뒤, 타입 앞에 라이프타임 표기</span>
+&amp;<span class="ty">i32</span>              <span class="cm">// 라이프타임 없는 참조 (컴파일러가 추론)</span>
+&amp;<span class="lt">'a</span> <span class="ty">i32</span>           <span class="cm">// 라이프타임 'a를 가진 참조</span>
+&amp;<span class="lt">'a</span> <span class="kw">mut</span> <span class="ty">i32</span>       <span class="cm">// 라이프타임 'a를 가진 가변 참조</span>
+&amp;<span class="lt">'static</span> <span class="ty">str</span>     <span class="cm">// 'static 라이프타임 (프로그램 전체)</span>
+
+<span class="cm">// 함수: 꺾쇠괄호 안에 선언 (제네릭 T와 같은 위치)</span>
+<span class="kw">fn</span> <span class="fn">foo</span>&lt;<span class="lt">'a</span>&gt;(x: &amp;<span class="lt">'a</span> <span class="ty">i32</span>) { }
+
+<span class="cm">// 여러 라이프타임</span>
+<span class="kw">fn</span> <span class="fn">bar</span>&lt;<span class="lt">'a</span>, <span class="lt">'b</span>&gt;(x: &amp;<span class="lt">'a</span> <span class="ty">i32</span>, y: &amp;<span class="lt">'b</span> <span class="ty">i32</span>) { }
+
+<span class="cm">// 라이프타임 + 제네릭 타입 함께</span>
+<span class="kw">fn</span> <span class="fn">baz</span>&lt;<span class="lt">'a</span>, T&gt;(x: &amp;<span class="lt">'a</span> T) { }</pre>
+
+<h3>예제 3-2 — print_refs + failed_borrow (Rust By Example)</h3>
+<div class="ex ex-ok">✓ 컴파일 성공</div>
+<pre><span class="cm">// 서로 다른 라이프타임 'a, 'b — 함수 실행 중 둘 다 유효해야 함</span>
+<span class="kw">fn</span> <span class="fn">print_refs</span>&lt;<span class="lt">'a</span>, <span class="lt">'b</span>&gt;(x: &amp;<span class="lt">'a</span> <span class="ty">i32</span>, y: &amp;<span class="lt">'b</span> <span class="ty">i32</span>) {
+    <span class="mac">println!</span>(<span class="str">"x is {} and y is {}"</span>, x, y);
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> (four, nine) = (<span class="num">4</span>, <span class="num">9</span>);
+<span class="hl-ok">    <span class="fn">print_refs</span>(&amp;four, &amp;nine); <span class="cm">// ✓ 두 라이프타임 모두 유효</span></span>
+}</pre>
+
+<div class="ex ex-err">✕ 컴파일 에러</div>
+<pre><span class="cm">// 'a는 호출자가 결정 — 함수 내부 지역변수보다 길 수 있음</span>
+<span class="cm">// 짧은 라이프타임을 더 긴 것으로 강제 불가!</span>
+<span class="kw">fn</span> <span class="fn">failed_borrow</span>&lt;<span class="lt">'a</span>&gt;() {
+    <span class="kw">let</span> _x = <span class="num">12</span>;
+<span class="hl-err">    <span class="kw">let</span> _y: &amp;<span class="lt">'a</span> <span class="ty">i32</span> = &amp;_x; <span class="cm">// ❌ _x의 라이프타임 &lt; 'a</span></span>
+}</pre>
+</section>
+
+<!-- §4 -->
+<section class="section" id="s4">
+<div class="sh"><div class="sn s3">4</div><h2>함수에서 라이프타임 — 입력·출력 참조</h2></div>
+
+<p>함수가 참조를 입력받아 참조를 반환할 때, 컴파일러는 반환된 참조가 어느 입력에서 왔는지 알아야 합니다. 이를 모르면 반환값의 유효 기간을 판단할 수 없습니다.</p>
+
+<h3>예제 4-1 — 라이프타임 없이 참조 반환 → 에러 (Listing 10-20)</h3>
+<div class="ex ex-err">✕ 컴파일 에러</div>
+<pre><span class="kw">fn</span> <span class="fn">longest</span>(x: &amp;<span class="ty">str</span>, y: &amp;<span class="ty">str</span>) -&gt; &amp;<span class="ty">str</span> { <span class="cm">// 반환값이 x인지 y인지 불명!</span>
+    <span class="kw">if</span> x.len() &gt; y.len() { x } <span class="kw">else</span> { y }
+}</pre>
+<div class="ce">
+<span class="ce-e">error[E0106]</span>: missing lifetime specifier<br>
+<span class="ce-h">&nbsp;&nbsp;= help</span>: this function's return type contains a borrowed value,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;but the signature does not say whether it is borrowed from `x` or `y`<br>
+<span class="ce-ok">help</span>: consider: fn longest<span class="ce-ok">&lt;'a&gt;</span>(x: <span class="ce-ok">&amp;'a</span> str, y: <span class="ce-ok">&amp;'a</span> str) -&gt; <span class="ce-ok">&amp;'a</span> str
+</div>
+
+<h3>예제 4-2 — 라이프타임 추가로 해결 (Listing 10-21)</h3>
+<div class="ex ex-ok">✓ 컴파일 성공</div>
+<pre><span class="cm">// 'a = x와 y 중 더 짧은 쪽의 라이프타임. 반환값은 그보다 오래 살 수 없음.</span>
+<span class="kw">fn</span> <span class="fn">longest</span>&lt;<span class="lt">'a</span>&gt;(x: &amp;<span class="lt">'a</span> <span class="ty">str</span>, y: &amp;<span class="lt">'a</span> <span class="ty">str</span>) -&gt; &amp;<span class="lt">'a</span> <span class="ty">str</span> {
+    <span class="kw">if</span> x.len() &gt; y.len() { x } <span class="kw">else</span> { y }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> s1 = <span class="ty">String</span>::from(<span class="str">"abcd"</span>);
+    <span class="kw">let</span> s2 = <span class="str">"xyz"</span>;  <span class="cm">// &amp;'static str</span>
+
+<span class="hl-ok">    <span class="kw">let</span> result = <span class="fn">longest</span>(s1.as_str(), s2);</span>
+<span class="hl-ok">    <span class="mac">println!</span>(<span class="str">"The longest string is {result}"</span>); <span class="cm">// ✓ "abcd"</span></span>
+}</pre>
+
+<h3>예제 4-3 — result 사용 위치가 결과를 바꿈 (Listing 10-22 vs 10-23)</h3>
+<div class="ex ex-ok">✓ 성공 — result를 inner scope 안에서 사용</div>
+<pre><span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> string1 = <span class="ty">String</span>::from(<span class="str">"long string is long"</span>);
+    {
+        <span class="kw">let</span> string2 = <span class="ty">String</span>::from(<span class="str">"xyz"</span>); <span class="cm">// 'a = 이 inner scope</span>
+        <span class="kw">let</span> result = <span class="fn">longest</span>(string1.as_str(), string2.as_str());
+<span class="hl-ok">        <span class="mac">println!</span>(<span class="str">"{result}"</span>); <span class="cm">// ✓ inner 안에서 사용 → OK</span></span>
+    }
+}</pre>
+
+<div class="ex ex-err">✕ 에러 — result를 inner scope 밖에서 사용</div>
+<pre><span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> string1 = <span class="ty">String</span>::from(<span class="str">"long string is long"</span>);
+    <span class="kw">let</span> result;
+    {
+        <span class="kw">let</span> string2 = <span class="ty">String</span>::from(<span class="str">"xyz"</span>);
+        result = <span class="fn">longest</span>(string1.as_str(), string2.as_str());
+    } <span class="cm">// string2 drop! 'a(=inner) 끝남</span>
+<span class="hl-err">    <span class="mac">println!</span>(<span class="str">"{result}"</span>); <span class="cm">// ❌ 'a 이후 사용</span></span>
+}</pre>
+
+<h3>예제 4-4 — 반환값과 무관한 파라미터는 'a 불필요 (The Book §10.3)</h3>
+<div class="ex ex-ok">✓ 컴파일 성공</div>
+<pre><span class="cm">// x만 반환 → y의 라이프타임은 반환값과 무관</span>
+<span class="kw">fn</span> <span class="fn">first_param</span>&lt;<span class="lt">'a</span>&gt;(x: &amp;<span class="lt">'a</span> <span class="ty">str</span>, y: &amp;<span class="ty">str</span>) -&gt; &amp;<span class="lt">'a</span> <span class="ty">str</span> { x }
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> s1 = <span class="ty">String</span>::from(<span class="str">"hello"</span>);
+    <span class="kw">let</span> result;
+    {
+        <span class="kw">let</span> s2 = <span class="ty">String</span>::from(<span class="str">"world"</span>);
+<span class="hl-ok">        result = <span class="fn">first_param</span>(s1.as_str(), s2.as_str()); <span class="cm">// ✓ y는 무관</span></span>
+    }
+<span class="hl-ok">    <span class="mac">println!</span>(<span class="str">"{result}"</span>); <span class="cm">// ✓ result는 s1에서 왔으므로 유효</span></span>
+}</pre>
+
+<h3>예제 4-5 — 지역변수 참조 반환 → 항상 에러 (The Book §10.3)</h3>
+<div class="ex ex-err">✕ 컴파일 에러</div>
+<pre><span class="kw">fn</span> <span class="fn">dangle</span>&lt;<span class="lt">'a</span>&gt;(x: &amp;<span class="ty">str</span>, y: &amp;<span class="ty">str</span>) -&gt; &amp;<span class="lt">'a</span> <span class="ty">str</span> {
+    <span class="kw">let</span> result = <span class="ty">String</span>::from(<span class="str">"really long string"</span>);
+<span class="hl-err">    result.as_str() <span class="cm">// ❌ result는 함수 끝에서 drop → dangling reference!</span></span>
+}
+<span class="cm">// error[E0515]: cannot return value referencing local variable `result`</span></pre>
+
+<div class="ex ex-ok">✓ 해결 — 소유 타입 반환</div>
+<pre><span class="kw">fn</span> <span class="fn">no_dangle</span>() -&gt; <span class="ty">String</span> {
+    <span class="ty">String</span>::from(<span class="str">"really long string"</span>)  <span class="cm">// ✓ 소유권 이전 → 호출자가 관리</span>
+}
+<span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="hl-ok">    <span class="kw">let</span> s = <span class="fn">no_dangle</span>(); <span class="mac">println!</span>(<span class="str">"{s}"</span>); <span class="cm">// ✓</span></span>
+}</pre>
+
+<h3>예제 4-6 — Rust By Example의 함수 라이프타임 패턴들</h3>
+<div class="ex ex-ok">✓ 컴파일 성공</div>
+<pre><span class="cm">// 1) 입력 하나</span>
+<span class="kw">fn</span> <span class="fn">print_one</span>&lt;<span class="lt">'a</span>&gt;(x: &amp;<span class="lt">'a</span> <span class="ty">i32</span>) { <span class="mac">println!</span>(<span class="str">"{}"</span>, x); }
+
+<span class="cm">// 2) 가변 참조도 라이프타임 적용 가능</span>
+<span class="kw">fn</span> <span class="fn">add_one</span>&lt;<span class="lt">'a</span>&gt;(x: &amp;<span class="lt">'a</span> <span class="kw">mut</span> <span class="ty">i32</span>) { *x += <span class="num">1</span>; }
+
+<span class="cm">// 3) 서로 다른 라이프타임 두 개</span>
+<span class="kw">fn</span> <span class="fn">print_multi</span>&lt;<span class="lt">'a</span>, <span class="lt">'b</span>&gt;(x: &amp;<span class="lt">'a</span> <span class="ty">i32</span>, y: &amp;<span class="lt">'b</span> <span class="ty">i32</span>) {
+    <span class="mac">println!</span>(<span class="str">"x={}, y={}"</span>, x, y);
+}
+
+<span class="cm">// 4) 입력 중 하나만 반환에 연결</span>
+<span class="kw">fn</span> <span class="fn">pass_x</span>&lt;<span class="lt">'a</span>, <span class="lt">'b</span>&gt;(x: &amp;<span class="lt">'a</span> <span class="ty">i32</span>, _: &amp;<span class="lt">'b</span> <span class="ty">i32</span>) -&gt; &amp;<span class="lt">'a</span> <span class="ty">i32</span> { x }
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> (x, y) = (<span class="num">7</span>, <span class="num">9</span>);
+    <span class="fn">print_one</span>(&amp;x);
+    <span class="fn">print_multi</span>(&amp;x, &amp;y);
+    <span class="kw">let</span> z = <span class="fn">pass_x</span>(&amp;x, &amp;y);
+    <span class="fn">print_one</span>(z);
+    <span class="kw">let</span> <span class="kw">mut</span> t = <span class="num">3</span>;
+    <span class="fn">add_one</span>(&amp;<span class="kw">mut</span> t);
+    <span class="fn">print_one</span>(&amp;t);
+}</pre>
+
+<h3>예제 4-7 — first_word: 생략 vs 명시 (Listing 10-25)</h3>
+<div class="ex ex-ok">✓ 두 버전 모두 동일한 의미</div>
+<pre><span class="cm">// 생략 버전 — 생략 규칙 덕분에 라이프타임 불필요</span>
+<span class="kw">fn</span> <span class="fn">first_word</span>(s: &amp;<span class="ty">str</span>) -&gt; &amp;<span class="ty">str</span> {
+    <span class="kw">let</span> bytes = s.as_bytes();
+    <span class="kw">for</span> (i, &amp;item) <span class="kw">in</span> bytes.iter().enumerate() {
+        <span class="kw">if</span> item == <span class="num">b' '</span> { <span class="kw">return</span> &amp;s[<span class="num">0</span>..i]; }
+    }
+    &amp;s[..]
+}
+
+<span class="cm">// 명시 버전 — 완전히 같은 의미</span>
+<span class="kw">fn</span> <span class="fn">first_word_explicit</span>&lt;<span class="lt">'a</span>&gt;(s: &amp;<span class="lt">'a</span> <span class="ty">str</span>) -&gt; &amp;<span class="lt">'a</span> <span class="ty">str</span> {
+    <span class="kw">let</span> bytes = s.as_bytes();
+    <span class="kw">for</span> (i, &amp;item) <span class="kw">in</span> bytes.iter().enumerate() {
+        <span class="kw">if</span> item == <span class="num">b' '</span> { <span class="kw">return</span> &amp;s[<span class="num">0</span>..i]; }
+    }
+    &amp;s[..]
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> s = <span class="ty">String</span>::from(<span class="str">"hello world"</span>);
+<span class="hl-ok">    <span class="mac">println!</span>(<span class="str">"{}"</span>, <span class="fn">first_word</span>(&amp;s[..]));          <span class="cm">// "hello"</span></span>
+<span class="hl-ok">    <span class="mac">println!</span>(<span class="str">"{}"</span>, <span class="fn">first_word</span>(<span class="str">"hello world"</span>));   <span class="cm">// "hello" (리터럴도 OK)</span></span>
+}</pre>
+</section>
+
+<!-- §5 -->
+<section class="section" id="s5">
+<div class="sh"><div class="sn s4">5</div><h2>구조체에서 라이프타임</h2></div>
+
+<h3>예제 5-1 — 튜플·일반·enum 구조체 (Rust By Example)</h3>
+<div class="ex ex-ok">✓ 컴파일 성공</div>
+<pre><span class="at">#[derive(Debug)]</span>
+<span class="kw">struct</span> <span class="ty">Borrowed</span>&lt;<span class="lt">'a</span>&gt;(&amp;<span class="lt">'a</span> <span class="ty">i32</span>);              <span class="cm">// 튜플 구조체</span>
+
+<span class="at">#[derive(Debug)]</span>
+<span class="kw">struct</span> <span class="ty">NamedBorrowed</span>&lt;<span class="lt">'a</span>&gt; {               <span class="cm">// 일반 구조체</span>
+    x: &amp;<span class="lt">'a</span> <span class="ty">i32</span>,
+    y: &amp;<span class="lt">'a</span> <span class="ty">i32</span>,
+}
+
+<span class="at">#[derive(Debug)]</span>
+<span class="kw">enum</span> <span class="ty">Either</span>&lt;<span class="lt">'a</span>&gt; {
+    Num(<span class="ty">i32</span>),          <span class="cm">// 소유값: 라이프타임 불필요</span>
+    Ref(&amp;<span class="lt">'a</span> <span class="ty">i32</span>),     <span class="cm">// 참조: 라이프타임 필요</span>
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> (x, y) = (<span class="num">18</span>, <span class="num">15</span>);
+    <span class="kw">let</span> single    = <span class="ty">Borrowed</span>(&amp;x);
+    <span class="kw">let</span> double    = <span class="ty">NamedBorrowed</span> { x: &amp;x, y: &amp;y };
+    <span class="kw">let</span> reference = <span class="ty">Either</span>::Ref(&amp;x);
+    <span class="kw">let</span> number    = <span class="ty">Either</span>::Num(y);  <span class="cm">// y 복사, 참조 아님</span>
+
+    <span class="mac">println!</span>(<span class="str">"{:?}"</span>, single);    <span class="cm">// Borrowed(18)</span>
+    <span class="mac">println!</span>(<span class="str">"{:?}"</span>, double);    <span class="cm">// NamedBorrowed { x: 18, y: 15 }</span>
+    <span class="mac">println!</span>(<span class="str">"{:?}"</span>, reference); <span class="cm">// Ref(18)</span>
+    <span class="mac">println!</span>(<span class="str">"{:?}"</span>, number);    <span class="cm">// Num(15)</span>
+}</pre>
+
+<h3>예제 5-2 — ImportantExcerpt (Listing 10-24)</h3>
+<div class="ex ex-ok">✓ 컴파일 성공</div>
+<pre><span class="kw">struct</span> <span class="ty">ImportantExcerpt</span>&lt;<span class="lt">'a</span>&gt; {
+    part: &amp;<span class="lt">'a</span> <span class="ty">str</span>,
+    <span class="cm">// 의미: 이 인스턴스는 part가 가리키는 값보다 오래 살 수 없다</span>
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> novel = <span class="ty">String</span>::from(<span class="str">"Call me Ishmael. Some years ago..."</span>);
+    <span class="cm">// novel이 먼저 선언 → i 보다 오래 삶 → OK</span>
+    <span class="kw">let</span> first = novel.split(<span class="str">'.'</span>).next().unwrap();
+    <span class="kw">let</span> i = <span class="ty">ImportantExcerpt</span> { part: first };
+<span class="hl-ok">    <span class="mac">println!</span>(<span class="str">"발췌: {}"</span>, i.part); <span class="cm">// ✓</span></span>
+}</pre>
+
+<h3>예제 5-3 — impl 블록에서의 라이프타임 + 메서드 (The Book §10.3)</h3>
+<div class="ex ex-ok">✓ 컴파일 성공</div>
+<pre><span class="kw">impl</span>&lt;<span class="lt">'a</span>&gt; <span class="ty">ImportantExcerpt</span>&lt;<span class="lt">'a</span>&gt; {
+    <span class="cm">// 반환이 i32(참조 아님) → 라이프타임 불필요</span>
+    <span class="kw">fn</span> <span class="fn">level</span>(&amp;<span class="kw">self</span>) -&gt; <span class="ty">i32</span> { <span class="num">3</span> }
+
+    <span class="cm">// 생략 규칙 3 적용: &amp;self 있음 → 출력이 self의 라이프타임에 연결</span>
+    <span class="cm">// 컴파일러 내부: fn announce&lt;'a,'b&gt;(&amp;'a self, ann: &amp;'b str) -&gt; &amp;'a str</span>
+    <span class="kw">fn</span> <span class="fn">announce_and_return_part</span>(&amp;<span class="kw">self</span>, announcement: &amp;<span class="ty">str</span>) -&gt; &amp;<span class="ty">str</span> {
+        <span class="mac">println!</span>(<span class="str">"Attention: {announcement}"</span>);
+        <span class="kw">self</span>.part
+    }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> novel = <span class="ty">String</span>::from(<span class="str">"Call me Ishmael. Some years ago..."</span>);
+    <span class="kw">let</span> first = novel.split(<span class="str">'.'</span>).next().unwrap();
+    <span class="kw">let</span> i = <span class="ty">ImportantExcerpt</span> { part: first };
+    <span class="mac">println!</span>(<span class="str">"Level: {}"</span>, i.level());
+    <span class="mac">println!</span>(<span class="str">"Part: {}"</span>, i.announce_and_return_part(<span class="str">"들어주세요!"</span>));
+}</pre>
+
+<h3>예제 5-4 — 소유 vs 참조 구조체 비교</h3>
+<pre><span class="cm">// 소유 타입만 → 라이프타임 불필요</span>
+<span class="kw">struct</span> <span class="ty">ConfigOwned</span> { name: <span class="ty">String</span>, port: <span class="ty">u16</span> }
+
+<span class="cm">// 참조 포함 → 라이프타임 필수</span>
+<span class="kw">struct</span> <span class="ty">ConfigRef</span>&lt;<span class="lt">'a</span>&gt; { name: &amp;<span class="lt">'a</span> <span class="ty">str</span>, port: <span class="ty">u16</span> }
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="cm">// ConfigOwned: 자유롭게 이동, 라이프타임 걱정 없음</span>
+    <span class="kw">let</span> c1 = <span class="ty">ConfigOwned</span> { name: <span class="ty">String</span>::from(<span class="str">"localhost"</span>), port: <span class="num">8080</span> };
+    <span class="mac">println!</span>(<span class="str">"{}:{}"</span>, c1.name, c1.port);
+
+    <span class="cm">// ConfigRef: host보다 짧게 살아야 함 (자동 보장)</span>
+    <span class="kw">let</span> host = <span class="ty">String</span>::from(<span class="str">"localhost"</span>);
+    <span class="kw">let</span> c2 = <span class="ty">ConfigRef</span> { name: &amp;host, port: <span class="num">8080</span> };
+    <span class="mac">println!</span>(<span class="str">"{}:{}"</span>, c2.name, c2.port);
+}</pre>
+</section>
+
+<!-- §6 -->
+<section class="section" id="s6">
+<div class="sh"><div class="sn s5">6</div><h2>생략 규칙 (Elision Rules)</h2></div>
+
+<div class="note note-info">
+  <p><strong>(The Book §10.3):</strong> 생략 규칙은 프로그래머가 따를 규칙이 아닙니다. 컴파일러가 검사하는 특정 패턴들의 집합입니다. 규칙을 적용해도 불명확하면 추측 없이 에러를 냅니다.</p>
+</div>
+
+<h3>규칙 1 — 각 입력 참조는 개별 라이프타임</h3>
+<pre><span class="kw">fn</span> <span class="fn">foo</span>(x: &amp;<span class="ty">i32</span>)               <span class="cm">// → fn foo&lt;'a&gt;(x: &amp;'a i32)</span>
+<span class="kw">fn</span> <span class="fn">bar</span>(x: &amp;<span class="ty">i32</span>, y: &amp;<span class="ty">i32</span>)      <span class="cm">// → fn bar&lt;'a,'b&gt;(x: &amp;'a i32, y: &amp;'b i32)</span></pre>
+
+<h3>규칙 2 — 입력 라이프타임이 정확히 1개면 출력에도 적용</h3>
+<pre><span class="kw">fn</span> <span class="fn">foo</span>(x: &amp;<span class="ty">i32</span>) -&gt; &amp;<span class="ty">i32</span>                     <span class="cm">// → fn foo&lt;'a&gt;(x: &amp;'a i32) -&gt; &amp;'a i32</span>
+<span class="kw">fn</span> <span class="fn">substr</span>(s: &amp;<span class="ty">str</span>, n: <span class="ty">usize</span>) -&gt; &amp;<span class="ty">str</span>       <span class="cm">// → fn substr&lt;'a&gt;(s: &amp;'a str, n: usize) -&gt; &amp;'a str</span>
+<span class="cm">// (usize는 참조가 아니므로 입력 라이프타임 카운트에 포함되지 않음)</span></pre>
+
+<h3>규칙 3 — 메서드에서 &self가 있으면 출력은 self의 라이프타임</h3>
+<pre><span class="kw">fn</span> <span class="fn">get_mut</span>(&amp;<span class="kw">mut</span> <span class="kw">self</span>) -&gt; &amp;<span class="kw">mut</span> <span class="ty">i32</span>
+<span class="cm">// → fn get_mut&lt;'a&gt;(&amp;'a mut self) -&gt; &amp;'a mut i32</span>
+
+<span class="kw">fn</span> <span class="fn">announce</span>(&amp;<span class="kw">self</span>, ann: &amp;<span class="ty">str</span>) -&gt; &amp;<span class="ty">str</span>
+<span class="cm">// → fn announce&lt;'a,'b&gt;(&amp;'a self, ann: &amp;'b str) -&gt; &amp;'a str</span></pre>
+
+<h3>예제 6-1 — 생략 가능한 패턴들 (Rust Reference)</h3>
+<div class="ex ex-ok">✓ 모두 컴파일 성공</div>
+<pre><span class="kw">fn</span> <span class="fn">print1</span>(s: &amp;<span class="ty">str</span>);                              <span class="cm">// 생략</span>
+<span class="kw">fn</span> <span class="fn">print2</span>(s: &amp;<span class="lt">'_</span> <span class="ty">str</span>);                          <span class="cm">// '_ 플레이스홀더 (생략과 동일)</span>
+<span class="kw">fn</span> <span class="fn">print3</span>&lt;<span class="lt">'a</span>&gt;(s: &amp;<span class="lt">'a</span> <span class="ty">str</span>);                      <span class="cm">// 명시 (모두 동일한 의미)</span>
+
+<span class="kw">fn</span> <span class="fn">debug1</span>(lvl: <span class="ty">usize</span>, s: &amp;<span class="ty">str</span>);                 <span class="cm">// usize 제외, 참조 1개</span>
+<span class="kw">fn</span> <span class="fn">debug2</span>&lt;<span class="lt">'a</span>&gt;(lvl: <span class="ty">usize</span>, s: &amp;<span class="lt">'a</span> <span class="ty">str</span>);         <span class="cm">// 동일</span>
+
+<span class="kw">fn</span> <span class="fn">substr1</span>(s: &amp;<span class="ty">str</span>, until: <span class="ty">usize</span>) -&gt; &amp;<span class="ty">str</span>;     <span class="cm">// 생략</span>
+<span class="kw">fn</span> <span class="fn">substr2</span>&lt;<span class="lt">'a</span>&gt;(s: &amp;<span class="lt">'a</span> <span class="ty">str</span>, until: <span class="ty">usize</span>) -&gt; &amp;<span class="lt">'a</span> <span class="ty">str</span>; <span class="cm">// 동일</span></pre>
+
+<h3>예제 6-2 — 생략 불가 케이스 (Rust Reference — "ILLEGAL")</h3>
+<div class="ex ex-err">✕ 컴파일 에러</div>
+<pre><span class="hl-err"><span class="kw">fn</span> <span class="fn">get_str</span>() -&gt; &amp;<span class="ty">str</span>;                         <span class="cm">// ❌ 파라미터 없어 추론 불가</span></span>
+<span class="hl-err"><span class="kw">fn</span> <span class="fn">frob</span>(s: &amp;<span class="ty">str</span>, t: &amp;<span class="ty">str</span>) -&gt; &amp;<span class="ty">str</span>;           <span class="cm">// ❌ 입력 2개, 어느 쪽인지 불명</span></span>
+
+<span class="cm">// 해결: 명시적으로 지정</span>
+<span class="hl-ok"><span class="kw">fn</span> <span class="fn">frob</span>&lt;<span class="lt">'a</span>&gt;(s: &amp;<span class="lt">'a</span> <span class="ty">str</span>, t: &amp;<span class="lt">'a</span> <span class="ty">str</span>) -&gt; &amp;<span class="lt">'a</span> <span class="ty">str</span>; <span class="cm">// ✓</span></span></pre>
+
+<h3>예제 6-3 — 컴파일러가 규칙을 적용하는 과정 (단계별 추적)</h3>
+<pre><span class="cm">// ─── first_word 추적 ───────────────────────────────</span>
+<span class="cm">// 원본:  fn first_word(s: &amp;str) -&gt; &amp;str</span>
+<span class="cm">// 규칙1: fn first_word&lt;'a&gt;(s: &amp;'a str) -&gt; &amp;str</span>
+<span class="cm">// 규칙2: fn first_word&lt;'a&gt;(s: &amp;'a str) -&gt; &amp;'a str  ✓ 완전히 결정</span>
+
+<span class="cm">// ─── longest 추적 ──────────────────────────────────</span>
+<span class="cm">// 원본:  fn longest(x: &amp;str, y: &amp;str) -&gt; &amp;str</span>
+<span class="cm">// 규칙1: fn longest&lt;'a,'b&gt;(x: &amp;'a str, y: &amp;'b str) -&gt; &amp;str</span>
+<span class="cm">// 규칙2: 입력 2개 → 적용 불가</span>
+<span class="cm">// 규칙3: 메서드 아님 → 적용 불가</span>
+<span class="cm">// 결과:  ❌ 에러! 직접 명시 필요</span>
+
+<span class="cm">// ─── const/static 암묵적 'static (Rust Reference) ──</span>
+<span class="kw">const</span> S: &amp;<span class="ty">str</span> = <span class="str">"hi"</span>;            <span class="cm">// 암묵적 &amp;'static str</span>
+<span class="kw">const</span> S: &amp;<span class="lt">'static</span> <span class="ty">str</span> = <span class="str">"hi"</span>;  <span class="cm">// 명시 (동일)</span></pre>
+</section>
+
+<!-- §7 -->
+<section class="section" id="s7">
+<div class="sh"><div class="sn s6">7</div><h2>'static 라이프타임</h2></div>
+
+<div class="note note-warn">
+  <p><strong>(The Book §10.3 경고):</strong> 에러 메시지가 <code>'static</code>을 쓰라고 제안해도, 대부분은 dangling reference 또는 라이프타임 불일치가 진짜 원인입니다. <code>'static</code>을 추가하기 전에 그 문제를 먼저 고치세요.</p>
+</div>
+
+<h3>예제 7-1 — 문자열 리터럴과 static 변수 (Rust By Example)</h3>
+<div class="ex ex-ok">✓ 컴파일 성공</div>
+<pre><span class="kw">static</span> NUM: <span class="ty">i32</span> = <span class="num">18</span>;  <span class="cm">// 전역 static — 바이너리에 저장, 프로그램 내내 유효</span>
+
+<span class="cm">// NUM('static)을 입력의 라이프타임('a)으로 강제(coerce) 가능</span>
+<span class="kw">fn</span> <span class="fn">coerce_static</span>&lt;<span class="lt">'a</span>&gt;(_: &amp;<span class="lt">'a</span> <span class="ty">i32</span>) -&gt; &amp;<span class="lt">'a</span> <span class="ty">i32</span> { &amp;NUM }
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    {
+        <span class="kw">let</span> static_string = <span class="str">"I'm in read-only memory"</span>;
+        <span class="mac">println!</span>(<span class="str">"static_string: {static_string}"</span>);
+        <span class="cm">// 이 스코프 종료 후에도 데이터는 바이너리에 남아있음</span>
+    }
+    {
+        <span class="kw">let</span> lifetime_num = <span class="num">9</span>;
+        <span class="kw">let</span> coerced = <span class="fn">coerce_static</span>(&amp;lifetime_num);
+        <span class="mac">println!</span>(<span class="str">"coerced_static: {coerced}"</span>);
+    }
+    <span class="mac">println!</span>(<span class="str">"NUM: {} stays accessible!"</span>, NUM);
+}</pre>
+
+<h3>예제 7-2 — 참조 lifetime vs 트레잇 바운드 (Rust By Example)</h3>
+<pre><span class="cm">// ① &amp;'static T — 참조의 라이프타임</span>
+<span class="kw">let</span> s: &amp;<span class="lt">'static</span> <span class="ty">str</span> = <span class="str">"hello world"</span>;  <span class="cm">// 리터럴은 자동으로 'static</span>
+
+<span class="cm">// ② T: 'static — 트레잇 바운드 (T가 'static보다 짧은 참조를 포함 안 함)</span>
+<span class="kw">use</span> std::fmt::<span class="ty">Debug</span>;
+<span class="kw">fn</span> <span class="fn">print_it</span>(input: <span class="kw">impl</span> <span class="ty">Debug</span> + <span class="lt">'static</span>) {
+    <span class="mac">println!</span>(<span class="str">"'static value: {:?}"</span>, input);
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> i = <span class="num">5</span>;
+<span class="hl-ok">    <span class="fn">print_it</span>(i);         <span class="cm">// ✓ i32는 소유 타입, 참조 없음 → 'static 충족</span></span>
+<span class="hl-ok">    <span class="fn">print_it</span>(<span class="str">"hi"</span>);      <span class="cm">// ✓ &amp;'static str → 충족</span></span>
+<span class="hl-ok">    <span class="fn">print_it</span>(<span class="ty">String</span>::from(<span class="str">"owned"</span>)); <span class="cm">// ✓ String 소유 타입 → 충족</span></span>
+<span class="hl-err">    <span class="fn">print_it</span>(&amp;i);        <span class="cm">// ❌ &amp;i의 수명 = main 스코프 → 'static 아님</span></span>
+}</pre>
+
+<h3>예제 7-3 — 함수에서 'static 반환 패턴</h3>
+<div class="ex ex-ok">✓ 컴파일 성공</div>
+<pre><span class="cm">// 리터럴은 'static이므로 반환 가능</span>
+<span class="kw">fn</span> <span class="fn">get_greeting</span>() -&gt; &amp;<span class="lt">'static</span> <span class="ty">str</span> { <span class="str">"Hello!"</span> }
+
+<span class="kw">fn</span> <span class="fn">get_error</span>(code: <span class="ty">u32</span>) -&gt; &amp;<span class="lt">'static</span> <span class="ty">str</span> {
+    <span class="kw">match</span> code {
+        <span class="num">404</span> =&gt; <span class="str">"Not Found"</span>,
+        <span class="num">500</span> =&gt; <span class="str">"Internal Server Error"</span>,
+        _   =&gt; <span class="str">"Unknown Error"</span>,
+    }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="mac">println!</span>(<span class="str">"{}"</span>, <span class="fn">get_greeting</span>());
+    <span class="mac">println!</span>(<span class="str">"{}"</span>, <span class="fn">get_error</span>(<span class="num">404</span>));
+}</pre>
+
+<h3>예제 7-4 — Box::leak으로 동적 'static 생성 (Rust By Example)</h3>
+<div class="ex ex-note">⚠ 고급 패턴 — 의도적 메모리 누수</div>
+<pre><span class="kw">fn</span> <span class="fn">make_static</span>(s: <span class="ty">String</span>) -&gt; &amp;<span class="lt">'static</span> <span class="ty">str</span> {
+    <span class="ty">Box</span>::leak(s.into_boxed_str())
+    <span class="cm">// 이 메모리는 프로그램 종료까지 해제 안 됨!</span>
+    <span class="cm">// 꼭 필요한 경우에만 사용 (예: 전역 설정, 스레드 공유)</span>
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> dynamic = <span class="ty">String</span>::from(<span class="str">"dynamically created"</span>);
+    <span class="kw">let</span> r: &amp;<span class="lt">'static</span> <span class="ty">str</span> = <span class="fn">make_static</span>(dynamic);
+    <span class="mac">println!</span>(<span class="str">"{r}"</span>);  <span class="cm">// 프로그램 어디서든 유효</span>
+}</pre>
+</section>
+
+<!-- §8 -->
+<section class="section" id="s8">
+<div class="sh"><div class="sn s2">8</div><h2>제네릭 + 트레잇 바운드 + 라이프타임 함께 쓰기</h2></div>
+
+<h3>예제 8-1 — 세 가지 조합 (The Book §10.3 마지막 예제)</h3>
+<div class="ex ex-ok">✓ 컴파일 성공</div>
+<pre><span class="kw">use</span> std::fmt::<span class="ty">Display</span>;
+
+<span class="kw">fn</span> <span class="fn">longest_with_announcement</span>&lt;<span class="lt">'a</span>, T&gt;(  <span class="cm">// 'a + T 함께 선언</span>
+    x:   &amp;<span class="lt">'a</span> <span class="ty">str</span>,
+    y:   &amp;<span class="lt">'a</span> <span class="ty">str</span>,
+    ann: T,             <span class="cm">// 소유 타입 → 라이프타임 불필요</span>
+) -&gt; &amp;<span class="lt">'a</span> <span class="ty">str</span>
+<span class="kw">where</span>
+    T: <span class="ty">Display</span>,        <span class="cm">// where절로 트레잇 바운드 분리</span>
+{
+    <span class="mac">println!</span>(<span class="str">"Announcement: {ann}"</span>);
+    <span class="kw">if</span> x.len() &gt; y.len() { x } <span class="kw">else</span> { y }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> s1 = <span class="ty">String</span>::from(<span class="str">"abcd"</span>);
+    <span class="kw">let</span> s2 = <span class="str">"xyz"</span>;
+    <span class="kw">let</span> result = <span class="fn">longest_with_announcement</span>(
+        s1.as_str(), s2,
+        <span class="str">"Today is someone's birthday!"</span>,
+    );
+<span class="hl-ok">    <span class="mac">println!</span>(<span class="str">"The longest string is {result}"</span>); <span class="cm">// ✓ "abcd"</span></span>
+}</pre>
+
+<h3>예제 8-2 — 트레잇 구현에서 라이프타임 (Rust By Example)</h3>
+<div class="ex ex-ok">✓ 컴파일 성공</div>
+<pre><span class="at">#[derive(Debug)]</span>
+<span class="kw">struct</span> <span class="ty">Borrowed</span>&lt;<span class="lt">'a</span>&gt; { x: &amp;<span class="lt">'a</span> <span class="ty">i32</span> }
+
+<span class="kw">impl</span>&lt;<span class="lt">'a</span>&gt; std::fmt::<span class="ty">Display</span> <span class="kw">for</span> <span class="ty">Borrowed</span>&lt;<span class="lt">'a</span>&gt; {
+    <span class="kw">fn</span> <span class="fn">fmt</span>(&amp;<span class="kw">self</span>, f: &amp;<span class="kw">mut</span> std::fmt::<span class="ty">Formatter</span>&lt;<span class="lt">'_</span>&gt;) -&gt; std::fmt::<span class="ty">Result</span> {
+        <span class="mac">write!</span>(f, <span class="str">"Borrowed({})"</span>, self.x)
+    }
+}
+
+<span class="kw">impl</span>&lt;<span class="lt">'a</span>&gt; <span class="ty">Default</span> <span class="kw">for</span> <span class="ty">Borrowed</span>&lt;<span class="lt">'a</span>&gt; {
+    <span class="kw">fn</span> <span class="fn">default</span>() -&gt; <span class="ty">Self</span> {
+        <span class="kw">static</span> ZERO: <span class="ty">i32</span> = <span class="num">0</span>;
+        <span class="ty">Borrowed</span> { x: &amp;ZERO }
+    }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> x = <span class="num">42</span>;
+    <span class="kw">let</span> b = <span class="ty">Borrowed</span> { x: &amp;x };
+    <span class="mac">println!</span>(<span class="str">"{b}"</span>);                     <span class="cm">// Borrowed(42)</span>
+    <span class="mac">println!</span>(<span class="str">"{b:?}"</span>);                   <span class="cm">// Borrowed { x: 42 }</span>
+    <span class="mac">println!</span>(<span class="str">"{}"</span>, <span class="ty">Borrowed</span>::default()); <span class="cm">// Borrowed(0)</span>
+}</pre>
+
+<h3>예제 8-3 — 라이프타임 포함 관계 'a: 'b (Rust Reference)</h3>
+<div class="ex ex-ok">✓ 컴파일 성공</div>
+<pre><span class="cm">// 'a: 'b 의미: 'a가 최소 'b만큼 살아있음 → &amp;'a를 &amp;'b로 coerce 가능</span>
+<span class="kw">fn</span> <span class="fn">longer</span>&lt;<span class="lt">'a</span>: <span class="lt">'b</span>, <span class="lt">'b</span>&gt;(x: &amp;<span class="lt">'a</span> <span class="ty">i32</span>, <span class="kw">mut</span> y: &amp;<span class="lt">'b</span> <span class="ty">i32</span>) {
+    y = x;  <span class="cm">// 'a: 'b이므로 x(&amp;'a)를 y(&amp;'b)에 대입 가능</span>
+    <span class="mac">println!</span>(<span class="str">"{y}"</span>);
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="hl-ok">    <span class="fn">longer</span>(&amp;<span class="num">10i32</span>, &amp;<span class="num">5i32</span>); <span class="cm">// ✓</span></span>
+}</pre>
+</section>
+
+<!-- §9 -->
+<section class="section" id="s9">
+<div class="sh"><div class="sn s1">9</div><h2>자주 만나는 패턴 &amp; 실수 모음</h2></div>
+
+<h3>예제 9-1 — 루프에서의 라이프타임 재사용 (Rustonomicon)</h3>
+<div class="ex ex-ok">✓ 컴파일 성공</div>
+<pre><span class="kw">let</span> <span class="kw">mut</span> data = <span class="mac">vec!</span>[<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>];
+<span class="kw">let</span> <span class="kw">mut</span> x = &amp;data[<span class="num">0</span>];
+
+<span class="mac">println!</span>(<span class="str">"{}"</span>, x);   <span class="cm">// 첫 번째 borrow 마지막 사용</span>
+<span class="hl-ok">data.push(<span class="num">4</span>);        <span class="cm">// ✓ NLL: 이전 borrow 종료됨</span></span>
+<span class="hl-ok">x = &amp;data[<span class="num">3</span>];         <span class="cm">// ✓ 새 borrow 시작</span></span>
+<span class="mac">println!</span>(<span class="str">"{}"</span>, x);</pre>
+
+<h3>예제 9-2 — Drop이 있는 구조체 (Rustonomicon)</h3>
+<div class="ex ex-err">✕ 컴파일 에러</div>
+<pre><span class="at">#[derive(Debug)]</span>
+<span class="kw">struct</span> <span class="ty">WithDrop</span>&lt;<span class="lt">'a</span>&gt;(&amp;<span class="lt">'a</span> <span class="ty">i32</span>);
+<span class="kw">impl</span> <span class="ty">Drop</span> <span class="kw">for</span> <span class="ty">WithDrop</span>&lt;<span class="lt">'_</span>&gt; { <span class="kw">fn</span> <span class="fn">drop</span>(&amp;<span class="kw">mut</span> <span class="kw">self</span>) {} }
+
+<span class="kw">let</span> <span class="kw">mut</span> data = <span class="mac">vec!</span>[<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>];
+<span class="kw">let</span> x = <span class="ty">WithDrop</span>(&amp;data[<span class="num">0</span>]);
+<span class="mac">println!</span>(<span class="str">"{:?}"</span>, x);
+<span class="hl-err">data.push(<span class="num">4</span>);   <span class="cm">// ❌ x의 drop은 스코프 끝 → 아직 borrow 중!</span></span></pre>
+
+<div class="ex ex-ok">✓ 해결 — drop을 명시적으로 먼저 호출</div>
+<pre><span class="hl-ok">drop(x);         <span class="cm">// ✓ x를 여기서 명시 drop → borrow 종료</span></span>
+<span class="hl-ok">data.push(<span class="num">4</span>);   <span class="cm">// ✓ 가변 참조 가능</span></span></pre>
+
+<h3>예제 9-3 — if 분기에서의 라이프타임 (Rustonomicon)</h3>
+<div class="ex ex-ok">✓ 컴파일 성공</div>
+<pre><span class="kw">let</span> <span class="kw">mut</span> data = <span class="mac">vec!</span>[<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>];
+<span class="kw">let</span> x = &amp;data[<span class="num">0</span>];
+
+<span class="kw">if</span> <span class="kw">true</span> {
+<span class="hl-ok">    <span class="mac">println!</span>(<span class="str">"{}"</span>, x);  <span class="cm">// ✓ x의 마지막 사용 (이 분기에서)</span></span>
+<span class="hl-ok">    data.push(<span class="num">4</span>);       <span class="cm">// ✓ 이미 마지막 사용 후이므로 OK</span></span>
+} <span class="kw">else</span> {
+    <span class="cm">// 이 분기에서 x 미사용 → 생성 시점이 마지막 사용</span>
+<span class="hl-ok">    data.push(<span class="num">5</span>);       <span class="cm">// ✓</span></span>
+}</pre>
+
+<h3>예제 9-4 — 흔한 실수 3가지 + 해결책</h3>
+<div class="ex ex-err">✕ 실수 1 — 지역변수 참조 반환</div>
+<pre><span class="kw">fn</span> <span class="fn">bad1</span>&lt;<span class="lt">'a</span>&gt;() -&gt; &amp;<span class="lt">'a</span> <span class="ty">str</span> {
+<span class="hl-err">    <span class="kw">let</span> s = <span class="ty">String</span>::from(<span class="str">"hello"</span>);</span>
+<span class="hl-err">    &amp;s  <span class="cm">// ❌ s는 함수 끝에서 drop됨</span></span>
+}
+<span class="cm">// 해결: fn good1() -&gt; String { String::from("hello") }</span></pre>
+
+<div class="ex ex-err">✕ 실수 2 — 구조체 라이프타임 누락</div>
+<pre><span class="hl-err"><span class="kw">struct</span> <span class="ty">Config</span> { name: &amp;<span class="ty">str</span> }  <span class="cm">// ❌ error[E0106]: missing lifetime specifier</span></span>
+<span class="cm">// 해결 1: struct Config&lt;'a&gt; { name: &amp;'a str }</span>
+<span class="cm">// 해결 2: struct Config { name: String }  ← 대부분의 경우 이게 나음</span></pre>
+
+<div class="ex ex-err">✕ 실수 3 — 입력 없이 참조 반환</div>
+<pre><span class="hl-err"><span class="kw">fn</span> <span class="fn">get_str</span>() -&gt; &amp;<span class="ty">str</span>;  <span class="cm">// ❌ 추론 불가 + dangling reference가 될 것</span></span>
+<span class="cm">// 해결: fn get_str() -&gt; &amp;'static str { "literal" }</span>
+<span class="cm">// 또는: fn get_str() -&gt; String { "hello".to_string() }</span></pre>
+
+<h3>예제 9-5 — 실용 패턴: 제로 카피 파서</h3>
+<div class="ex ex-ok">✓ 컴파일 성공</div>
+<pre><span class="cm">// HTTP 헤더를 String 복사 없이 파싱 — 라이프타임으로 안전성 보장</span>
+<span class="kw">struct</span> <span class="ty">ParsedHeader</span>&lt;<span class="lt">'a</span>&gt; {
+    key:   &amp;<span class="lt">'a</span> <span class="ty">str</span>,
+    value: &amp;<span class="lt">'a</span> <span class="ty">str</span>,
+}
+
+<span class="kw">fn</span> <span class="fn">parse_header</span>&lt;<span class="lt">'a</span>&gt;(line: &amp;<span class="lt">'a</span> <span class="ty">str</span>) -&gt; <span class="ty">Option</span>&lt;<span class="ty">ParsedHeader</span>&lt;<span class="lt">'a</span>&gt;&gt; {
+    <span class="kw">let</span> <span class="kw">mut</span> parts = line.splitn(<span class="num">2</span>, <span class="str">": "</span>);
+    <span class="ty">Some</span>(<span class="ty">ParsedHeader</span> { key: parts.next()?, value: parts.next()? })
+    <span class="cm">// key, value는 line의 슬라이스 → String 복사 없이 O(1)</span>
+    <span class="cm">// 'a 덕분에 컴파일러가 "line이 살아있는 동안만 사용"을 보장</span>
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> line = <span class="str">"Content-Type: application/json"</span>;
+    <span class="kw">if</span> <span class="kw">let</span> <span class="ty">Some</span>(h) = <span class="fn">parse_header</span>(line) {
+<span class="hl-ok">        <span class="mac">println!</span>(<span class="str">"key={}, value={}"</span>, h.key, h.value);</span>
+        <span class="cm">// key="Content-Type"  value="application/json"</span>
+    }
+}</pre>
+
+<div class="divider"></div>
+<h3>상황별 라이프타임 명시 요약표</h3>
+<table class="t">
+  <thead><tr><th>상황</th><th>라이프타임</th><th>이유</th></tr></thead>
+  <tbody>
+    <tr><td><code>fn f(x: &amp;str)</code></td><td><span class="tok">불필요</span></td><td>반환값 없음</td></tr>
+    <tr><td><code>fn f(x: &amp;str) -&gt; &amp;str</code></td><td><span class="tok">불필요 (규칙 2)</span></td><td>입력 참조 1개 → 출력 자동 연결</td></tr>
+    <tr><td><code>fn f(x: &amp;str, n: usize) -&gt; &amp;str</code></td><td><span class="tok">불필요 (규칙 2)</span></td><td>usize 제외, 참조 입력 1개</td></tr>
+    <tr><td><code>fn f(x: &amp;str, y: &amp;str) -&gt; &amp;str</code></td><td><span class="terr">필요</span></td><td>입력 2개 → 어느 쪽인지 불명</td></tr>
+    <tr><td><code>fn f(&amp;self) -&gt; &amp;str</code></td><td><span class="tok">불필요 (규칙 3)</span></td><td>&amp;self 있음 → 출력이 self에 연결</td></tr>
+    <tr><td><code>fn f(&amp;self, x: &amp;str) -&gt; &amp;str</code></td><td><span class="tok">불필요 (규칙 3)</span></td><td>&amp;self 있음 → 출력이 self에 연결</td></tr>
+    <tr><td><code>struct Foo { x: &amp;str }</code></td><td><span class="terr">필요</span></td><td>참조 필드 → 항상 명시</td></tr>
+    <tr><td><code>struct Foo { x: String }</code></td><td><span class="tok">불필요</span></td><td>소유 타입</td></tr>
+    <tr><td><code>const S: &amp;str = "hi"</code></td><td><span class="tok">불필요 (암묵적 'static)</span></td><td>const/static은 자동 'static</td></tr>
+    <tr><td><code>fn f() -&gt; &amp;str</code></td><td><span class="terr">항상 에러</span></td><td>입력 없이 참조 반환 → 추론 불가</td></tr>
+  </tbody>
+</table>
+
+<div class="kp">
+  <h4>핵심 원칙 5가지</h4>
+  <ul>
+    <li><strong>라이프타임은 수명을 바꾸지 않는다.</strong> 참조 간의 관계를 컴파일러에게 알려주는 애노테이션일 뿐입니다.</li>
+    <li><strong>'a = 더 짧은 쪽.</strong> <code>fn f&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str)</code>에서 'a는 x와 y 중 더 짧게 사는 쪽으로 실체화됩니다.</li>
+    <li><strong>함수 내부 지역변수 참조는 절대 반환 불가.</strong> 반환 참조는 반드시 입력 파라미터 중 하나에 연결되어야 합니다.</li>
+    <li><strong>생략 규칙이 해결 못하면 명시해야 한다.</strong> 컴파일러는 추측하지 않습니다.</li>
+    <li><strong>'static 남용 주의.</strong> 대부분의 'static 에러 제안은 라이프타임 불일치가 진짜 원인입니다.</li>
+  </ul>
+</div>
+
+</section>
+</div><!-- /page -->
+
+<script>
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('lt-theme', t);
+  document.getElementById('btn-light').classList.toggle('active', t === 'light');
+  document.getElementById('btn-dark').classList.toggle('active',  t === 'dark');
+}
+
+// 초기화: 저장된 값 → 시스템 설정 → 라이트
+(function() {
+  const saved = localStorage.getItem('lt-theme');
+  const sys   = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  setTheme(saved || sys);
+})();
+</script>
+</body>
+</html>

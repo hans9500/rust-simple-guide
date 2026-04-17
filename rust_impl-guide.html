@@ -1,0 +1,3466 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rust 완전 가이드 — Box&lt;dyn&gt; / impl Trait / vtable</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Pretendard',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;overflow-x:hidden}
+a{color:var(--accent1)}
+:root[data-theme="dark"]{--bg:#1e1e1e;--bg2:#252526;--bg3:#2d2d30;--bg4:#333337;--text:#d4d4d4;--text2:#a0a0a0;--text3:#707070;--border:#3e3e42;--border2:#555;--accent1:#4fc3f7;--t1:#4fc3f7;--t2:#81c784;--t3:#ffb74d;--green:#4caf50;--blue:#42a5f5;--orange:#ffa726;--warn:#ff9800;--danger:#f44336;--code-bg:#1e1e1e}
+:root[data-theme="light"]{--bg:#fff;--bg2:#f8f8f8;--bg3:#f0f0f0;--bg4:#e8e8e8;--text:#1e1e1e;--text2:#555;--text3:#888;--border:#ddd;--border2:#ccc;--accent1:#0078d4;--t1:#0078d4;--t2:#107c10;--t3:#c55a11;--green:#107c10;--blue:#0078d4;--orange:#c55a11;--warn:#ca5010;--danger:#d13438;--code-bg:#f3f3f3}
+.layout{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:240px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.main{flex:1;overflow-y:auto}
+.nav{position:sticky;top:0;z-index:100;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:4px;height:48px}
+.nav-tab{padding:6px 16px;border:none;background:none;color:var(--text2);cursor:pointer;font-size:13px;font-weight:500;border-radius:6px;transition:all .15s}
+.nav-tab:hover{background:var(--bg3);color:var(--text)}
+.nav-tab.active-t1{background:#4fc3f722;color:var(--t1);font-weight:700}
+.nav-tab.active-t2{background:#81c78422;color:var(--t2);font-weight:700}
+.nav-tab.active-t3{background:#ffb74d22;color:var(--t3);font-weight:700}
+.nav-spacer{flex:1}
+.theme-btn{padding:5px 12px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);border-radius:6px;cursor:pointer;font-size:12px}
+.sb-logo{padding:14px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text2)}
+.sb-group{padding:4px 0}
+.sb-group-title{padding:8px 16px 4px;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.1em;text-transform:uppercase}
+.sb-item{display:block;padding:5px 16px 5px 22px;font-size:12px;color:var(--text2);cursor:pointer;transition:all .1s;border-left:2px solid transparent;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-item:hover{background:var(--bg3);color:var(--text)}
+.sb-item.active{background:var(--bg3);border-left-color:var(--accent1);color:var(--accent1)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.hero{padding:40px 40px 32px;background:linear-gradient(135deg,var(--bg2),var(--bg3));border-bottom:1px solid var(--border)}
+.hero-badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;margin-bottom:12px}
+.hero-badge.t1{background:#4fc3f722;color:var(--t1)}
+.hero-badge.t2{background:#81c78422;color:var(--t2)}
+.hero-badge.t3{background:#ffb74d22;color:var(--t3)}
+.hero h1{font-size:26px;font-weight:700;line-height:1.3;margin-bottom:12px}
+.hero em{font-style:normal}
+.hero em.t1{color:var(--t1)}
+.hero em.t2{color:var(--t2)}
+.hero em.t3{color:var(--t3)}
+.hero-desc{color:var(--text2);max-width:640px;line-height:1.7;margin-bottom:16px}
+.badge-row{display:flex;gap:8px;flex-wrap:wrap}
+.pill{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600}
+.pill-b{background:#42a5f522;color:var(--blue)}
+.pill-g{background:#4caf5022;color:var(--green)}
+.pill-r{background:#f4433622;color:var(--danger)}
+.concept-section{padding:32px 40px 24px;border-bottom:1px solid var(--border)}
+.t1-section .concept-h2::before{background:var(--t1)}
+.t2-section .concept-h2::before{background:var(--t2)}
+.t3-section .concept-h2::before{background:var(--t3)}
+.concept-step-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
+.concept-h2{font-size:18px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.concept-h2::before{content:'';display:block;width:4px;height:20px;border-radius:2px}
+.concept-section p{color:var(--text);line-height:1.7;margin-bottom:10px}
+.ex-section{padding:32px 40px 24px;border-bottom:1px solid var(--border)}
+.ex-section-title{font-size:18px;font-weight:700;margin-bottom:16px}
+.stab-bar{display:flex;gap:4px;margin-bottom:20px}
+.stab-btn{padding:5px 14px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text2);cursor:pointer;font-size:12px;transition:all .15s}
+.stab-btn.active{background:#4fc3f722;color:var(--accent1);border-color:#4fc3f766}
+.stab-pane{display:none}
+.stab-pane.active{display:block}
+.dia{background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin:16px 0;overflow:hidden}
+.dia-hdr{background:var(--bg4);padding:8px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+.dia-lbl{font-size:11px;font-weight:600;color:var(--text2)}
+.spec-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
+.spec-s{background:#4caf5022;color:var(--green)}
+.spec-i{background:#ff980022;color:var(--warn)}
+.spec-c{background:#42a5f522;color:var(--blue)}
+.dia pre{padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text);overflow-x:auto;margin:0;line-height:1.6}
+.ex-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:20px;overflow:hidden}
+.ex-hdr{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3)}
+.ex-meta{display:flex;align-items:center;gap:10px}
+.ex-num{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--text3);min-width:50px}
+.ex-ttl{font-size:13px;font-weight:600;color:var(--text)}
+.ex-diff{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
+.diff-easy{background:#4caf5022;color:#4caf50}
+.diff-mid{background:#ff980022;color:#ff9800}
+.diff-hard{background:#f4433622;color:#f44336}
+.tab-bar{display:flex;gap:0;border-bottom:1px solid var(--border)}
+.tab-btn{padding:7px 16px;border:none;background:none;color:var(--text3);cursor:pointer;font-size:12px;border-bottom:2px solid transparent;transition:all .15s}
+.tab-btn.active{color:var(--accent1);border-bottom-color:var(--accent1)}
+.tab-pane{display:none}
+.tab-pane.active{display:block}
+.code-wrap{position:relative}
+.code-hdr{display:flex;justify-content:space-between;align-items:center;padding:6px 14px;background:var(--bg4);border-bottom:1px solid var(--border)}
+.code-lang{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.1em}
+.copy-btn{font-size:11px;padding:3px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text2);cursor:pointer;transition:all .15s}
+.copy-btn:hover{background:var(--bg2);color:var(--text)}
+pre{margin:0;overflow-x:auto}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.6}
+pre code{display:block;padding:16px;background:var(--code-bg)!important;white-space:pre;word-break:normal;overflow-wrap:normal}
+/* ── VS Code Dark Modern (hljs 11.x Rust 실측 기준) ── */
+.hljs{background:var(--code-bg)!important;color:#d4d4d4!important}
+.hljs-keyword{color:#569cd6!important}
+.hljs-built_in{color:#dcdcaa!important}
+.hljs-type{color:#4ec9b0!important}
+.hljs-title.class_{color:#4ec9b0!important}
+.hljs-title.function_{color:#dcdcaa!important}
+.hljs-title.function_.invoke__{color:#dcdcaa!important}
+.hljs-string{color:#ce9178!important}
+.hljs-literal{color:#569cd6!important}
+.hljs-number{color:#b5cea8!important}
+.hljs-comment{color:#6a9955!important;font-style:italic!important}
+.hljs-variable{color:#9cdcfe!important}
+.hljs-punctuation{color:#d4d4d4!important}
+.hljs-operator{color:#d4d4d4!important}
+.hljs-attr{color:#9cdcfe!important}
+.hljs-meta{color:#c586c0!important}
+/* ── Light 모드 ── */
+:root[data-theme="light"] .hljs{background:var(--code-bg)!important;color:#1e1e1e!important}
+:root[data-theme="light"] .hljs-keyword{color:#0000ff!important}
+:root[data-theme="light"] .hljs-built_in{color:#795e26!important}
+:root[data-theme="light"] .hljs-type{color:#267f99!important}
+:root[data-theme="light"] .hljs-title.class_{color:#267f99!important}
+:root[data-theme="light"] .hljs-title.function_{color:#795e26!important}
+:root[data-theme="light"] .hljs-title.function_.invoke__{color:#795e26!important}
+:root[data-theme="light"] .hljs-string{color:#a31515!important}
+:root[data-theme="light"] .hljs-comment{color:#008000!important;font-style:italic!important}
+:root[data-theme="light"] .hljs-number{color:#09885a!important}
+:root[data-theme="light"] .hljs-variable{color:#001080!important}
+:root[data-theme="light"] .hljs-literal{color:#0000ff!important}
+.epane,.wpane{padding:16px}
+.epane p{color:var(--text);margin-bottom:10px;line-height:1.7}
+.epane ul{padding-left:20px;color:var(--text2);margin-bottom:10px}
+.epane li{margin-bottom:4px}
+.epane h4{font-size:13px;font-weight:600;color:var(--text);margin:12px 0 6px}
+.epane code,.wpane code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:3px;color:var(--accent1)}
+.al{display:flex;gap:10px;padding:10px 14px;border-radius:6px;margin:8px 0;font-size:13px;align-items:flex-start;line-height:1.6}
+.al-icon{font-size:14px;flex-shrink:0;margin-top:1px}
+.al-g{background:#4caf5011;border:1px solid #4caf5033}
+.al-b{background:#42a5f511;border:1px solid #42a5f533}
+.al-w{background:#ff980011;border:1px solid #ff980033}
+.al-r{background:#f4433611;border:1px solid #f4433633}
+.al a{color:var(--accent1)}
+@media(max-width:768px){.sidebar{display:none}.hero{padding:24px}.concept-section{padding:20px 24px}.ex-section{padding:20px 24px}}
+
+</style>
+</head>
+<body>
+<div class="layout">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sb-logo">📚 Rust 가이드</div>
+  <div id="sb-content"></div>
+</aside>
+
+<div class="main" id="main-scroll">
+  <nav class="nav">
+    <button class="nav-tab active-t1" data-tab="t1" onclick="switchTab('t1')">① Box&lt;dyn Trait&gt;</button>
+    <button class="nav-tab" data-tab="t2" onclick="switchTab('t2')">② impl Trait</button>
+    <button class="nav-tab" data-tab="t3" onclick="switchTab('t3')">③ vtable &amp; Fat Pointer</button>
+    <div class="nav-spacer"></div>
+    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">☀ 라이트</button>
+  </nav>
+
+  <!-- ══ 1부 ══ -->
+  <div class="tab-panel active" id="panel-t1">
+    <div class="hero">
+      <div class="hero-badge t1">1부 · 동적 디스패치</div>
+      <h1><em class="t1">Box&lt;dyn Trait&gt;</em><br>트레이트 객체로 다형성 구현하기</h1>
+      <p class="hero-desc">런타임에 타입이 결정되는 상황에서 Box&lt;dyn Trait&gt;을 사용하는 방법을 배웁니다. 입문부터 고급까지 30개 예제로 체계적으로 학습합니다.</p>
+      <div class="badge-row">
+        <span class="pill pill-g">✅ 공식 문서 기반</span>
+        <span class="pill pill-b">💡 30개 예제</span>
+        <span class="pill pill-r">🔍 이전 오류 수정 포함</span>
+      </div>
+    </div>
+
+      <div class="concept-section t1-section" id="t1-c1">
+        <div class="concept-step-label">Step 1 / 5</div>
+        <h2 class="concept-h2">왜 크기가 필요한가</h2>
+        <p>Rust 컴파일러는 모든 값의 크기를 <strong>컴파일 타임에 알아야</strong> 합니다.</p>
+        <div class="dia"><div class="dia-hdr"><span class="dia-lbl">크기 문제 해결 방법</span><span class="spec-badge spec-c">개념</span></div>
+<pre>// ❌ 불가: 트레이트 객체의 크기를 알 수 없음
+fn bad(animal: Animal) { ... }
+
+// ✅ 해결책:
+fn ok1(animal: &amp;dyn Animal) { ... }  // Fat Ptr — 항상 16 bytes
+fn ok2(animal: Box&lt;dyn Animal&gt;) { ... }  // Fat Ptr — 항상 16 bytes
+fn ok3(animal: impl Animal) { ... }  // 단형화 — 컴파일 타임 확정</pre></div>
+      </div>
+      <div class="concept-section t1-section" id="t1-c2">
+        <div class="concept-step-label">Step 2 / 5</div>
+        <h2 class="concept-h2">트레이트 객체 — Fat Pointer 구조</h2>
+        <div class="dia"><div class="dia-hdr"><span class="dia-lbl">Fat Pointer 구조 (스펙 보장)</span><span class="spec-badge spec-s">✅ 스펙 보장</span></div>
+<pre>&amp;dyn Animal (16 bytes):
+  ┌──────────────┬────────────────┐
+  │  data_ptr    │  vtable_ptr    │
+  │  (8 bytes)   │  (8 bytes)     │
+  └──────────────┴────────────────┘
+       ↓                ↓
+  실제 데이터 주소    Lion의 vtable 주소
+
+Box&lt;dyn Animal&gt;: 같은 Fat Pointer + 힙 소유권</pre></div>
+      </div>
+      <div class="concept-section t1-section" id="t1-c3">
+        <div class="concept-step-label">Step 3 / 5</div>
+        <h2 class="concept-h2">dyn-compatible 규칙 (Rust Reference)</h2>
+        <div class="dia"><div class="dia-hdr"><span class="dia-lbl">dyn-compatible 조건</span><span class="spec-badge spec-s">✅ 스펙 보장</span></div>
+<pre>✅ dyn-compatible 조건 (모두 만족해야 함):
+  1. 메서드의 반환 타입이 Self가 아님
+  2. 메서드가 제네릭 타입 파라미터를 사용하지 않음
+  3. 메서드가 Self: Sized 바운드를 갖지 않음
+
+❌ dyn-incompatible 예시:
+  trait Bad {
+      fn clone(&amp;self) -> Self;  // Self 반환 — 불가
+      fn compare&lt;T&gt;(&amp;self, other: T);  // 제네릭 — 불가
+  }
+  // Box&lt;dyn Bad&gt; 사용 불가!</pre></div>
+      </div>
+      <div class="concept-section t1-section" id="t1-c4">
+        <div class="concept-step-label">Step 4 / 5</div>
+        <h2 class="concept-h2">언제 무엇을 선택? — 결정 트리</h2>
+        <div class="dia"><div class="dia-hdr"><span class="dia-lbl">선택 기준</span><span class="spec-badge spec-c">가이드</span></div>
+<pre>타입이 런타임에 결정되는가?
+  NO  → impl Trait 또는 제네릭 (Zero-cost)
+  YES → 타입이 고정된 집합인가?
+          YES → enum (힙 없음, 빠름)
+          NO  → Box&lt;dyn Trait&gt; (플러그인, 외부 타입)
+
+Vec에 서로 다른 타입을 담아야 하는가?
+  YES → Vec&lt;Box&lt;dyn Trait&gt;&gt; 필수
+
+구조체 필드로 트레이트를 저장해야 하는가?
+  YES → Box&lt;dyn Trait&gt; 또는 Arc&lt;dyn Trait&gt;</pre></div>
+      </div>
+      <div class="concept-section t1-section" id="t1-c5">
+        <div class="concept-step-label">Step 5 / 5</div>
+        <h2 class="concept-h2">핵심 정리</h2>
+        <div class="dia"><div class="dia-hdr"><span class="dia-lbl">스펙 보장 vs 구현 세부사항</span><span class="spec-badge spec-s">✅ 검증 완료</span></div>
+<pre>✅ 언어 스펙으로 보장:
+  &amp;dyn Trait 크기 = 16 bytes (64bit 시스템)
+  vtable 존재, drop·size·align 슬롯 포함
+  같은 타입 = 같은 vtable
+
+⚠️ 구현 세부사항 (비보장):
+  Fat Pointer 내부 순서 (data_ptr vs vtable_ptr)
+  vtable 항목 바이트 오프셋
+
+❌ 절대 금지:
+  unsafe transmute로 vtable 직접 조작 → UB
+  std::raw::TraitObject (Rust 1.72 제거됨)</pre></div>
+      </div>
+
+    <div class="ex-section" id="t1-basic">
+      <h2 class="ex-section-title">기초 예제 1~15</h2>
+      <div class="stab-bar"><button class="stab-btn active" onclick="stab(this,'t1b-0')">1~5</button><button class="stab-btn" onclick="stab(this,'t1b-1')">6~10</button><button class="stab-btn" onclick="stab(this,'t1b-2')">11~15</button></div><div class="stab-pane active" id="t1b-0"><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#1</span>
+      <span class="ex-ttl">트레이트 정의와 구현 — 가장 기본</span>
+    </div>
+    <span class="ex-diff diff-easy">입문</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">trait Animal {
+    fn speak(&amp;self) -&gt; String;        // 구현 강제
+    fn name(&amp;self)  -&gt; &amp;str;
+    fn introduce(&amp;self) -&gt; String {   // 기본 구현 — 오버라이드 가능
+        format!("저는 {}이고 {}라고 합니다.", self.name(), self.speak())
+    }
+}
+
+struct Lion { name: String }
+struct Duck { name: String }
+
+impl Animal for Lion {
+    fn speak(&amp;self) -&gt; String { "Roar!".to_string() }
+    fn name(&amp;self)  -&gt; &amp;str   { &amp;self.name }
+}
+impl Animal for Duck {
+    fn speak(&amp;self) -&gt; String { "Quack!".to_string() }
+    fn name(&amp;self)  -&gt; &amp;str   { &amp;self.name }
+    fn introduce(&amp;self) -&gt; String {
+        format!("꽥꽥! 저는 {}입니다.", self.name)
+    }
+}
+
+fn main() {
+    let lion = Lion { name: "Simba".to_string() };
+    let duck = Duck { name: "Donald".to_string() };
+    println!("{}", lion.speak());      // Roar!
+    println!("{}", duck.speak());      // Quack!
+    println!("{}", lion.introduce());  // 저는 Simba이고 Roar!라고 합니다.
+    println!("{}", duck.introduce());  // 꽥꽥! 저는 Donald입니다.
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><strong>트레이트(trait)</strong>는 공통 인터페이스를 정의하는 Rust의 핵심 도구입니다. 메서드 선언으로 구현을 강제하고, 기본 구현으로 공통 동작을 제공합니다.</p><p>기본 메서드도 vtable에 포함됩니다. Lion의 <code>introduce()</code> 슬롯에는 기본 구현 주소가, Duck의 슬롯에는 오버라이드된 주소가 들어갑니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>출처: <a href="https://doc.rust-lang.org/book/ch10-02-traits.html" target="_blank">Rust Book Ch10.2 — Traits</a></div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#2</span>
+      <span class="ex-ttl">&amp;dyn Trait — 소유권 없이 다형성</span>
+    </div>
+    <span class="ex-diff diff-easy">입문</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">trait Animal {
+    fn speak(&amp;self) -&gt; String;
+    fn name(&amp;self)  -&gt; &amp;str;
+}
+struct Lion { name: String }
+struct Duck { name: String }
+impl Animal for Lion {
+    fn speak(&amp;self) -&gt; String { format!("{}: Roar!", self.name) }
+    fn name(&amp;self)  -&gt; &amp;str { &amp;self.name }
+}
+impl Animal for Duck {
+    fn speak(&amp;self) -&gt; String { format!("{}: Quack!", self.name) }
+    fn name(&amp;self)  -&gt; &amp;str { &amp;self.name }
+}
+
+// &amp;dyn Animal: Fat Pointer(16 bytes), 힙 할당 없음
+fn print_animal(a: &amp;dyn Animal) {
+    println!("[{}] {}", a.name(), a.speak());
+}
+
+fn main() {
+    let lion = Lion { name: "Simba".to_string() };
+    let duck = Duck { name: "Donald".to_string() };
+    print_animal(&amp;lion);
+    print_animal(&amp;duck);
+    // 소유권 이동 없음 — 여전히 사용 가능
+    println!("크기: {} bytes",
+        std::mem::size_of::&lt;&amp;dyn Animal&gt;()); // 16
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>&amp;dyn Animal</code>은 <strong>Fat Pointer</strong>입니다. 일반 참조(&amp;Lion, 8 bytes)와 달리 <strong>16 bytes</strong>입니다.</p><ul><li><strong>data_ptr (8 bytes)</strong> — 실제 데이터 주소</li><li><strong>vtable_ptr (8 bytes)</strong> — 함수 포인터 테이블 주소</li></ul></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-g"><span class="al-icon">✅</span><div><code>&amp;dyn Trait</code> 크기 = 16 bytes는 언어 스펙으로 보장됩니다. — Rust Reference</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#3</span>
+      <span class="ex-ttl">Box&lt;dyn Trait&gt; — 힙에 올려 소유권 이전</span>
+    </div>
+    <span class="ex-diff diff-easy">입문</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::mem;
+trait Animal { fn speak(&amp;self) -&gt; String; }
+struct Lion { name: String }
+struct Duck { name: String }
+impl Animal for Lion { fn speak(&amp;self) -&gt; String { format!("{}: Roar!", self.name) } }
+impl Animal for Duck { fn speak(&amp;self) -&gt; String { format!("{}: Quack!", self.name) } }
+
+fn make_lion(name: &amp;str) -&gt; Box&lt;dyn Animal&gt; {
+    Box::new(Lion { name: name.to_string() })
+    // 1. Lion을 힙에 할당
+    // 2. data_ptr + vtable_ptr = Fat Pointer 반환
+}
+fn make_duck(name: &amp;str) -&gt; Box&lt;dyn Animal&gt; {
+    Box::new(Duck { name: name.to_string() })
+}
+
+fn main() {
+    let a = make_lion("Simba");
+    let b = make_duck("Donald");
+    println!("{}", a.speak());
+    println!("{}", b.speak());
+
+    // 크기 비교
+    println!("Box&lt;dyn Animal&gt;: {} bytes (fat)",  mem::size_of::&lt;Box&lt;dyn Animal&gt;&gt;());
+    println!("Box&lt;Lion&gt;:       {} bytes (thin)", mem::size_of::&lt;Box&lt;Lion&gt;&gt;());
+} // a, b 자동 Drop (vtable[0] drop_in_place 경유)</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>Box&lt;dyn Animal&gt;</code>는 힙에 데이터를 저장하고 그 소유권을 가집니다. 함수에서 반환하거나 구조체 필드에 저장할 수 있습니다.</p><p><code>Box&lt;Lion&gt;</code>은 8 bytes(thin pointer), <code>Box&lt;dyn Animal&gt;</code>은 vtable_ptr도 포함해 16 bytes입니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-w"><span class="al-icon">⚠️</span><div>힙 할당 비용이 발생합니다. 성능이 중요한 루프에서는 <code>impl Trait</code>나 <code>enum</code>을 고려하세요.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#4</span>
+      <span class="ex-ttl">Vec&lt;Box&lt;dyn Trait&gt;&gt; — 여러 타입을 하나의 컬렉션에</span>
+    </div>
+    <span class="ex-diff diff-easy">입문</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">trait Animal {
+    fn speak(&amp;self) -&gt; String;
+    fn name(&amp;self)  -&gt; &amp;str;
+    fn legs(&amp;self)  -&gt; u32;
+}
+struct Lion  { name: String }
+struct Duck  { name: String }
+struct Snake { name: String }
+impl Animal for Lion  {
+    fn speak(&amp;self)-&gt;String{format!("{}: Roar!",self.name)}
+    fn name(&amp;self)-&gt;&amp;str{&amp;self.name} fn legs(&amp;self)-&gt;u32{4}
+}
+impl Animal for Duck  {
+    fn speak(&amp;self)-&gt;String{format!("{}: Quack!",self.name)}
+    fn name(&amp;self)-&gt;&amp;str{&amp;self.name} fn legs(&amp;self)-&gt;u32{2}
+}
+impl Animal for Snake {
+    fn speak(&amp;self)-&gt;String{format!("{}: Hiss!",self.name)}
+    fn name(&amp;self)-&gt;&amp;str{&amp;self.name} fn legs(&amp;self)-&gt;u32{0}
+}
+
+fn main() {
+    let zoo: Vec&lt;Box&lt;dyn Animal&gt;&gt; = vec![
+        Box::new(Lion  { name: "Simba".to_string() }),
+        Box::new(Duck  { name: "Donald".to_string() }),
+        Box::new(Snake { name: "Kaa".to_string() }),
+    ];
+    for a in &amp;zoo { println!("{}", a.speak()); }
+
+    let total: u32 = zoo.iter().map(|a| a.legs()).sum();
+    println!("총 동물: {}마리, 총 다리: {}개", zoo.len(), total);
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>Vec&lt;Box&lt;dyn Animal&gt;&gt;</code>은 <strong>이형 컬렉션</strong>입니다. Vec의 각 원소는 16 bytes Fat Pointer이며, 실제 데이터는 각각 별도의 힙 위치에 있습니다.</p><p>같은 타입(Lion)은 같은 vtable을 공유합니다 — vtable은 타입당 1개만 존재합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>타입이 고정되어 있다면 <code>enum</code>이 더 효율적입니다(힙 할당 없음). 예제 #15에서 비교합니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#5</span>
+      <span class="ex-ttl">조건 분기 반환 — impl Trait으로 불가능한 것</span>
+    </div>
+    <span class="ex-diff diff-easy">입문</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">trait Animal { fn speak(&amp;self)-&gt;&amp;str; fn kind(&amp;self)-&gt;&amp;str; }
+struct Lion; struct Duck;
+impl Animal for Lion { fn speak(&amp;self)-&gt;&amp;str{"Roar!"} fn kind(&amp;self)-&gt;&amp;str{"Lion"} }
+impl Animal for Duck { fn speak(&amp;self)-&gt;&amp;str{"Quack!"} fn kind(&amp;self)-&gt;&amp;str{"Duck"} }
+
+// ❌ impl Trait으로는 불가능
+// fn make(kind: &amp;str) -&gt; impl Animal {
+//     if kind == "lion" { Lion } else { Duck }
+//     // ERROR: `if` and `else` have incompatible types
+// }
+
+// ✅ Box&lt;dyn Trait&gt;으로 가능
+fn make_animal(kind: &amp;str) -&gt; Box&lt;dyn Animal&gt; {
+    match kind {
+        "lion" =&gt; Box::new(Lion),
+        "duck" =&gt; Box::new(Duck),
+        other  =&gt; panic!("알 수 없는 종류: {}", other),
+    }
+    // Box&lt;dyn Animal&gt;은 항상 16 bytes — 내용 무관!
+}
+
+fn main() {
+    for kind in &amp;["lion", "duck", "lion"] {
+        let a = make_animal(kind);
+        println!("[{}] {}", a.kind(), a.speak());
+    }
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>Rust Reference 공식: <em>"Each possible return value from the function must resolve to the same concrete type."</em></p><p><code>impl Trait</code>은 모든 분기에서 동일한 구체 타입을 반환해야 합니다. <code>Box&lt;dyn Animal&gt;</code>의 크기는 항상 16 bytes이므로 컴파일러가 허용합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-w"><span class="al-icon">⚠️</span><div>실무에서는 <code>panic!</code> 대신 <code>Result&lt;Box&lt;dyn Animal&gt;, String&gt;</code>을 반환합니다 (예제 #9 참고).</div></div></div></div>
+</div></div><div class="stab-pane" id="t1b-1"><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#6</span>
+      <span class="ex-ttl">구조체 필드에 Box&lt;dyn Trait&gt; 저장 — Zoo 패턴</span>
+    </div>
+    <span class="ex-diff diff-easy">입문</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">trait Animal { fn speak(&amp;self)-&gt;String; fn name(&amp;self)-&gt;&amp;str; }
+struct Lion { name: String }
+struct Duck { name: String }
+impl Animal for Lion { fn speak(&amp;self)-&gt;String{format!("{}: Roar!",self.name)} fn name(&amp;self)-&gt;&amp;str{&amp;self.name} }
+impl Animal for Duck { fn speak(&amp;self)-&gt;String{format!("{}: Quack!",self.name)} fn name(&amp;self)-&gt;&amp;str{&amp;self.name} }
+
+struct Zoo {
+    name:    String,
+    animals: Vec&lt;Box&lt;dyn Animal&gt;&gt;,  // ✅ 구조체 필드로 가능
+}
+// struct Bad { animal: impl Animal }  // ❌ 컴파일 오류
+
+impl Zoo {
+    fn new(name: &amp;str) -&gt; Self { Zoo { name: name.to_string(), animals: vec![] } }
+    fn add(&amp;mut self, a: Box&lt;dyn Animal&gt;) {
+        println!("[{}] {} 입장!", self.name, a.name());
+        self.animals.push(a);
+    }
+    fn show_all(&amp;self) {
+        println!("\n=== {} 공연 ===", self.name);
+        for a in &amp;self.animals { println!("  {}", a.speak()); }
+    }
+}
+
+fn main() {
+    let mut zoo = Zoo::new("서울 동물원");
+    zoo.add(Box::new(Lion { name: "Simba".to_string() }));
+    zoo.add(Box::new(Duck { name: "Donald".to_string() }));
+    zoo.show_all();
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>컴파일러는 구조체 크기를 컴파일 타임에 확정해야 합니다. <code>impl Animal</code>은 어떤 타입인지 모르므로 크기를 알 수 없어 필드로 사용 불가입니다. <code>Box&lt;dyn Animal&gt;</code>은 항상 16 bytes이므로 가능합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>제네릭 구조체(<code>struct Zoo&lt;T: Animal&gt;</code>)는 하나의 타입만 담을 수 있습니다. 여러 타입을 담으려면 <code>Box&lt;dyn&gt;</code>이 필요합니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#7</span>
+      <span class="ex-ttl">Option&lt;Box&lt;dyn Trait&gt;&gt; — null-safe 다형성</span>
+    </div>
+    <span class="ex-diff diff-easy">입문</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">trait Animal { fn speak(&amp;self)-&gt;&amp;str; }
+struct Lion; struct Duck; struct Eagle;
+impl Animal for Lion  { fn speak(&amp;self)-&gt;&amp;str{"Roar!"}    }
+impl Animal for Duck  { fn speak(&amp;self)-&gt;&amp;str{"Quack!"}   }
+impl Animal for Eagle { fn speak(&amp;self)-&gt;&amp;str{"Screech!"} }
+
+fn find(name: &amp;str) -&gt; Option&lt;Box&lt;dyn Animal&gt;&gt; {
+    match name {
+        "lion"  =&gt; Some(Box::new(Lion)),
+        "duck"  =&gt; Some(Box::new(Duck)),
+        "eagle" =&gt; Some(Box::new(Eagle)),
+        _       =&gt; None,
+    }
+}
+
+fn main() {
+    for name in &amp;["lion","duck","whale","eagle"] {
+        match find(name) {
+            Some(a) =&gt; println!("{}: {}", name, a.speak()),
+            None    =&gt; println!("{}: (없음)", name),
+        }
+    }
+    // Option 메서드 활용
+    let sound = find("lion")
+        .map(|a| a.speak().to_string())
+        .unwrap_or("?".to_string());
+    println!("사자 소리: {}", sound);
+
+    // null pointer optimization: size_of::&lt;Option&lt;Box&lt;dyn Animal&gt;&gt;&gt;() == 16
+    use std::mem;
+    println!("Option&lt;Box&lt;dyn&gt;&gt; 크기: {} bytes",
+        mem::size_of::&lt;Option&lt;Box&lt;dyn Animal&gt;&gt;&gt;());
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>Option&lt;Box&lt;dyn Trait&gt;&gt;</code>는 Rust에서 null-safe하게 다형적 값을 표현합니다. Rust 컴파일러는 <code>Option&lt;Box&lt;T&gt;&gt;</code> 크기를 <code>Box&lt;T&gt;</code>와 동일하게 최적화합니다 (null pointer optimization).</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-g"><span class="al-icon">✅</span><div><code>size_of::&lt;Option&lt;Box&lt;dyn T&gt;&gt;&gt;() == 16 bytes</code> — null pointer optimization은 언어 스펙 보장입니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#8</span>
+      <span class="ex-ttl">dyn-compatible 위반 — Self 반환과 Clone 우회</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">// Clone 트레이트의 clone(&amp;self) -&gt; Self 는 dyn-incompatible
+// 해결: helper trait 패턴
+
+trait AnimalClone {
+    fn clone_box(&amp;self) -&gt; Box&lt;dyn Animal&gt;; // Self 대신 Box&lt;dyn&gt; 반환
+}
+impl&lt;T: Animal + Clone + 'static&gt; AnimalClone for T {
+    fn clone_box(&amp;self) -&gt; Box&lt;dyn Animal&gt; { Box::new(self.clone()) }
+}
+
+trait Animal: AnimalClone {
+    fn speak(&amp;self) -&gt; String;
+}
+impl Clone for Box&lt;dyn Animal&gt; {
+    fn clone(&amp;self) -&gt; Box&lt;dyn Animal&gt; { self.clone_box() }
+}
+
+#[derive(Clone)] struct Lion { name: String }
+#[derive(Clone)] struct Duck { name: String }
+impl Animal for Lion { fn speak(&amp;self)-&gt;String{format!("{}: Roar!",self.name)} }
+impl Animal for Duck { fn speak(&amp;self)-&gt;String{format!("{}: Quack!",self.name)} }
+
+fn main() {
+    let original: Vec&lt;Box&lt;dyn Animal&gt;&gt; = vec![
+        Box::new(Lion { name: "Simba".to_string() }),
+        Box::new(Duck { name: "Donald".to_string() }),
+    ];
+    let cloned = original.clone(); // Box&lt;dyn Animal&gt; 복제!
+    println!("원본:"); for a in &amp;original { println!("  {}", a.speak()); }
+    println!("복제:"); for a in &amp;cloned   { println!("  {}", a.speak()); }
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>Clone</code>의 <code>clone(&amp;self) -&gt; Self</code>는 dyn-compatible하지 않습니다. vtable에 가변 크기 반환 슬롯을 만들 수 없기 때문입니다.</p><p>해결책: 반환 타입을 <code>Box&lt;dyn Animal&gt;</code>(고정 16 bytes)로 만든 helper trait을 중간에 두는 방법입니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-g"><span class="al-icon">✅</span><div>이 패턴은 Rust 커뮤니티 공인 방법입니다. Rust Reference dyn-compatibility 공식 문서에서도 언급합니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#9</span>
+      <span class="ex-ttl">Result&lt;Box&lt;dyn Trait&gt;, String&gt; — 에러 처리</span>
+    </div>
+    <span class="ex-diff diff-easy">입문</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::fmt;
+trait Animal: fmt::Display {
+    fn speak(&amp;self) -&gt; String;
+}
+struct Lion { name: String }
+struct Duck { name: String }
+struct Tiger{ name: String }
+impl fmt::Display for Lion  { fn fmt(&amp;self,f:&amp;mut fmt::Formatter)-&gt;fmt::Result{write!(f,"Lion({})",self.name)} }
+impl fmt::Display for Duck  { fn fmt(&amp;self,f:&amp;mut fmt::Formatter)-&gt;fmt::Result{write!(f,"Duck({})",self.name)} }
+impl fmt::Display for Tiger { fn fmt(&amp;self,f:&amp;mut fmt::Formatter)-&gt;fmt::Result{write!(f,"Tiger({})",self.name)} }
+impl Animal for Lion  { fn speak(&amp;self)-&gt;String{format!("{}: Roar!",self.name)} }
+impl Animal for Duck  { fn speak(&amp;self)-&gt;String{format!("{}: Quack!",self.name)} }
+impl Animal for Tiger { fn speak(&amp;self)-&gt;String{format!("{}: Growl!",self.name)} }
+
+fn create(kind: &amp;str, name: &amp;str) -&gt; Result&lt;Box&lt;dyn Animal&gt;, String&gt; {
+    match kind {
+        "lion"  =&gt; Ok(Box::new(Lion  { name: name.to_string() })),
+        "duck"  =&gt; Ok(Box::new(Duck  { name: name.to_string() })),
+        "tiger" =&gt; Ok(Box::new(Tiger { name: name.to_string() })),
+        other   =&gt; Err(format!("알 수 없는 종류: '{}'", other)),
+    }
+}
+
+fn main() {
+    for (kind, name) in &amp;[("lion","Simba"),("duck","Donald"),("whale","Moby")] {
+        match create(kind, name) {
+            Ok(a)  =&gt; println!("[OK]  {} — {}", a, a.speak()),
+            Err(e) =&gt; println!("[ERR] {}", e),
+        }
+    }
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>Result&lt;Box&lt;dyn Animal&gt;, String&gt;</code>은 팩토리 패턴에서 에러를 안전하게 처리합니다. 수퍼트레이트(<code>trait Animal: fmt::Display</code>)를 통해 <code>dyn Animal</code>에서도 <code>{}</code> 포맷을 사용할 수 있습니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>실무에서는 <code>String</code> 대신 <code>Box&lt;dyn std::error::Error&gt;</code>나 <code>anyhow::Error</code>를 사용합니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#10</span>
+      <span class="ex-ttl">전략(Strategy) 패턴 — 런타임 알고리즘 교체</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">trait MoveStrategy {
+    fn do_move(&amp;self, name: &amp;str);
+    fn strategy_name(&amp;self) -&gt; &amp;str;
+}
+struct Walk; struct Fly; struct Swim;
+impl MoveStrategy for Walk { fn do_move(&amp;self,n:&amp;str){println!("{}: 터벅터벅",n)} fn strategy_name(&amp;self)-&gt;&amp;str{"Walk"} }
+impl MoveStrategy for Fly  { fn do_move(&amp;self,n:&amp;str){println!("{}: 훨훨!",n)}    fn strategy_name(&amp;self)-&gt;&amp;str{"Fly"}  }
+impl MoveStrategy for Swim { fn do_move(&amp;self,n:&amp;str){println!("{}: 첨벙~",n)}    fn strategy_name(&amp;self)-&gt;&amp;str{"Swim"} }
+
+struct Animal {
+    name:     String,
+    strategy: Box&lt;dyn MoveStrategy&gt;,  // 런타임 교체 가능!
+}
+impl Animal {
+    fn new(name: &amp;str, s: Box&lt;dyn MoveStrategy&gt;) -&gt; Self {
+        Animal { name: name.to_string(), strategy: s }
+    }
+    fn act(&amp;self) {
+        print!("[전략: {}] ", self.strategy.strategy_name());
+        self.strategy.do_move(&amp;self.name);
+    }
+    fn set_strategy(&amp;mut self, s: Box&lt;dyn MoveStrategy&gt;) {
+        println!("→ 전략 변경: {} → {}", self.strategy.strategy_name(), s.strategy_name());
+        self.strategy = s; // 이전 Box 자동 Drop
+    }
+}
+
+fn main() {
+    let mut donald = Animal::new("Donald", Box::new(Fly));
+    donald.act();
+    donald.set_strategy(Box::new(Swim));
+    donald.act();
+    donald.set_strategy(Box::new(Walk));
+    donald.act();
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>self.strategy = s;</code> 한 줄로 전략이 교체됩니다. 이전 <code>Box</code>는 자동 Drop(vtable[0] drop_in_place 경유)되고 새 전략이 저장됩니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>컴파일 타임 전략 고정이 필요하면 제네릭(<code>struct Animal&lt;S: MoveStrategy&gt;</code>)을 사용하세요. 런타임 교체가 필요할 때만 <code>Box&lt;dyn&gt;</code>을 씁니다.</div></div></div></div>
+</div></div><div class="stab-pane" id="t1b-2"><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#11</span>
+      <span class="ex-ttl">관찰자(Observer) 패턴 — EventBus</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::cell::Cell;
+trait Observer { fn on_event(&amp;self, e: &amp;str); fn label(&amp;self) -&gt; &amp;str; }
+
+struct Logger  { prefix: String }
+struct Counter { id: u32 }
+struct Alerter { n: Cell&lt;u32&gt;, threshold: u32 }
+
+impl Observer for Logger  { fn label(&amp;self)-&gt;&amp;str{&amp;self.prefix}
+    fn on_event(&amp;self,e:&amp;str){println!("[{}] {}",self.prefix,e)} }
+impl Observer for Counter { fn label(&amp;self)-&gt;&amp;str{"Counter"}
+    fn on_event(&amp;self,_:&amp;str){println!("[Counter#{}] 카운트 증가",self.id)} }
+impl Observer for Alerter { fn label(&amp;self)-&gt;&amp;str{"Alerter"}
+    fn on_event(&amp;self,e:&amp;str){
+        let c=self.n.get()+1; self.n.set(c);
+        if c&gt;=self.threshold { println!("[ALERT] {}번째 이벤트: {}",c,e); }
+    }
+}
+
+struct EventBus { observers: Vec&lt;Box&lt;dyn Observer&gt;&gt; }
+impl EventBus {
+    fn new() -&gt; Self { EventBus { observers: vec![] } }
+    fn subscribe(&amp;mut self, o: Box&lt;dyn Observer&gt;) {
+        println!("[Bus] '{}' 구독", o.label());
+        self.observers.push(o);
+    }
+    fn publish(&amp;self, event: &amp;str) {
+        println!("\n--- 이벤트: '{}' ---", event);
+        for o in &amp;self.observers { o.on_event(event); }
+    }
+}
+
+fn main() {
+    let mut bus = EventBus::new();
+    bus.subscribe(Box::new(Logger  { prefix: "INFO".to_string() }));
+    bus.subscribe(Box::new(Counter { id: 1 }));
+    bus.subscribe(Box::new(Alerter { n: Cell::new(0), threshold: 2 }));
+    bus.publish("animal_born");
+    bus.publish("animal_fed");
+    bus.publish("animal_died");
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>Vec&lt;Box&lt;dyn Observer&gt;&gt;</code>에 서로 다른 타입의 관찰자를 등록합니다. 이벤트 발행 시 각 관찰자의 vtable을 통해 올바른 <code>on_event</code>가 호출됩니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>멀티스레드 환경에서는 <code>Box&lt;dyn Observer + Send + Sync&gt;</code>가 필요합니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#12</span>
+      <span class="ex-ttl">상태(State) 패턴 — 런타임 상태 전이</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">trait State {
+    fn on_enter(&amp;self, n: &amp;str);
+    fn handle(&amp;self, n: &amp;str, input: &amp;str) -&gt; Box&lt;dyn State&gt;;
+    fn name(&amp;self) -&gt; &amp;str;
+}
+struct Idle; struct Hunting; struct Eating;
+
+impl State for Idle {
+    fn name(&amp;self)-&gt;&amp;str{"Idle"}
+    fn on_enter(&amp;self,n:&amp;str){println!("[{}] 😴 휴식",n)}
+    fn handle(&amp;self,n:&amp;str,i:&amp;str)-&gt;Box&lt;dyn State&gt;{
+        match i {
+            "hungry"=&gt;{println!("[{}] 배고파!",n); Box::new(Hunting)}
+            _       =&gt; Box::new(Idle)
+        }
+    }
+}
+impl State for Hunting {
+    fn name(&amp;self)-&gt;&amp;str{"Hunting"}
+    fn on_enter(&amp;self,n:&amp;str){println!("[{}] 🦁 사냥!",n)}
+    fn handle(&amp;self,n:&amp;str,i:&amp;str)-&gt;Box&lt;dyn State&gt;{
+        match i {
+            "caught"=&gt;{println!("[{}] 성공!",n); Box::new(Eating)}
+            _       =&gt;{println!("[{}] 실패",n);  Box::new(Idle)}
+        }
+    }
+}
+impl State for Eating {
+    fn name(&amp;self)-&gt;&amp;str{"Eating"}
+    fn on_enter(&amp;self,n:&amp;str){println!("[{}] 🍖 식사!",n)}
+    fn handle(&amp;self,n:&amp;str,_:&amp;str)-&gt;Box&lt;dyn State&gt;{
+        println!("[{}] 완료",n); Box::new(Idle)
+    }
+}
+
+struct Lion { name: String, state: Box&lt;dyn State&gt; }
+impl Lion {
+    fn new(n:&amp;str)-&gt;Self{let s=Box::new(Idle);s.on_enter(n);Lion{name:n.to_string(),state:s}}
+    fn input(&amp;mut self,ev:&amp;str){
+        let next=self.state.handle(&amp;self.name,ev);
+        self.state=next;
+        self.state.on_enter(&amp;self.name);
+        println!("  → 현재: {}\n",self.state.name());
+    }
+}
+
+fn main() {
+    let mut simba = Lion::new("Simba");
+    simba.input("hungry");
+    simba.input("caught");
+    simba.input("done");
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>handle()</code>이 다음 상태를 <code>Box&lt;dyn State&gt;</code>로 반환하고, <code>self.state = next;</code>로 교체합니다. 이전 Box(Idle)는 자동 Drop됩니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>컴파일 타임 상태 강제가 필요하면 2부의 Typestate 패턴을 사용하세요.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#13</span>
+      <span class="ex-ttl">Box&lt;dyn Fn&gt; — 클로저를 트레이트 객체로</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">struct EventSystem {
+    handlers: Vec&lt;Box&lt;dyn Fn(&amp;str)&gt;&gt;,  // 서로 다른 클로저를 하나의 Vec에
+}
+impl EventSystem {
+    fn new() -&gt; Self { EventSystem { handlers: vec![] } }
+    fn on(&amp;mut self, h: impl Fn(&amp;str) + 'static) { self.handlers.push(Box::new(h)); }
+    fn emit(&amp;self, event: &amp;str) {
+        println!("=== '{}' ===", event);
+        for h in &amp;self.handlers { h(event); }
+    }
+}
+
+fn main() {
+    let mut sys = EventSystem::new();
+    // 클로저 1: 단순 출력
+    sys.on(|e| println!("[Logger] {}", e));
+    // 클로저 2: 외부 변수 캡처 (move)
+    let prefix = "ALERT".to_string();
+    sys.on(move |e| println!("[{}] {}", prefix, e));
+    // 클로저 3: 함수 포인터도 가능
+    fn log(e: &amp;str) { println!("[FnPtr] {}", e); }
+    sys.on(log);
+    // 클로저 4: 내부 가변 상태
+    let cnt = std::cell::Cell::new(0u32);
+    sys.on(move |_| { cnt.set(cnt.get()+1); println!("[#{}]", cnt.get()); });
+
+    sys.emit("animal_born");
+    sys.emit("animal_died");
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>Rust의 모든 클로저는 고유한 익명 타입을 가집니다. 서로 다른 클로저를 <code>Vec</code>에 담으려면 <code>Box&lt;dyn Fn&gt;</code>이 필요합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-w"><span class="al-icon">⚠️</span><div>가변 상태 클로저(<code>FnMut</code>)는 <code>Box&lt;dyn FnMut&gt;</code>가 필요하며 호출 시 <code>&amp;mut</code> 필요합니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#14</span>
+      <span class="ex-ttl">플러그인 시스템 — HashMap 동적 등록</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::collections::HashMap;
+trait Plugin { fn name(&amp;self)-&gt;&amp;str; fn run(&amp;self, s:&amp;str)-&gt;String; fn desc(&amp;self)-&gt;&amp;str; }
+
+struct UpperPlugin; struct ReversePlugin; struct RepeatPlugin { n: usize }
+impl Plugin for UpperPlugin  { fn name(&amp;self)-&gt;&amp;str{"upper"}   fn desc(&amp;self)-&gt;&amp;str{"대문자"}   fn run(&amp;self,s:&amp;str)-&gt;String{s.to_uppercase()} }
+impl Plugin for ReversePlugin{ fn name(&amp;self)-&gt;&amp;str{"reverse"} fn desc(&amp;self)-&gt;&amp;str{"뒤집기"}   fn run(&amp;self,s:&amp;str)-&gt;String{s.chars().rev().collect()} }
+impl Plugin for RepeatPlugin { fn name(&amp;self)-&gt;&amp;str{"repeat"}  fn desc(&amp;self)-&gt;&amp;str{"반복"}     fn run(&amp;self,s:&amp;str)-&gt;String{s.repeat(self.n)} }
+
+struct Registry { plugins: HashMap&lt;String, Box&lt;dyn Plugin&gt;&gt; }
+impl Registry {
+    fn new() -&gt; Self { Registry { plugins: HashMap::new() } }
+    fn register(&amp;mut self, p: Box&lt;dyn Plugin&gt;) {
+        println!("[Registry] '{}' 등록 — {}", p.name(), p.desc());
+        self.plugins.insert(p.name().to_string(), p);
+    }
+    fn run(&amp;self, name:&amp;str, input:&amp;str) -&gt; Result&lt;String, String&gt; {
+        self.plugins.get(name).map(|p| p.run(input))
+            .ok_or_else(|| format!("없음: '{}'", name))
+    }
+}
+
+fn main() {
+    let mut reg = Registry::new();
+    reg.register(Box::new(UpperPlugin));
+    reg.register(Box::new(ReversePlugin));
+    reg.register(Box::new(RepeatPlugin { n: 3 }));
+
+    for (p, s) in &amp;[("upper","hello"),("reverse","rust"),("repeat","go!"),("missing","x")] {
+        match reg.run(p, s) {
+            Ok(r) =&gt; println!("[{}] '{}' → '{}'", p, s, r),
+            Err(e)=&gt; println!("[ERR] {}", e),
+        }
+    }
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>HashMap&lt;String, Box&lt;dyn Plugin&gt;&gt;</code>으로 런타임에 플러그인을 등록하고 이름으로 조회합니다. 새 타입을 추가해도 <code>Registry</code> 코드를 수정할 필요가 없습니다 — <strong>개방-폐쇄 원칙(OCP)</strong>입니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-w"><span class="al-icon">⚠️</span><div>같은 이름으로 등록하면 이전 플러그인이 덮어씌워집니다. 실무에서는 중복 등록 에러 처리가 필요합니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#15</span>
+      <span class="ex-ttl">enum vs Box&lt;dyn&gt; — 트레이드오프 비교</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::mem;
+trait Animal { fn speak(&amp;self)-&gt;&amp;str; fn legs(&amp;self)-&gt;u32; }
+struct Lion; struct Duck; struct Snake;
+impl Animal for Lion  { fn speak(&amp;self)-&gt;&amp;str{"Roar!"}  fn legs(&amp;self)-&gt;u32{4} }
+impl Animal for Duck  { fn speak(&amp;self)-&gt;&amp;str{"Quack!"} fn legs(&amp;self)-&gt;u32{2} }
+impl Animal for Snake { fn speak(&amp;self)-&gt;&amp;str{"Hiss!"}  fn legs(&amp;self)-&gt;u32{0} }
+
+// 방법 1: enum
+enum AnyAnimal { Lion(Lion), Duck(Duck), Snake(Snake) }
+impl Animal for AnyAnimal {
+    fn speak(&amp;self)-&gt;&amp;str { match self { AnyAnimal::Lion(a)=&gt;a.speak(), AnyAnimal::Duck(a)=&gt;a.speak(), AnyAnimal::Snake(a)=&gt;a.speak() } }
+    fn legs(&amp;self)-&gt;u32   { match self { AnyAnimal::Lion(a)=&gt;a.legs(), AnyAnimal::Duck(a)=&gt;a.legs(), AnyAnimal::Snake(a)=&gt;a.legs() } }
+}
+
+fn main() {
+    // enum: 힙 할당 없음
+    let enum_zoo = vec![AnyAnimal::Lion(Lion), AnyAnimal::Duck(Duck)];
+    println!("enum 원소 크기: {} bytes (힙 없음)", mem::size_of::&lt;AnyAnimal&gt;());
+    for a in &amp;enum_zoo { println!("  {}개: {}", a.legs(), a.speak()); }
+
+    // Box&lt;dyn&gt;: 힙 할당, 외부 타입 추가 가능
+    let dyn_zoo: Vec&lt;Box&lt;dyn Animal&gt;&gt; = vec![Box::new(Lion), Box::new(Duck)];
+    println!("Box&lt;dyn&gt; 크기: {} bytes (힙+Fat Ptr)", mem::size_of::&lt;Box&lt;dyn Animal&gt;&gt;());
+    for a in &amp;dyn_zoo { println!("  {}개: {}", a.legs(), a.speak()); }
+
+    println!("\nenum:     타입 고정, 빠름, 추가 시 코드 수정 필요");
+    println!("Box&lt;dyn&gt;: 유동, 힙, 외부 타입도 추가 가능");
+    println!("          바이너리 크기 절감 (공식 dyn 문서 명시)");
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><strong>enum:</strong> 타입 고정, 힙 할당 없음, 빠름. 단, 새 타입 추가 시 모든 match 수정 필요.</p><p><strong>Box&lt;dyn&gt;:</strong> 런타임 결정, 외부 크레이트가 타입을 추가 가능. 단, 힙 할당 + vtable 오버헤드.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>공식 <code>std::keyword::dyn</code> 문서: "dyn Trait is likely to produce smaller code than impl Trait / generic parameters."</div></div></div></div>
+</div></div>
+    </div>
+    <div class="ex-section" id="t1-adv">
+      <h2 class="ex-section-title">심화 예제 16~30</h2>
+      <div class="stab-bar"><button class="stab-btn active" onclick="stab(this,'t1a-0')">16~20</button><button class="stab-btn" onclick="stab(this,'t1a-1')">21~25</button><button class="stab-btn" onclick="stab(this,'t1a-2')">26~30</button></div><div class="stab-pane active" id="t1a-0"><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#심화16</span>
+      <span class="ex-ttl">재귀 트리 — Composite 패턴</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">trait Component { fn name(&amp;self)-&gt;&amp;str; fn weight(&amp;self)-&gt;f64; fn show(&amp;self, d:usize); }
+
+struct Leaf  { name: String, weight: f64 }
+struct Group { name: String, children: Vec&lt;Box&lt;dyn Component&gt;&gt; }
+
+impl Component for Leaf {
+    fn name(&amp;self)-&gt;&amp;str{&amp;self.name} fn weight(&amp;self)-&gt;f64{self.weight}
+    fn show(&amp;self,d:usize){ println!("{}📍 {} ({:.1}kg)","  ".repeat(d),self.name,self.weight); }
+}
+impl Component for Group {
+    fn name(&amp;self)-&gt;&amp;str{&amp;self.name}
+    fn weight(&amp;self)-&gt;f64{ self.children.iter().map(|c|c.weight()).sum() }
+    fn show(&amp;self,d:usize){
+        println!("{}📁 {} [{:.1}kg]","  ".repeat(d),self.name,self.weight());
+        for c in &amp;self.children { c.show(d+1); }
+    }
+}
+impl Group {
+    fn new(n:&amp;str)-&gt;Self{Group{name:n.to_string(),children:vec![]}}
+    fn add(&amp;mut self, c:Box&lt;dyn Component&gt;){self.children.push(c);}
+}
+
+fn main() {
+    let mut africa = Group::new("Africa");
+    africa.add(Box::new(Leaf{name:"Lion".into(),weight:190.0}));
+    africa.add(Box::new(Leaf{name:"Elephant".into(),weight:5000.0}));
+    let mut birds = Group::new("Birds");
+    birds.add(Box::new(Leaf{name:"Eagle".into(),weight:6.0}));
+    birds.add(Box::new(Leaf{name:"Duck".into(),weight:1.5}));
+    africa.add(Box::new(birds));
+    africa.show(0);
+    println!("총 무게: {:.1}kg", africa.weight());
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>재귀 트리에서 <code>Box&lt;dyn Component&gt;</code>는 필수입니다. <code>Group</code>이 <code>Group</code>을 직접 포함하면 크기가 무한대가 됩니다. <code>Box</code> 포인터를 사용하면 크기가 고정됩니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-g"><span class="al-icon">✅</span><div>재귀 구조에서 <code>Box</code>를 통한 인다이렉션은 Rust Book Ch15에서 공식 권장합니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#심화17</span>
+      <span class="ex-ttl">Arc&lt;dyn Trait + Send + Sync&gt; — 멀티스레드</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::sync::{Arc, Mutex};
+use std::thread;
+
+trait Worker: Send + Sync {
+    fn work(&amp;self, task: &amp;str) -&gt; String;
+}
+struct FastWorker { id: u32 }
+struct SlowWorker { id: u32 }
+impl Worker for FastWorker { fn work(&amp;self,t:&amp;str)-&gt;String{format!("[Fast#{}] '{}'",self.id,t)} }
+impl Worker for SlowWorker { fn work(&amp;self,t:&amp;str)-&gt;String{format!("[Slow#{}] '{}'",self.id,t)} }
+
+fn main() {
+    let workers: Vec&lt;Arc&lt;dyn Worker&gt;&gt; = vec![
+        Arc::new(FastWorker { id: 1 }),
+        Arc::new(SlowWorker { id: 2 }),
+        Arc::new(FastWorker { id: 3 }),
+    ];
+    let results = Arc::new(Mutex::new(Vec::&lt;String&gt;::new()));
+    let mut handles = vec![];
+
+    for (w, t) in workers.iter().zip(["사냥","식사","수면"].iter()) {
+        let (w, t, r) = (w.clone(), t.to_string(), results.clone());
+        handles.push(thread::spawn(move || {
+            let res = w.work(&amp;t);
+            println!("{}", res);
+            r.lock().unwrap().push(res);
+        }));
+    }
+    for h in handles { h.join().unwrap(); }
+    println!("결과 수: {}", results.lock().unwrap().len());
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>Arc&lt;dyn Worker&gt;</code>는 여러 스레드에서 트레이트 객체를 안전하게 공유합니다. <code>: Send + Sync</code> 바운드가 필수입니다.</p><ul><li><strong>Send</strong>: 소유권을 다른 스레드로 이전 가능</li><li><strong>Sync</strong>: 참조를 여러 스레드에서 동시 사용 가능</li></ul></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div><code>Arc::clone()</code>은 참조 카운트만 증가시킵니다. 실제 데이터나 vtable은 복사하지 않습니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#심화18</span>
+      <span class="ex-ttl">다운캐스트 — Any 트레이트</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::any::Any;
+trait Animal: Any { fn speak(&amp;self)-&gt;&amp;str; fn as_any(&amp;self)-&gt;&amp;dyn Any; }
+
+struct Lion  { pub age: u32 }
+struct Duck  { pub can_fly: bool }
+impl Animal for Lion  { fn speak(&amp;self)-&gt;&amp;str{"Roar"}  fn as_any(&amp;self)-&gt;&amp;dyn Any{self} }
+impl Animal for Duck  { fn speak(&amp;self)-&gt;&amp;str{"Quack"} fn as_any(&amp;self)-&gt;&amp;dyn Any{self} }
+
+fn describe(a: &amp;dyn Animal) {
+    println!("소리: {}", a.speak());
+    if let Some(lion) = a.as_any().downcast_ref::&lt;Lion&gt;() {
+        println!("  → Lion! 나이={}", lion.age);
+    }
+    if let Some(duck) = a.as_any().downcast_ref::&lt;Duck&gt;() {
+        println!("  → Duck! 비행={}", duck.can_fly);
+    }
+}
+
+fn main() {
+    let animals: Vec&lt;Box&lt;dyn Animal&gt;&gt; = vec![
+        Box::new(Lion { age: 5 }),
+        Box::new(Duck { can_fly: true }),
+    ];
+    for a in &amp;animals {
+        describe(a.as_ref());
+        println!();
+    }
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>다운캐스트는 <code>dyn Trait</code>에서 구체 타입을 복원합니다. <code>downcast_ref::&lt;T&gt;()</code>는 타입 ID를 확인하여 맞으면 <code>Some(&amp;T)</code>, 아니면 <code>None</code>을 반환합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-r"><span class="al-icon">⚠️</span><div>다운캐스트가 자주 필요하다면 설계 문제일 수 있습니다. 트레이트에 필요한 메서드를 추가하거나 <code>enum</code>을 사용하는 것을 먼저 검토하세요.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#심화19</span>
+      <span class="ex-ttl">커맨드 패턴 — Undo/Redo</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">trait Command { fn exec(&amp;self, zoo:&amp;mut Vec&lt;String&gt;); fn undo(&amp;self, zoo:&amp;mut Vec&lt;String&gt;); fn name(&amp;self)-&gt;&amp;str; }
+
+struct AddAnimal    { name: String }
+struct RemoveAnimal { name: String }
+
+impl Command for AddAnimal {
+    fn name(&amp;self)-&gt;&amp;str{"Add"}
+    fn exec(&amp;self,zoo:&amp;mut Vec&lt;String&gt;){ zoo.push(self.name.clone()); println!("  + '{}'",self.name); }
+    fn undo(&amp;self,zoo:&amp;mut Vec&lt;String&gt;){ zoo.retain(|n|n!=&amp;self.name); println!("  - '{}' 취소",self.name); }
+}
+impl Command for RemoveAnimal {
+    fn name(&amp;self)-&gt;&amp;str{"Remove"}
+    fn exec(&amp;self,zoo:&amp;mut Vec&lt;String&gt;){ zoo.retain(|n|n!=&amp;self.name); println!("  - '{}'",self.name); }
+    fn undo(&amp;self,zoo:&amp;mut Vec&lt;String&gt;){ zoo.push(self.name.clone()); println!("  + '{}' 복원",self.name); }
+}
+
+struct History { zoo: Vec&lt;String&gt;, history: Vec&lt;Box&lt;dyn Command&gt;&gt; }
+impl History {
+    fn new()-&gt;Self{History{zoo:vec![],history:vec![]}}
+    fn exec(&amp;mut self, cmd: Box&lt;dyn Command&gt;) {
+        println!("[{}]", cmd.name()); cmd.exec(&amp;mut self.zoo);
+        self.history.push(cmd);
+        println!("  상태: {:?}", self.zoo);
+    }
+    fn undo(&amp;mut self) {
+        if let Some(cmd)=self.history.pop(){
+            println!("[Undo: {}]", cmd.name()); cmd.undo(&amp;mut self.zoo);
+            println!("  상태: {:?}", self.zoo);
+        }
+    }
+}
+
+fn main() {
+    let mut h = History::new();
+    h.exec(Box::new(AddAnimal    { name: "Lion".into() }));
+    h.exec(Box::new(AddAnimal    { name: "Duck".into() }));
+    h.exec(Box::new(RemoveAnimal { name: "Lion".into() }));
+    println!("\n=== Undo 2회 ===");
+    h.undo(); h.undo();
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>커맨드 패턴은 작업을 객체로 캡슐화하여 Undo/Redo를 구현합니다. <code>Vec&lt;Box&lt;dyn Command&gt;&gt;</code>가 히스토리 스택 역할을 합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>Redo 구현 시 별도의 redo 스택을 두고, exec 호출 시 redo 스택을 비우는 것이 표준 패턴입니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#심화20</span>
+      <span class="ex-ttl">미들웨어 체인 패턴</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">#[derive(Clone)] struct Request { path: String, token: String, body: String }
+struct Response { status: u32, body: String }
+
+trait Middleware {
+    fn name(&amp;self) -&gt; &amp;str;
+    fn process(&amp;self, req: &amp;mut Request) -&gt; Option&lt;Response&gt;;
+}
+
+struct LogMw; struct AuthMw { valid: String }; struct LimitMw { max: usize }
+
+impl Middleware for LogMw   { fn name(&amp;self)-&gt;&amp;str{"Log"}
+    fn process(&amp;self,req:&amp;mut Request)-&gt;Option&lt;Response&gt;{println!("  [Log] {}",req.path);None} }
+impl Middleware for AuthMw  { fn name(&amp;self)-&gt;&amp;str{"Auth"}
+    fn process(&amp;self,req:&amp;mut Request)-&gt;Option&lt;Response&gt;{
+        if req.token!=self.valid{Some(Response{status:401,body:"Unauthorized".into()})}else{None}
+    }}
+impl Middleware for LimitMw { fn name(&amp;self)-&gt;&amp;str{"Limit"}
+    fn process(&amp;self,req:&amp;mut Request)-&gt;Option&lt;Response&gt;{
+        if req.body.len()&gt;self.max{Some(Response{status:413,body:"Too Large".into()})}else{None}
+    }}
+
+struct Server { mw: Vec&lt;Box&lt;dyn Middleware&gt;&gt; }
+impl Server {
+    fn new()-&gt;Self{Server{mw:vec![]}}
+    fn use_mw(&amp;mut self,m:Box&lt;dyn Middleware&gt;){self.mw.push(m);}
+    fn handle(&amp;self, mut req: Request) -&gt; Response {
+        for m in &amp;self.mw {
+            print!("  [{}] ",m.name());
+            if let Some(r)=m.process(&amp;mut req){println!("중단 {}",r.status);return r;}
+            println!("통과");
+        }
+        Response{status:200,body:format!("OK: {}",req.path)}
+    }
+}
+
+fn main() {
+    let mut s=Server::new();
+    s.use_mw(Box::new(LogMw));
+    s.use_mw(Box::new(AuthMw{valid:"secret".into()}));
+    s.use_mw(Box::new(LimitMw{max:10}));
+    for (path,token,body) in [("/api","secret","ok"),("/api","bad","ok"),("/api","secret","long body!!")] {
+        println!("\n=== {} ===",path);
+        let r=s.handle(Request{path:path.into(),token:token.into(),body:body.into()});
+        println!("  → {} {}",r.status,r.body);
+    }
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>HTTP 미들웨어 체인은 <code>Box&lt;dyn Middleware&gt;</code>의 전형적인 실전 패턴입니다. actix-web, axum 같은 Rust 웹 프레임워크들이 유사한 구조를 사용합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>실제 Rust 웹 프레임워크에서는 Tower 라이브러리의 <code>Service</code> 트레이트 기반으로 미들웨어를 구현합니다.</div></div></div></div>
+</div></div><div class="stab-pane" id="t1a-1"><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#심화21</span>
+      <span class="ex-ttl">방문자(Visitor) 패턴</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">struct Lion{name:String,weight:f64} struct Duck{name:String} struct Snake{name:String,len:u32}
+
+trait Visitor { fn visit_lion(&amp;self,l:&amp;Lion); fn visit_duck(&amp;self,d:&amp;Duck); fn visit_snake(&amp;self,s:&amp;Snake); }
+trait Visitable { fn accept(&amp;self, v:&amp;dyn Visitor); }
+impl Visitable for Lion  { fn accept(&amp;self,v:&amp;dyn Visitor){v.visit_lion(self)} }
+impl Visitable for Duck  { fn accept(&amp;self,v:&amp;dyn Visitor){v.visit_duck(self)} }
+impl Visitable for Snake { fn accept(&amp;self,v:&amp;dyn Visitor){v.visit_snake(self)} }
+
+struct PrintVisitor;
+impl Visitor for PrintVisitor {
+    fn visit_lion(&amp;self,l:&amp;Lion) {println!("Lion '{}' {:.1}kg",l.name,l.weight)}
+    fn visit_duck(&amp;self,d:&amp;Duck) {println!("Duck '{}'",d.name)}
+    fn visit_snake(&amp;self,s:&amp;Snake){println!("Snake '{}' {}cm",s.name,s.len)}
+}
+
+struct WeightSum { total: std::cell::Cell&lt;f64&gt; }
+impl Visitor for WeightSum {
+    fn visit_lion(&amp;self,l:&amp;Lion) {self.total.set(self.total.get()+l.weight)}
+    fn visit_duck(&amp;self,_:&amp;Duck) {self.total.set(self.total.get()+1.5)}
+    fn visit_snake(&amp;self,_:&amp;Snake){self.total.set(self.total.get()+2.0)}
+}
+
+fn main() {
+    let zoo: Vec&lt;Box&lt;dyn Visitable&gt;&gt; = vec![
+        Box::new(Lion{name:"Simba".into(),weight:190.0}),
+        Box::new(Duck{name:"Donald".into()}),
+        Box::new(Snake{name:"Kaa".into(),len:300}),
+    ];
+    let p=PrintVisitor; for a in &amp;zoo {a.accept(&amp;p);}
+    let ws=WeightSum{total:std::cell::Cell::new(0.0)}; for a in &amp;zoo {a.accept(&amp;ws);}
+    println!("총 무게: {:.1}kg",ws.total.get());
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>방문자 패턴은 데이터 구조와 알고리즘을 분리합니다. 새 알고리즘(방문자)을 추가해도 데이터 구조 코드를 수정할 필요가 없습니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-w"><span class="al-icon">⚠️</span><div>새 동물 타입을 추가하면 모든 방문자 구현체를 수정해야 합니다. 타입이 자주 바뀌면 부적합합니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#심화22</span>
+      <span class="ex-ttl">GUI 컴포넌트 시스템 — 재귀 위젯 트리</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">trait Widget { fn render(&amp;self,indent:usize); fn id(&amp;self)-&gt;&amp;str; }
+
+struct Button  { id:String, label:String }
+struct Label   { id:String, text:String  }
+struct Panel   { id:String, children:Vec&lt;Box&lt;dyn Widget&gt;&gt; }
+
+impl Widget for Button { fn id(&amp;self)-&gt;&amp;str{&amp;self.id}
+    fn render(&amp;self,d:usize){println!("{}[Button: '{}']","  ".repeat(d),self.label)} }
+impl Widget for Label  { fn id(&amp;self)-&gt;&amp;str{&amp;self.id}
+    fn render(&amp;self,d:usize){println!("{}[Label: '{}']","  ".repeat(d),self.text)} }
+impl Widget for Panel  { fn id(&amp;self)-&gt;&amp;str{&amp;self.id}
+    fn render(&amp;self,d:usize){
+        println!("{}[Panel: '{}']","  ".repeat(d),self.id);
+        for c in &amp;self.children { c.render(d+1); }
+    }
+}
+impl Panel {
+    fn new(id:&amp;str)-&gt;Self{Panel{id:id.into(),children:vec![]}}
+    fn add(&amp;mut self,w:Box&lt;dyn Widget&gt;){self.children.push(w);}
+}
+
+fn main() {
+    let mut root = Panel::new("root");
+    let mut toolbar = Panel::new("toolbar");
+    toolbar.add(Box::new(Button{id:"btn1".into(),label:"저장".into()}));
+    toolbar.add(Box::new(Button{id:"btn2".into(),label:"열기".into()}));
+    root.add(Box::new(toolbar));
+    root.add(Box::new(Label{id:"lbl1".into(),text:"안녕하세요".into()}));
+    root.render(0);
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>GUI 트리에서 <code>Box&lt;dyn Widget&gt;</code>은 필수입니다. <code>Panel</code>이 <code>Button</code>, <code>Label</code>, 다른 <code>Panel</code>을 모두 담아야 하기 때문입니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>실제 Rust GUI 프레임워크(egui, iced)도 유사한 패턴을 사용합니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#심화23</span>
+      <span class="ex-ttl">Drop 추적 — vtable[0] drop_in_place</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">trait Animal { fn name(&amp;self)-&gt;&amp;str; }
+struct Lion { name: String }
+struct Duck { name: String }
+impl Drop for Lion { fn drop(&amp;mut self){println!("[DROP Lion '{}'] vtable[0] 호출",self.name)} }
+impl Drop for Duck { fn drop(&amp;mut self){println!("[DROP Duck '{}'] vtable[0] 호출",self.name)} }
+impl Animal for Lion { fn name(&amp;self)-&gt;&amp;str{&amp;self.name} }
+impl Animal for Duck { fn name(&amp;self)-&gt;&amp;str{&amp;self.name} }
+
+fn main() {
+    println!("=== 지역변수 Drop (선언 역순) ===");
+    {
+        let a: Box&lt;dyn Animal&gt; = Box::new(Lion { name: "Simba".into() });
+        let b: Box&lt;dyn Animal&gt; = Box::new(Duck { name: "Donald".into() });
+        println!("생성: {}, {}", a.name(), b.name());
+    } // b 먼저 Drop, 그다음 a
+
+    println!("\n=== Vec Drop (역순) ===");
+    {
+        let _v: Vec&lt;Box&lt;dyn Animal&gt;&gt; = vec![
+            Box::new(Lion { name: "A".into() }),
+            Box::new(Duck { name: "B".into() }),
+            Box::new(Lion { name: "C".into() }),
+        ];
+        println!("Vec 스코프 종료...");
+    } // C → B → A 역순
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>vtable[0]은 항상 <code>drop_in_place</code> 함수 포인터입니다. 근거: rustc 소스 <code>VtblEntry::MetadataDropInPlace</code>.</p><p>Drop 순서: 지역변수 → 선언 역순 / Vec 원소 → 마지막부터 역순.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-g"><span class="al-icon">✅</span><div>vtable[0] = drop_in_place는 rustc 소스로 확인된 사실입니다. <code>impl Drop</code>이 없어도 항상 존재합니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#심화24</span>
+      <span class="ex-ttl">std::ptr::metadata — vtable 동일성 (Rust 1.60+)</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::mem;
+trait Animal { fn speak(&amp;self)-&gt;&amp;str; }
+struct Lion; struct Duck;
+impl Animal for Lion { fn speak(&amp;self)-&gt;&amp;str{"Roar"} }
+impl Animal for Duck { fn speak(&amp;self)-&gt;&amp;str{"Quack"} }
+
+fn main() {
+    println!("=== 크기 (스펙 보장) ===");
+    println!("&amp;Lion (thin):    {} bytes", mem::size_of::&lt;&amp;Lion&gt;());
+    println!("&amp;dyn Animal:     {} bytes", mem::size_of::&lt;&amp;dyn Animal&gt;());
+    println!("Box&lt;dyn Animal&gt;: {} bytes", mem::size_of::&lt;Box&lt;dyn Animal&gt;&gt;());
+
+    println!("\n=== vtable 동일성 (안전한 공식 API) ===");
+    let (lion1, lion2, duck) = (Lion, Lion, Duck);
+    // unsafe transmute 절대 사용 금지!
+    let m1 = std::ptr::metadata(&amp;lion1 as &amp;dyn Animal);
+    let m2 = std::ptr::metadata(&amp;lion2 as &amp;dyn Animal);
+    let m3 = std::ptr::metadata(&amp;duck  as &amp;dyn Animal);
+    println!("Lion·Lion vtable 동일? {} (같은 타입)", m1 == m2);
+    println!("Lion·Duck vtable 동일? {} (다른 타입)", m1 == m3);
+
+    println!("\n=== size_of_val (vtable[1] 경유) ===");
+    let a: &amp;dyn Animal = &amp;lion1;
+    println!("size_of_val:  {} bytes", mem::size_of_val(a));
+    println!("align_of_val: {} bytes", mem::align_of_val(a));
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>std::ptr::metadata()</code>는 Fat Pointer의 vtable 포인터를 안전하게 추출하는 공식 stable API(Rust 1.60+)입니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-r"><span class="al-icon">🔍</span><div><strong>이전 오류 수정:</strong> unsafe <code>transmute</code>로 vtable 직접 읽기는 UB 위험. <code>std::ptr::metadata()</code>가 올바른 방법입니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#심화25</span>
+      <span class="ex-ttl">동적 타입 등록 — 팩토리 레지스트리</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::collections::HashMap;
+trait Animal { fn speak(&amp;self)-&gt;String; fn kind(&amp;self)-&gt;&amp;str; }
+type Factory = Box&lt;dyn Fn(&amp;str) -&gt; Box&lt;dyn Animal&gt;&gt;;
+
+struct Lion{name:String} struct Duck{name:String} struct Tiger{name:String}
+impl Animal for Lion  { fn speak(&amp;self)-&gt;String{format!("{}: Roar!",self.name)}  fn kind(&amp;self)-&gt;&amp;str{"Lion"}  }
+impl Animal for Duck  { fn speak(&amp;self)-&gt;String{format!("{}: Quack!",self.name)} fn kind(&amp;self)-&gt;&amp;str{"Duck"}  }
+impl Animal for Tiger { fn speak(&amp;self)-&gt;String{format!("{}: Growl!",self.name)} fn kind(&amp;self)-&gt;&amp;str{"Tiger"} }
+
+struct Registry { factories: HashMap&lt;String, Factory&gt; }
+impl Registry {
+    fn new()-&gt;Self{Registry{factories:HashMap::new()}}
+    fn register(&amp;mut self, kind:&amp;str, f:Factory){
+        self.factories.insert(kind.to_string(),f);
+    }
+    fn create(&amp;self,kind:&amp;str,name:&amp;str)-&gt;Result&lt;Box&lt;dyn Animal&gt;,String&gt;{
+        self.factories.get(kind).map(|f|f(name))
+            .ok_or_else(||format!("미등록: '{}'",kind))
+    }
+}
+
+fn main() {
+    let mut reg=Registry::new();
+    reg.register("lion",  Box::new(|n|Box::new(Lion{name:n.into()})));
+    reg.register("duck",  Box::new(|n|Box::new(Duck{name:n.into()})));
+    reg.register("tiger", Box::new(|n|Box::new(Tiger{name:n.into()})));
+
+    for (kind,name) in [("lion","Simba"),("duck","Donald"),("whale","Moby")] {
+        match reg.create(kind,name) {
+            Ok(a) =&gt;println!("[OK] {}: {}",a.kind(),a.speak()),
+            Err(e)=&gt;println!("[ERR] {}",e),
+        }
+    }
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>Box&lt;dyn Fn&gt;</code>와 <code>Box&lt;dyn Animal&gt;</code>을 결합한 고급 패턴입니다. 타입 별칭 <code>type Factory</code>으로 복잡한 타입을 단순화합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>이 패턴은 게임 엔진의 엔티티 시스템, 웹 프레임워크의 라우터 등에서 사용됩니다.</div></div></div></div>
+</div></div><div class="stab-pane" id="t1a-2"><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#심화26</span>
+      <span class="ex-ttl">impl vs dyn 성능 비교 (Rust 1.66+)</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::time::Instant;
+use std::hint::black_box;  // Rust 1.66+ stable
+
+trait Animal { fn value(&amp;self) -&gt; u64; }
+struct Lion { v: u64 }
+impl Animal for Lion { fn value(&amp;self) -&gt; u64 { self.v.wrapping_mul(2) } }
+
+fn use_impl(a: impl Animal) -&gt; u64 { a.value() }   // 단형화 → 인라인 가능
+fn use_dyn(a: &amp;dyn Animal)  -&gt; u64 { a.value() }   // vtable 간접 호출
+
+fn main() {
+    const N: u64 = 10_000_000;
+
+    let t = Instant::now();
+    let r1: u64 = (0..N).map(|i| use_impl(black_box(Lion{v:i}))).sum();
+    println!("impl: sum={r1} time={:?}", t.elapsed());
+
+    let t = Instant::now();
+    let r2: u64 = (0..N).map(|i| use_dyn(black_box(&amp;Lion{v:i} as &amp;dyn Animal))).sum();
+    println!("dyn:  sum={r2} time={:?}", t.elapsed());
+
+    println!("결과 동일: {}", r1 == r2);
+    println!("impl: 인라인 가능, 바이너리 증가 가능");
+    println!("dyn:  vtable 간접, 바이너리 절감 (공식 문서 명시)");
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>black_box</code>는 컴파일러 최적화를 막아 실제 성능 차이를 측정합니다. 이전 오류 수정: <code>u64</code>로 통일, <code>wrapping_mul</code>로 오버플로우 방지.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-w"><span class="al-icon">⚠️</span><div>Rust 1.66+ 필요. 실무 벤치마크는 criterion 크레이트를 사용하세요. 실제 차이는 환경에 따라 다릅니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#심화27</span>
+      <span class="ex-ttl">Box&lt;dyn Fn&gt; — 이벤트 핸들러 파이프라인</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">type Handler = Box&lt;dyn Fn(&amp;str) -&gt; Option&lt;String&gt;&gt;;
+
+fn make_validator(min: usize) -&gt; Handler {
+    Box::new(move |s: &amp;str| {
+        if s.len() &gt;= min { None }
+        else { Some(format!("너무 짧음: {} &lt; {}", s.len(), min)) }
+    })
+}
+fn make_transformer(prefix: &amp;'static str) -&gt; Handler {
+    Box::new(move |s: &amp;str| Some(format!("{}{}", prefix, s.to_uppercase())))
+}
+fn make_filter(bad: &amp;'static str) -&gt; Handler {
+    Box::new(move |s: &amp;str| {
+        if s.contains(bad) { Some(format!("금지어: '{}'", bad)) }
+        else { None }
+    })
+}
+
+struct Pipeline { steps: Vec&lt;Handler&gt; }
+impl Pipeline {
+    fn new() -&gt; Self { Pipeline { steps: vec![] } }
+    fn add(mut self, h: Handler) -&gt; Self { self.steps.push(h); self }
+    fn run(&amp;self, input: &amp;str) -&gt; String {
+        let mut data = input.to_string();
+        for step in &amp;self.steps {
+            if let Some(result) = step(&amp;data) {
+                data = result;
+            }
+        }
+        data
+    }
+}
+
+fn main() {
+    let p = Pipeline::new()
+        .add(make_validator(3))
+        .add(make_filter("BAD"))
+        .add(make_transformer("→ "));
+    for s in &amp;["hello","ok","BAD word","world"] {
+        println!("'{}' → '{}'", s, p.run(s));
+    }
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>Box&lt;dyn Fn&gt;</code> 파이프라인은 각 단계를 클로저로 표현합니다. 클로저가 외부 상태를 캡처하므로 구성이 유연합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>결과 반환 방식을 <code>Option</code>(변환 없으면 None)으로 설계하면 단계 간 통신이 명확해집니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#심화28</span>
+      <span class="ex-ttl">파이프라인 + 에러 처리 — ? 연산자</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::fmt;
+
+#[derive(Debug)]
+struct StepError { step: String, msg: String }
+impl fmt::Display for StepError {
+    fn fmt(&amp;self,f:&amp;mut fmt::Formatter)-&gt;fmt::Result{write!(f,"[{}] {}",self.step,self.msg)}
+}
+
+trait Step { fn name(&amp;self)-&gt;&amp;str; fn run(&amp;self,d:&amp;str)-&gt;Result&lt;String,StepError&gt;; }
+
+struct Validate{min:usize} struct Upper; struct Filter{bad:String}
+impl Step for Validate {
+    fn name(&amp;self)-&gt;&amp;str{"Validate"}
+    fn run(&amp;self,d:&amp;str)-&gt;Result&lt;String,StepError&gt;{
+        if d.len()&lt;self.min { Err(StepError{step:self.name().into(),msg:format!("길이 {}&lt;{}",d.len(),self.min)}) }
+        else { Ok(d.to_string()) }
+    }
+}
+impl Step for Upper { fn name(&amp;self)-&gt;&amp;str{"Upper"} fn run(&amp;self,d:&amp;str)-&gt;Result&lt;String,StepError&gt;{Ok(d.to_uppercase())} }
+impl Step for Filter {
+    fn name(&amp;self)-&gt;&amp;str{"Filter"}
+    fn run(&amp;self,d:&amp;str)-&gt;Result&lt;String,StepError&gt;{
+        if d.contains(&amp;*self.bad){Err(StepError{step:self.name().into(),msg:format!("금지어: '{}'",&amp;self.bad)})}
+        else{Ok(d.to_string())}
+    }
+}
+
+struct Pipeline { steps: Vec&lt;Box&lt;dyn Step&gt;&gt; }
+impl Pipeline {
+    fn new()-&gt;Self{Pipeline{steps:vec![]}}
+    fn add(mut self,s:Box&lt;dyn Step&gt;)-&gt;Self{self.steps.push(s);self}
+    fn run(&amp;self,input:&amp;str)-&gt;Result&lt;String,StepError&gt;{
+        let mut d=input.to_string();
+        for step in &amp;self.steps { d=step.run(&amp;d)?; } // ? 연산자로 즉시 전파
+        Ok(d)
+    }
+}
+
+fn main() {
+    let p=Pipeline::new()
+        .add(Box::new(Validate{min:3}))
+        .add(Box::new(Filter{bad:"BAD".into()}))
+        .add(Box::new(Upper));
+    for s in &amp;["hello","hi","BAD word","world"] {
+        match p.run(s) {
+            Ok(r) =&gt;println!("'{}'  →  '{}'",s,r),
+            Err(e)=&gt;println!("'{}'  →  Err: {}",s,e),
+        }
+    }
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>?</code> 연산자와 <code>Box&lt;dyn Step&gt;</code>을 결합하면 파이프라인 각 단계에서 에러 발생 시 즉시 반환하는 깔끔한 코드가 됩니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>실무에서는 <code>Box&lt;dyn std::error::Error&gt;</code>나 <code>anyhow::Error</code>를 사용하면 더 유연합니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#심화29</span>
+      <span class="ex-ttl">수퍼트레이트 — Display + Debug 자동 사용</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::fmt;
+
+// Display + Debug를 수퍼트레이트로 포함
+// → dyn Animal에서 {} {:?} 모두 사용 가능
+trait Animal: fmt::Display + fmt::Debug {
+    fn speak(&amp;self) -&gt; String;
+}
+
+#[derive(Debug)]
+struct Lion { name: String }
+#[derive(Debug)]
+struct Duck { name: String, can_fly: bool }
+
+impl fmt::Display for Lion {
+    fn fmt(&amp;self,f:&amp;mut fmt::Formatter)-&gt;fmt::Result{write!(f,"Lion({})",self.name)}
+}
+impl fmt::Display for Duck {
+    fn fmt(&amp;self,f:&amp;mut fmt::Formatter)-&gt;fmt::Result{
+        write!(f,"Duck({},fly={})",self.name,self.can_fly)
+    }
+}
+impl Animal for Lion { fn speak(&amp;self)-&gt;String{format!("{}: Roar!",self.name)} }
+impl Animal for Duck { fn speak(&amp;self)-&gt;String{format!("{}: Quack!",self.name)} }
+
+fn describe(a: &amp;dyn Animal) {
+    println!("Display: {}", a);    // 수퍼트레이트이므로 가능
+    println!("Debug:   {:?}", a);
+    println!("speak:   {}\n", a.speak());
+}
+
+fn main() {
+    let zoo: Vec&lt;Box&lt;dyn Animal&gt;&gt; = vec![
+        Box::new(Lion { name: "Simba".into() }),
+        Box::new(Duck { name: "Donald".into(), can_fly: true }),
+    ];
+    for a in &amp;zoo { describe(a.as_ref()); }
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>수퍼트레이트(<code>trait Animal: Display + Debug</code>)를 통해 <code>dyn Animal</code>에서 <code>Display</code>와 <code>Debug</code> 메서드도 사용할 수 있습니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-w"><span class="al-icon">⚠️</span><div>수퍼트레이트도 dyn-compatible해야 합니다. 그렇지 않으면 전체 트레이트가 dyn-incompatible해집니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#심화30</span>
+      <span class="ex-ttl">종합 — Zoo 시스템 완전판</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::fmt; use std::any::Any;
+
+trait Animal: fmt::Display + Any {
+    fn speak(&amp;self)  -&gt; String;
+    fn legs(&amp;self)   -&gt; u32;
+    fn as_any(&amp;self) -&gt; &amp;dyn Any;
+}
+impl Clone for Box&lt;dyn Animal&gt; {
+    fn clone(&amp;self) -&gt; Self { unimplemented!("clone_box 패턴 필요") }
+}
+
+#[derive(Debug)] struct Lion  { name:String, age:u32 }
+#[derive(Debug)] struct Duck  { name:String }
+#[derive(Debug)] struct Tiger { name:String, stripe_count:u32 }
+
+impl fmt::Display for Lion  { fn fmt(&amp;self,f:&amp;mut fmt::Formatter)-&gt;fmt::Result{write!(f,"Lion({},{}y)",self.name,self.age)} }
+impl fmt::Display for Duck  { fn fmt(&amp;self,f:&amp;mut fmt::Formatter)-&gt;fmt::Result{write!(f,"Duck({})",self.name)} }
+impl fmt::Display for Tiger { fn fmt(&amp;self,f:&amp;mut fmt::Formatter)-&gt;fmt::Result{write!(f,"Tiger({},{}s)",self.name,self.stripe_count)} }
+
+impl Animal for Lion  { fn speak(&amp;self)-&gt;String{format!("{}: Roar!",self.name)} fn legs(&amp;self)-&gt;u32{4} fn as_any(&amp;self)-&gt;&amp;dyn Any{self} }
+impl Animal for Duck  { fn speak(&amp;self)-&gt;String{format!("{}: Quack!",self.name)} fn legs(&amp;self)-&gt;u32{2} fn as_any(&amp;self)-&gt;&amp;dyn Any{self} }
+impl Animal for Tiger { fn speak(&amp;self)-&gt;String{format!("{}: Growl!",self.name)} fn legs(&amp;self)-&gt;u32{4} fn as_any(&amp;self)-&gt;&amp;dyn Any{self} }
+
+struct Zoo { animals: Vec&lt;Box&lt;dyn Animal&gt;&gt; }
+impl Zoo {
+    fn new()-&gt;Self{Zoo{animals:vec![]}}
+    fn add(&amp;mut self,a:Box&lt;dyn Animal&gt;){println!("입장: {}",a);self.animals.push(a);}
+    fn all_speak(&amp;self){println!("\n=== 공연 ==="); for a in &amp;self.animals{println!("  {}",a.speak());}}
+    fn total_legs(&amp;self)-&gt;u32{self.animals.iter().map(|a|a.legs()).sum()}
+    fn find_lion(&amp;self)-&gt;Option&lt;&amp;Lion&gt;{
+        self.animals.iter().find_map(|a|a.as_any().downcast_ref::&lt;Lion&gt;())
+    }
+}
+
+fn main() {
+    let mut zoo = Zoo::new();
+    zoo.add(Box::new(Lion{name:"Simba".into(),age:5}));
+    zoo.add(Box::new(Duck{name:"Donald".into()}));
+    zoo.add(Box::new(Tiger{name:"Hobbes".into(),stripe_count:42}));
+    zoo.all_speak();
+    println!("\n총 다리: {}개",zoo.total_legs());
+    if let Some(lion)=zoo.find_lion(){println!("사자 발견: {}살",lion.age);}
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>1부에서 배운 모든 패턴을 하나의 시스템으로 통합합니다: 수퍼트레이트, <code>Box&lt;dyn&gt;</code> 컬렉션, 다운캐스트, Display 등.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-g"><span class="al-icon">✅</span><div>이 예제를 이해했다면 1부의 모든 개념을 습득한 것입니다.</div></div></div></div>
+</div></div>
+    </div>
+  </div>
+
+  <!-- ══ 2부 ══ -->
+  <div class="tab-panel" id="panel-t2">
+    <div class="hero">
+      <div class="hero-badge t2">2부 · 정적 디스패치</div>
+      <h1><em class="t2">impl Trait</em><br>Zero-cost 추상화와 Iterator</h1>
+      <p class="hero-desc">컴파일 타임에 타입이 확정되는 impl Trait을 배웁니다. 클로저 반환, Iterator 체이닝, Typestate 패턴까지 다룹니다.</p>
+      <div class="badge-row">
+        <span class="pill pill-g">✅ RFC 3425 포함</span>
+        <span class="pill pill-b">💡 30개 예제</span>
+      </div>
+    </div>
+
+      <div class="concept-section t2-section" id="t2-c1">
+        <div class="concept-step-label">Step 1 / 5</div>
+        <h2 class="concept-h2">제네릭과 단형화 — impl Trait의 내부 동작</h2>
+        <div class="dia"><div class="dia-hdr"><span class="dia-lbl">단형화(Monomorphization)</span><span class="spec-badge spec-s">✅ 스펙 보장</span></div>
+<pre>fn print(a: impl Display) { ... }
+
+// 컴파일러가 자동 생성:
+fn print_i32(a: i32)   { ... }  // i32 전용
+fn print_str(a: &amp;str)  { ... }  // &amp;str 전용
+
+장점: 인라인 최적화 가능, Zero-cost 추상화
+단점: 바이너리 크기 증가 가능
+공식 dyn 문서: "dyn Trait is likely to produce smaller code"</pre></div>
+      </div>
+      <div class="concept-section t2-section" id="t2-c2">
+        <div class="concept-step-label">Step 2 / 5</div>
+        <h2 class="concept-h2">반환 위치 impl Trait — Opaque Return Type</h2>
+        <div class="dia"><div class="dia-hdr"><span class="dia-lbl">반환 위치의 impl Trait</span><span class="spec-badge spec-s">✅ 스펙 보장</span></div>
+<pre>fn make_lion() -> impl Animal { Lion }
+
+// 모든 반환 경로에서 같은 타입이어야 함
+fn ok()  -> impl Animal { Lion }  // OK
+fn bad(b: bool) -> impl Animal {
+    if b { Lion } else { Duck }   // ERROR: mismatched types
+}
+
+// 분기가 필요하면 Box&lt;dyn Animal&gt; 사용</pre></div>
+      </div>
+      <div class="concept-section t2-section" id="t2-c3">
+        <div class="concept-step-label">Step 3 / 5</div>
+        <h2 class="concept-h2">impl Trait이 반드시 필요한 3가지 경우</h2>
+        <div class="dia"><div class="dia-hdr"><span class="dia-lbl">필수 사용 케이스</span><span class="spec-badge spec-s">✅ 공식 문서</span></div>
+<pre>1. 클로저 반환 (타입 이름 쓸 수 없음):
+   fn make_adder(x: i32) -> impl Fn(i32) -> i32 {
+       move |y| x + y
+   }
+
+2. Iterator 체인 반환 (클로저 포함 시):
+   fn evens() -> impl Iterator&lt;Item=u32&gt; {
+       (0..).filter(|x| x%2==0)  // 타입 이름 불가!
+   }
+
+3. 성능: impl은 인라인 가능, Box&lt;dyn&gt;은 힙 + vtable</pre></div>
+      </div>
+      <div class="concept-section t2-section" id="t2-c4">
+        <div class="concept-step-label">Step 4 / 5</div>
+        <h2 class="concept-h2">RPIT in Traits — Rust 1.75 (RFC 3425)</h2>
+        <div class="dia"><div class="dia-hdr"><span class="dia-lbl">Return Position impl Trait in Traits</span><span class="spec-badge spec-s">✅ RFC 3425</span></div>
+<pre>// Rust 1.75 (2023-12-28) 안정화
+trait Collection {
+    fn iter(&amp;self) -> impl Iterator&lt;Item = &amp;str&gt;;
+}
+
+// ⚠️ 중요: impl Trait 반환 메서드가 있으면
+// 해당 트레이트는 dyn-incompatible!
+// Box&lt;dyn Collection&gt; 사용 불가</pre></div>
+      </div>
+      <div class="concept-section t2-section" id="t2-c5">
+        <div class="concept-step-label">Step 5 / 5</div>
+        <h2 class="concept-h2">Rust 2024 에디션의 변화</h2>
+        <div class="dia"><div class="dia-hdr"><span class="dia-lbl">Rust 2024 변화</span><span class="spec-badge spec-s">✅ 공식 에디션 가이드</span></div>
+<pre>Rust 2021:
+  fn filter&lt;'a&gt;(data: &amp;'a [&amp;str]) -> impl Iterator&lt;Item=&amp;&amp;str&gt; + 'a
+
+Rust 2024:
+  fn filter(data: &amp;[&amp;str]) -> impl Iterator&lt;Item=&amp;&amp;str&gt;
+  // 라이프타임 자동 캡처 — 명시 불필요
+
+  use&lt;&gt; 바운드로 정밀한 제어 가능</pre></div>
+      </div>
+
+    <div class="ex-section" id="t2-basic">
+      <h2 class="ex-section-title">기초 예제 1~15</h2>
+      <div class="stab-bar"><button class="stab-btn active" onclick="stab(this,'t2b-0')">1~5</button><button class="stab-btn" onclick="stab(this,'t2b-1')">6~10</button><button class="stab-btn" onclick="stab(this,'t2b-2')">11~15</button></div><div class="stab-pane active" id="t2b-0"><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#1</span>
+      <span class="ex-ttl">단순 반환 — impl Trait 기본</span>
+    </div>
+    <span class="ex-diff diff-easy">입문</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">trait Animal { fn speak(&amp;self) -&gt; String; }
+struct Lion;
+impl Animal for Lion { fn speak(&amp;self) -&gt; String { "Roar!".to_string() } }
+
+// 컴파일러가 내부적으로 Lion으로 확정 — 호출자는 Animal만 알 수 있음
+fn make_lion() -&gt; impl Animal { Lion }
+
+fn main() {
+    let a = make_lion();
+    println!("{}", a.speak()); // Roar!
+    // 힙 할당 없음! Zero-cost 추상화
+    println!("크기: {} bytes", std::mem::size_of_val(&amp;a));
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>impl Trait</code>는 반환 타입을 추상화합니다. 힙 할당 없이 Zero-cost로 동작합니다.</p><p><strong>반환 vs 인자 위치 의미가 반대:</strong> 반환 위치에서는 함수가 타입을 결정, 인자 위치에서는 호출자가 타입을 결정합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-g"><span class="al-icon">✅</span><div>Rust Reference: "opaque return type" — 내부 구현 타입을 호출자에게 숨깁니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#2</span>
+      <span class="ex-ttl">인자 위치 impl vs 제네릭 — turbo-fish 차이</span>
+    </div>
+    <span class="ex-diff diff-easy">입문</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::fmt::Display;
+fn print_a&lt;T: Display&gt;(val: T) { println!("generic: {}", val); }
+fn print_b(val: impl Display)  { println!("impl:    {}", val); }
+
+fn main() {
+    print_a(42); print_a("hello");
+    print_b(42); print_b("hello");
+    // 제네릭: turbo-fish 가능
+    print_a::&lt;i32&gt;(100);
+    // impl Trait: turbo-fish 불가
+    // print_b::&lt;i32&gt;(100); // ERROR
+    println!("두 함수 모두 단형화 — 동일한 성능");
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>핵심 차이: <strong>turbo-fish 사용 가능 여부</strong>입니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-r"><span class="al-icon">🔍</span><div><strong>이전 오류 수정:</strong> "동일한 의미"라고 했으나 turbo-fish 차이가 있습니다. 공식 Edition Guide 명시 사항입니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#3</span>
+      <span class="ex-ttl">분기 반환 불가 — Box&lt;dyn&gt;과 비교</span>
+    </div>
+    <span class="ex-diff diff-easy">입문</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">trait Animal { fn speak(&amp;self) -&gt; String; }
+struct Lion; struct Duck;
+impl Animal for Lion { fn speak(&amp;self)-&gt;String{"Roar!".into()} }
+impl Animal for Duck { fn speak(&amp;self)-&gt;String{"Quack!".into()} }
+
+fn always_lion() -&gt; impl Animal { Lion }  // OK
+
+// fn bad(b: bool) -&gt; impl Animal {
+//     if b { Lion } else { Duck }  // ERROR: mismatched types
+// }
+
+fn pick(b: bool) -&gt; Box&lt;dyn Animal&gt; {
+    if b { Box::new(Lion) } else { Box::new(Duck) }  // OK
+}
+
+fn main() {
+    println!("{}", always_lion().speak());
+    println!("{}", pick(true).speak());
+    println!("{}", pick(false).speak());
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>Rust Reference: <em>"Each possible return value must resolve to the same concrete type."</em></p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-g"><span class="al-icon">✅</span><div>출처: <a href="https://doc.rust-lang.org/reference/types/impl-trait.html" target="_blank">Rust Reference — impl Trait</a></div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#4</span>
+      <span class="ex-ttl">클로저 반환 — impl Fn</span>
+    </div>
+    <span class="ex-diff diff-easy">입문</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">fn make_adder(x: i32) -&gt; impl Fn(i32) -&gt; i32 { move |y| x + y }
+fn make_greeter(p: String) -&gt; impl Fn(&amp;str) -&gt; String { move |n| format!("{} {}!", p, n) }
+fn make_counter() -&gt; impl FnMut() -&gt; u32 {
+    let mut count = 0u32;
+    move || { count += 1; count }
+}
+fn main() {
+    let add5 = make_adder(5);
+    println!("add5(3)={}, add5(7)={}", add5(3), add5(7));
+    let hi = make_greeter("안녕".to_string());
+    println!("{}", hi("사자"));
+    let mut cnt = make_counter();
+    println!("{} {} {}", cnt(), cnt(), cnt()); // 1 2 3
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>클로저는 고유한 익명 타입을 가집니다. 반환 타입을 직접 쓸 수 없으므로 <code>impl Fn</code>이 필수입니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div><code>Box&lt;dyn Fn&gt;</code>도 가능하지만 힙 할당 발생. 성능 중요 시 <code>impl Fn</code>을 사용하세요.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#5</span>
+      <span class="ex-ttl">Iterator 반환 — 체인 타입 숨기기</span>
+    </div>
+    <span class="ex-diff diff-easy">입문</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">fn even_squares(max: u32) -&gt; impl Iterator&lt;Item = u32&gt; {
+    (0..=max).filter(|x| x % 2 == 0).map(|x| x * x)
+}
+fn long_names(names: Vec&lt;String&gt;) -&gt; impl Iterator&lt;Item = String&gt; {
+    names.into_iter().filter(|n| n.len() &gt; 4)
+}
+fn main() {
+    let v: Vec&lt;u32&gt; = even_squares(10).collect();
+    println!("짝수제곱: {:?}", v); // [0, 4, 16, 36, 64, 100]
+    let words = vec!["Lion".into(),"Ox".into(),"Tiger".into(),"Eagle".into()];
+    for n in long_names(words) { print!("{} ", n); }
+    println!(); // Tiger Eagle
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>Iterator 체인에 클로저가 있으면 타입 이름 자체를 쓸 수 없습니다. <code>impl Iterator</code>로 이 복잡성을 완전히 숨깁니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-g"><span class="al-icon">✅</span><div><code>impl Iterator</code>는 힙 할당 없이 지연 평가됩니다.</div></div></div></div>
+</div></div><div class="stab-pane" id="t2b-1"><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#6</span>
+      <span class="ex-ttl">impl A + B — 여러 트레이트 동시</span>
+    </div>
+    <span class="ex-diff diff-easy">입문</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::fmt;
+trait Animal { fn speak(&amp;self) -&gt; String; }
+struct Lion { name: String }
+impl Animal for Lion { fn speak(&amp;self)-&gt;String{format!("{}: Roar!",self.name)} }
+impl fmt::Display for Lion { fn fmt(&amp;self,f:&amp;mut fmt::Formatter)-&gt;fmt::Result{write!(f,"Lion({})",self.name)} }
+impl fmt::Debug   for Lion { fn fmt(&amp;self,f:&amp;mut fmt::Formatter)-&gt;fmt::Result{write!(f,"Lion{{{:?}}}",self.name)} }
+
+fn make_full() -&gt; impl Animal + fmt::Display + fmt::Debug {
+    Lion { name: "Simba".to_string() }
+}
+fn main() {
+    let a = make_full();
+    println!("{}", a.speak());
+    println!("{}", a);   // Display
+    println!("{:?}", a); // Debug
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>impl A + B + C</code>로 여러 트레이트를 동시에 만족하는 타입을 반환할 수 있습니다. 호출자는 모든 트레이트의 메서드를 사용할 수 있습니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#7</span>
+      <span class="ex-ttl">FnMut 반환 — 가변 상태</span>
+    </div>
+    <span class="ex-diff diff-easy">입문</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">fn make_counter(start: u32, step: u32) -&gt; impl FnMut() -&gt; u32 {
+    let mut count = start;
+    move || { let cur = count; count += step; cur }
+}
+fn make_id_gen(prefix: &amp;str) -&gt; impl FnMut() -&gt; String + '_ {
+    let mut seq = 0u32;
+    move || { seq += 1; format!("{}-{:04}", prefix, seq) }
+}
+fn main() {
+    let mut cnt = make_counter(0, 2);
+    println!("{} {} {}", cnt(), cnt(), cnt()); // 0 2 4
+    let prefix = "ANIMAL";
+    let mut id = make_id_gen(prefix);
+    println!("{} {} {}", id(), id(), id()); // ANIMAL-0001 ~ 0003
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>impl FnMut</code>로 가변 상태를 가진 클로저를 힙 할당 없이 반환합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-w"><span class="al-icon">⚠️</span><div>반환받은 변수는 <code>mut</code>로 선언해야 합니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#8</span>
+      <span class="ex-ttl">where절 — 복잡한 바운드 정리</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::fmt;
+trait Animal { fn name(&amp;self)-&gt;&amp;str; fn speak(&amp;self)-&gt;String; }
+struct Lion { name: String }
+impl Animal for Lion { fn name(&amp;self)-&gt;&amp;str{&amp;self.name} fn speak(&amp;self)-&gt;String{"Roar!".into()} }
+impl fmt::Display for Lion { fn fmt(&amp;self,f:&amp;mut fmt::Formatter)-&gt;fmt::Result{write!(f,"Lion({})",self.name)} }
+
+fn describe&lt;T&gt;(animal: T)
+where
+    T: Animal + fmt::Display,
+{
+    println!("이름={} 소리={} 표시={}", animal.name(), animal.speak(), animal);
+}
+fn print_all&lt;I&gt;(iter: I)
+where
+    I: Iterator,
+    I::Item: fmt::Display,
+{
+    for item in iter { print!("{} ", item); }
+    println!();
+}
+fn main() {
+    describe(Lion { name: "Simba".to_string() });
+    print_all(["Lion","Duck"].iter());
+    print_all([1,2,3].iter());
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>where</code>절은 여러 트레이트 바운드를 가독성 있게 정리합니다. 연관 타입 바운드(<code>I::Item: Display</code>)에는 <code>where</code>절이 필수입니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#9</span>
+      <span class="ex-ttl">Iterator 체이닝 파이프라인</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">fn filter_long(names: Vec&lt;String&gt;) -&gt; impl Iterator&lt;Item = String&gt; {
+    names.into_iter().filter(|n| n.len() &gt; 4)
+}
+fn to_upper(iter: impl Iterator&lt;Item = String&gt;) -&gt; impl Iterator&lt;Item = String&gt; {
+    iter.map(|n| n.to_uppercase())
+}
+fn with_prefix(iter: impl Iterator&lt;Item = String&gt;, p: &amp;str)
+    -&gt; impl Iterator&lt;Item = String&gt; + '_
+{
+    iter.map(move |n| format!("{}: {}", p, n))
+}
+fn main() {
+    let animals = vec!["Lion".into(),"Ox".into(),"Tiger".into(),"Eagle".into()];
+    let result: Vec&lt;String&gt; = with_prefix(to_upper(filter_long(animals)),"ANIMAL").collect();
+    for s in result { println!("{}", s); }
+    // ANIMAL: TIGER / ANIMAL: EAGLE
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>각 함수가 <code>impl Iterator</code>를 받고 반환하므로 파이프라인처럼 중첩 호출이 가능합니다. <code>collect()</code> 전까지 지연 평가입니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#10</span>
+      <span class="ex-ttl">데코레이터 패턴 — 제네릭 래퍼</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">trait Animal { fn speak(&amp;self) -&gt; String; }
+struct Lion;
+impl Animal for Lion { fn speak(&amp;self) -&gt; String { "Roar".to_string() } }
+struct Loud&lt;T: Animal&gt;   { inner: T }
+struct Polite&lt;T: Animal&gt; { inner: T }
+impl&lt;T: Animal&gt; Animal for Loud&lt;T&gt;   { fn speak(&amp;self)-&gt;String{format!("{}!!!",self.inner.speak().to_uppercase())} }
+impl&lt;T: Animal&gt; Animal for Polite&lt;T&gt; { fn speak(&amp;self)-&gt;String{format!("실례합니다, {}.",self.inner.speak().to_lowercase())} }
+
+fn loud()  -&gt; impl Animal { Loud   { inner: Lion } }
+fn polite()-&gt; impl Animal { Polite { inner: Lion } }
+fn combo() -&gt; impl Animal { Polite { inner: Loud { inner: Lion } } }
+
+fn main() {
+    println!("{}", loud().speak());   // ROAR!!!
+    println!("{}", polite().speak()); // 실례합니다, roar.
+    println!("{}", combo().speak());  // 실례합니다, roar!!!.
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>중첩 타입(<code>Polite&lt;Loud&lt;Lion&gt;&gt;</code>)이 항상 단일 구체 타입이므로 <code>impl Animal</code>로 반환 가능합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"></div></div>
+</div></div><div class="stab-pane" id="t2b-2"><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#11</span>
+      <span class="ex-ttl">내부 타입 숨기기 — 캡슐화</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">trait Engine { fn start(&amp;self)-&gt;String; fn hp(&amp;self)-&gt;u32; }
+struct Diesel { cyl: u32 } struct Electric { kw: u32 }
+impl Engine for Diesel   { fn start(&amp;self)-&gt;String{format!("디젤 {}기통",self.cyl)} fn hp(&amp;self)-&gt;u32{self.cyl*50} }
+impl Engine for Electric { fn start(&amp;self)-&gt;String{format!("전기 {}kW",self.kw)}   fn hp(&amp;self)-&gt;u32{self.kw*4/3} }
+
+fn create(kind: &amp;str) -&gt; Box&lt;dyn Engine&gt; {
+    match kind {
+        "electric" =&gt; Box::new(Electric { kw: 200 }),
+        _          =&gt; Box::new(Diesel   { cyl: 4 }),
+    }
+}
+fn default() -&gt; impl Engine { Diesel { cyl: 4 } }
+
+fn main() {
+    for kind in &amp;["diesel","electric"] {
+        let e = create(kind);
+        println!("{} — {}마력", e.start(), e.hp());
+    }
+    let d = default();
+    println!("{} — {}마력", d.start(), d.hp());
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>조건 분기가 있으면 <code>Box&lt;dyn&gt;</code>, 항상 같은 타입이면 <code>impl Trait</code>을 사용합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#12</span>
+      <span class="ex-ttl">라이프타임 + impl Trait</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">fn filter_refs&lt;'a&gt;(data: &amp;'a [&amp;'a str], min: usize)
+    -&gt; impl Iterator&lt;Item = &amp;&amp;'a str&gt; + 'a
+{
+    data.iter().filter(move |s| s.len() &gt;= min)
+}
+struct Zoo&lt;'a&gt; { animals: Vec&lt;&amp;'a str&gt; }
+impl&lt;'a&gt; Zoo&lt;'a&gt; {
+    fn new(a: Vec&lt;&amp;'a str&gt;) -&gt; Self { Zoo { animals: a } }
+    fn iter_long(&amp;self, min: usize) -&gt; impl Iterator&lt;Item = &amp;&amp;str&gt; + '_ {
+        self.animals.iter().filter(move |a| a.len() &gt;= min)
+    }
+}
+fn main() {
+    let names = vec!["Lion","Ox","Tiger","Eagle"];
+    print!("4자 이상: ");
+    for n in filter_refs(&amp;names, 4) { print!("{} ", n); }
+    println!();
+    let zoo = Zoo::new(vec!["Lion","Duck","Elephant","Cat"]);
+    print!("5자 이상: ");
+    for a in zoo.iter_long(5) { print!("{} ", a); }
+    println!();
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>반환 <code>impl Iterator</code>가 입력 참조의 라이프타임에 묶일 때 <code>+ 'a</code> 또는 <code>+ '_</code>를 명시해야 합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>Rust 2024에서는 이 명시가 대부분 불필요해집니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#13</span>
+      <span class="ex-ttl">RPIT in Traits (Rust 1.75+)</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">// RFC 3425 — Rust 1.75 (2023-12-28) 안정화
+trait Collection {
+    fn iter_names(&amp;self) -&gt; impl Iterator&lt;Item = &amp;str&gt;;
+    fn largest(&amp;self)    -&gt; Option&lt;&amp;str&gt;;
+}
+struct Zoo { animals: Vec&lt;String&gt; }
+impl Collection for Zoo {
+    fn iter_names(&amp;self) -&gt; impl Iterator&lt;Item = &amp;str&gt; {
+        self.animals.iter().map(|s| s.as_str())
+    }
+    fn largest(&amp;self) -&gt; Option&lt;&amp;str&gt; {
+        self.animals.iter().map(|s| s.as_str()).max_by_key(|s| s.len())
+    }
+}
+// ⚠️ 이 트레이트는 dyn-incompatible — Box&lt;dyn Collection&gt; 불가
+fn show(c: &amp;impl Collection) {
+    if let Some(l) = c.largest() { println!("가장 긴 이름: {}", l); }
+    for n in c.iter_names() { print!("{} ", n); }
+    println!();
+}
+fn main() {
+    let zoo = Zoo { animals: vec!["Lion".into(),"Elephant".into(),"Duck".into()] };
+    show(&amp;zoo);
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>RFC 3425, Rust 1.75 안정화. <code>impl Trait</code>를 반환하는 메서드가 있으면 해당 트레이트는 dyn-compatible하지 않습니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-g"><span class="al-icon">✅</span><div>출처: <a href="https://rust-lang.github.io/rfcs/3425-return-position-impl-trait-in-traits.html" target="_blank">RFC 3425</a></div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#14</span>
+      <span class="ex-ttl">Typestate 패턴 — 컴파일 타임 상태 강제</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::marker::PhantomData;
+struct Hungry; struct Fed;
+struct Lion&lt;State&gt; { name: String, _s: PhantomData&lt;State&gt; }
+impl Lion&lt;Hungry&gt; {
+    fn new(name: &amp;str) -&gt; Self {
+        println!("{}(배고픔)", name);
+        Lion { name: name.to_string(), _s: PhantomData }
+    }
+    fn feed(self) -&gt; Lion&lt;Fed&gt; {
+        println!("{}에게 먹이", self.name);
+        Lion { name: self.name, _s: PhantomData }
+    }
+}
+impl Lion&lt;Fed&gt; {
+    fn sleep(&amp;self)     { println!("{} 잠자는 중", self.name); }
+    fn get_hungry(self) -&gt; Lion&lt;Hungry&gt; {
+        println!("{} 다시 배고픔", self.name);
+        Lion { name: self.name, _s: PhantomData }
+    }
+}
+fn main() {
+    let hungry = Lion::&lt;Hungry&gt;::new("Simba");
+    // hungry.sleep(); // ERROR: 컴파일 타임 방지!
+    let fed = hungry.feed();
+    fed.sleep();
+    let _hungry2 = fed.get_hungry().feed();
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>상태를 타입 파라미터로 표현하여 잘못된 상태 전이를 컴파일 타임에 방지합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-r"><span class="al-icon">🔍</span><div><strong>이전 오류 수정:</strong> <code>fn feed(self) -&gt; impl Into&lt;Lion&lt;Fed&gt;&gt;</code>는 불필요하게 복잡합니다. <code>fn feed(self) -&gt; Lion&lt;Fed&gt;</code>가 직접적입니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#15</span>
+      <span class="ex-ttl">impl vs dyn — 선택 기준 최종 정리</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::mem;
+trait Animal { fn speak(&amp;self) -&gt; String; }
+struct Lion; struct Duck;
+impl Animal for Lion { fn speak(&amp;self)-&gt;String{"Roar!".into()} }
+impl Animal for Duck { fn speak(&amp;self)-&gt;String{"Quack!".into()} }
+
+fn use_impl() -&gt; impl Animal { Lion }
+fn use_dyn(b: bool) -&gt; Box&lt;dyn Animal&gt; {
+    if b { Box::new(Lion) } else { Box::new(Duck) }
+}
+
+fn main() {
+    let a = use_impl();
+    println!("impl 크기: {}B speak: {}", mem::size_of_val(&amp;a), a.speak());
+    let b = use_dyn(true);
+    let c = use_dyn(false);
+    println!("dyn  크기: {}B speak: {} / {}", mem::size_of_val(&amp;*b), b.speak(), c.speak());
+    println!("
+impl: 단일타입, 인라인가능, 힙없음, 분기불가");
+    println!("dyn:  런타임결정, 분기가능, 힙, 바이너리절감");
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>두 방식의 핵심 차이를 직접 비교합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>공식 <code>std::keyword::dyn</code>: "dyn Trait is likely to produce smaller code than impl Trait."</div></div></div></div>
+</div></div>
+    </div>
+    <div class="ex-section" id="t2-adv">
+      <h2 class="ex-section-title">심화 예제 16~30</h2>
+      <div class="stab-bar"><button class="stab-btn active" onclick="stab(this,'t2a-0')">16~20</button><button class="stab-btn" onclick="stab(this,'t2a-1')">21~25</button><button class="stab-btn" onclick="stab(this,'t2a-2')">26~30</button></div><div class="stab-pane active" id="t2a-0"><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">심화#16</span>
+      <span class="ex-ttl">커스텀 Iterator 어댑터</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">struct ZooIter&lt;I&gt; { inner: I, sounds: std::collections::HashMap&lt;String,String&gt; }
+impl&lt;I: Iterator&lt;Item=String&gt;&gt; Iterator for ZooIter&lt;I&gt; {
+    type Item = String;
+    fn next(&amp;mut self) -&gt; Option&lt;String&gt; {
+        self.inner.next().map(|n| {
+            let s=self.sounds.get(&amp;n).cloned().unwrap_or_else(||"...".into());
+            format!("{}: {}", n, s)
+        })
+    }
+}
+fn zoo_sounds(names: Vec&lt;String&gt;) -&gt; impl Iterator&lt;Item=String&gt; {
+    let mut sounds = std::collections::HashMap::new();
+    sounds.insert("Lion".into(),"Roar!".into()); sounds.insert("Duck".into(),"Quack!".into());
+    ZooIter { inner: names.into_iter(), sounds }
+}
+fn main() {
+    for d in zoo_sounds(vec!["Lion".into(),"Duck".into(),"Whale".into()]) { println!("{}", d); }
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>커스텀 Iterator 구조체를 만들고 <code>impl Iterator</code>로 반환 타입을 숨깁니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">심화#17</span>
+      <span class="ex-ttl">무한 Iterator — from_fn</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">fn fibonacci() -&gt; impl Iterator&lt;Item=u64&gt; {
+    let (mut a, mut b) = (0u64, 1);
+    std::iter::from_fn(move || { let n=a; (a,b)=(b,a.wrapping_add(b)); Some(n) })
+}
+fn powers_of(base: u64) -&gt; impl Iterator&lt;Item=u64&gt; {
+    let mut cur = 1u64;
+    std::iter::from_fn(move || { let v=cur; cur=cur.wrapping_mul(base); Some(v) })
+}
+fn main() {
+    let fibs: Vec&lt;u64&gt; = fibonacci().take(10).collect();
+    println!("피보나치: {:?}", fibs); // [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
+    let pows: Vec&lt;u64&gt; = powers_of(2).take(8).collect();
+    println!("2의거듭: {:?}", pows); // [1, 2, 4, 8, 16, 32, 64, 128]
+    let first_big = fibonacci().find(|&amp;n| n &gt; 100);
+    println!("100 초과 첫 피보나치: {:?}", first_big); // Some(144)
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>std::iter::from_fn</code>으로 무한 Iterator를 만들고 <code>.take()</code>나 <code>.find()</code>로 종료 조건을 지정합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-g"><span class="al-icon">✅</span><div>무한 Iterator는 반드시 종료 조건을 명시해야 합니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">심화#18</span>
+      <span class="ex-ttl">함수 합성 — compose</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">fn compose&lt;A,B,C&gt;(f: impl Fn(A)-&gt;B + 'static, g: impl Fn(B)-&gt;C + 'static) -&gt; impl Fn(A)-&gt;C {
+    move |x| g(f(x))
+}
+fn apply_n&lt;T: Clone&gt;(f: impl Fn(T)-&gt;T, x: T, n: usize) -&gt; T {
+    (0..n).fold(x, |acc, _| f(acc.clone()))
+}
+fn main() {
+    let upper_trim = compose(
+        |s: String| s.trim().to_string(),
+        |s: String| s.to_uppercase(),
+    );
+    println!("{}", upper_trim("  hello world  ".to_string())); // HELLO WORLD
+    let triple3 = apply_n(|x: i32| x * 3, 1, 3); // 1→3→9→27
+    println!("1 × 3^3 = {}", triple3);
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>compose</code>는 두 함수를 합성합니다. 각 클로저가 <code>move</code>로 캡처를 가져가므로 라이프타임 문제가 없습니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">심화#19</span>
+      <span class="ex-ttl">지연 평가 시각화</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">fn tracked_filter(data: Vec&lt;i32&gt;) -&gt; impl Iterator&lt;Item=i32&gt; {
+    println!("filter 설정 (계산 없음)");
+    data.into_iter().filter(|&amp;x| { print!("[f{}]", x); x &gt; 0 })
+}
+fn tracked_double(iter: impl Iterator&lt;Item=i32&gt;) -&gt; impl Iterator&lt;Item=i32&gt; {
+    println!("map 설정 (계산 없음)");
+    iter.map(|x| { print!("[m{}]", x); x * 2 })
+}
+fn main() {
+    let data = vec![-1, 2, -3, 4, 5, 6];
+    println!("=== 파이프라인 구성 ===");
+    let pipe = tracked_double(tracked_filter(data)).take(3);
+    println!("\n=== collect() 시작 ===");
+    let r: Vec&lt;i32&gt; = pipe.collect();
+    println!("\n결과: {:?}", r); // take(3) 충족 시 나머지 중단!
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>지연 평가를 시각화합니다. <code>collect()</code>가 호출될 때만 원소 하나씩 파이프라인을 통과합니다. <code>take(3)</code>이 충족되면 나머지는 계산하지 않습니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-g"><span class="al-icon">✅</span><div>지연 평가: <code>take(3)</code> 충족 시 나머지 계산 중단 — 성능 최적화의 핵심입니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">심화#20</span>
+      <span class="ex-ttl">impl Trait + Send + Sync — 멀티스레드</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::sync::Arc; use std::thread;
+trait Worker: Send + Sync { fn work(&amp;self, n: u64) -&gt; u64; fn name(&amp;self) -&gt; &amp;str; }
+struct Doubler; struct Squarer;
+impl Worker for Doubler { fn work(&amp;self,n:u64)-&gt;u64{n*2}  fn name(&amp;self)-&gt;&amp;str{"Doubler"} }
+impl Worker for Squarer { fn work(&amp;self,n:u64)-&gt;u64{n*n}  fn name(&amp;self)-&gt;&amp;str{"Squarer"} }
+
+fn run(worker: impl Worker + Send + Sync + 'static) {
+    let w = Arc::new(worker);
+    let mut h = vec![];
+    for i in 0..4u64 {
+        let wc = w.clone();
+        h.push(thread::spawn(move || println!("[{}] work({})={}", wc.name(), i, wc.work(i))));
+    }
+    for hh in h { hh.join().unwrap(); }
+}
+fn main() {
+    println!("=== Doubler ==="); run(Doubler);
+    println!("=== Squarer ==="); run(Squarer);
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>impl Worker + Send + Sync + 'static</code>는 스레드 경계를 넘을 수 있는 타입을 받습니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"></div></div>
+</div></div><div class="stab-pane" id="t2a-1"><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">심화#21~25</span>
+      <span class="ex-ttl">클로저캡처/API캡슐화/FnOnce/커링/벤치마크</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::{time::Instant, hint::black_box};  // Rust 1.66+
+
+// #21: 클로저 캡처 + move
+fn make_checker(t: u32) -&gt; impl Fn(u32)-&gt;bool { move |x| x &gt; t }
+fn make_logger(p: String) -&gt; impl Fn(&amp;str)-&gt;String { move |m| format!("[{}] {}", p, m) }
+
+// #22: FnOnce — 한 번만 호출
+fn make_destroyer(name: String) -&gt; impl FnOnce() -&gt; String { move || format!("{} 파괴됨", name) }
+
+// #23: 커링
+fn make_mul(x: u32) -&gt; impl Fn(u32) -&gt; u32 { move |y| x * y }
+
+// #24: 벤치마크
+trait Compute { fn run(&amp;self, n: u64) -&gt; u64; }
+struct Fast; impl Compute for Fast { fn run(&amp;self,n:u64)-&gt;u64{n.wrapping_mul(2)} }
+fn bench_impl(n: u64)-&gt;u64{ fn i(c: impl Compute, n: u64)-&gt;u64{c.run(n)} (0..n).map(|i|i(Fast,black_box(i))).sum() }
+fn bench_dyn(n: u64)-&gt;u64 { fn i(c: &amp;dyn Compute, n: u64)-&gt;u64{c.run(n)} let f=Fast; (0..n).map(|i|i(&amp;f,black_box(i))).sum() }
+
+fn main() {
+    println!("50&gt;100: {}", make_checker(100)(50));   // false
+    println!("{}", make_logger("INFO".into())("서버"));
+    println!("{}", make_destroyer("사자".into())());
+    println!("triple(7)={}", make_mul(3)(7)); // 21
+
+    const N: u64 = 3_000_000;
+    let t=Instant::now(); let r1=bench_impl(N); println!("impl: {r1} {:?}",t.elapsed());
+    let t=Instant::now(); let r2=bench_dyn(N);  println!("dyn:  {r2} {:?}",t.elapsed());
+    println!("결과 동일: {}", r1==r2);
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><strong>#21:</strong> move 클로저로 소유권 캡처.<br><strong>#22:</strong> FnOnce는 한 번만 호출.<br><strong>#23:</strong> 커링 패턴.<br><strong>#24:</strong> black_box 벤치마크.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-w"><span class="al-icon">⚠️</span><div>Rust 1.66+ 필요. 실무 벤치마크는 criterion 크레이트를 사용하세요.</div></div></div></div>
+</div></div><div class="stab-pane" id="t2a-2"><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">심화#26~30</span>
+      <span class="ex-ttl">async/중첩제네릭/무한Iterator/합성/통합</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">// #26: async fn = impl Future (개념)
+// async fn fetch() -&gt; String  ≡  fn fetch() -&gt; impl Future&lt;Output=String&gt;
+
+// #27: 중첩 변환 체인
+trait Transform { fn apply(&amp;self, s: &amp;str) -&gt; String; }
+struct Upper; struct Trim;
+impl Transform for Upper { fn apply(&amp;self,s:&amp;str)-&gt;String{s.to_uppercase()} }
+impl Transform for Trim  { fn apply(&amp;self,s:&amp;str)-&gt;String{s.trim().to_string()} }
+struct Chain&lt;A:Transform, B:Transform&gt; { a:A, b:B }
+impl&lt;A:Transform,B:Transform&gt; Transform for Chain&lt;A,B&gt; {
+    fn apply(&amp;self, s:&amp;str)-&gt;String { self.b.apply(&amp;self.a.apply(s)) }
+}
+fn trim_then_upper() -&gt; impl Transform { Chain { a:Trim, b:Upper } }
+
+// #28: 제네릭 + impl 혼합
+fn pair&lt;A:Transform,B:Transform&gt;(a:A,b:B,s:&amp;str)-&gt;(String,String){ (a.apply(s),b.apply(s)) }
+
+// #29: 무한 Iterator + 합성
+fn naturals() -&gt; impl Iterator&lt;Item=u64&gt; {
+    let mut n=0u64; std::iter::from_fn(move||{n+=1;Some(n)})
+}
+fn compose_fn&lt;A,B&gt;(f: impl Fn(A)-&gt;B+'static) -&gt; impl Fn(A)-&gt;B { move|x|f(x) }
+
+fn main() {
+    println!("{}", trim_then_upper().apply("  hello world  ")); // HELLO WORLD
+    let (u,tr) = pair(Upper,Trim,"  rust  ");
+    println!("upper='{u}' trim='{tr}'");
+    let odds: Vec&lt;u64&gt; = naturals().filter(|n|n%2==1).take(5).collect();
+    println!("홀수: {:?}", odds); // [1,3,5,7,9]
+    let double = compose_fn(|x:u64| x*2);
+    let evens: Vec&lt;u64&gt; = naturals().map(double).take(5).collect();
+    println!("짝수: {:?}", evens); // [2,4,6,8,10]
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><strong>#26:</strong> async fn은 내부적으로 impl Future 반환.<br><strong>#27-28:</strong> 제네릭과 impl Trait 혼합 패턴.<br><strong>#29-30:</strong> 무한 Iterator와 함수 합성 결합.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-g"><span class="al-icon">✅</span><div>무한 Iterator는 <code>.take()</code>, <code>.take_while()</code>, <code>.find()</code>로 종료 조건을 반드시 지정하세요.</div></div></div></div>
+</div></div>
+    </div>
+  </div>
+
+  <!-- ══ 3부 ══ -->
+  <div class="tab-panel" id="panel-t3">
+    <div class="hero">
+      <div class="hero-badge t3">3부 · 내부 구조</div>
+      <h1><em class="t3">vtable &amp; Fat Pointer</em><br>동적 디스패치의 내부 동작</h1>
+      <p class="hero-desc">Box&lt;dyn Trait&gt;를 사용하면 실제로 메모리에서 어떤 일이 일어나는지 알아봅니다. 모든 예제는 unsafe 없이 작성됩니다.</p>
+      <div class="badge-row">
+        <span class="pill pill-g">✅ rustc 소스 기반</span>
+        <span class="pill pill-b">💡 10개 예제</span>
+        <span class="pill pill-r">🔒 완전 safe</span>
+      </div>
+    </div>
+
+      <div class="concept-section t3-section" id="t3-c1">
+        <div class="concept-step-label">Step 1 / 5</div>
+        <h2 class="concept-h2">포인터 기초 — 스택 vs 힙</h2>
+        <div class="dia"><div class="dia-hdr"><span class="dia-lbl">스택 vs 힙 vs 포인터</span><span class="spec-badge spec-c">개념 설명</span></div>
+<pre>스택: 컴파일 타임에 크기가 알려진 값
+  ┌────────────────────┐
+  │  x: i32 = 42       │ ← 함수 끝나면 자동 해제
+  └────────────────────┘
+
+힙: 런타임에 크기가 결정되는 값
+  ┌────────────────────────────┐
+  │  Lion { name: String }     │ ← Rust: Drop 자동 호출
+  └────────────────────────────┘
+
+포인터: 힙 데이터의 주소를 가리키는 값
+  스택:                    힙:
+  ┌──────────────┐   ┌────────────────┐
+  │ ptr = 0x1234 │──▶│ Lion {...}     │
+  └──────────────┘   └────────────────┘</pre></div>
+      </div>
+      <div class="concept-section t3-section" id="t3-c2">
+        <div class="concept-step-label">Step 2 / 5</div>
+        <h2 class="concept-h2">Fat Pointer — 왜 두 개의 포인터가 필요한가</h2>
+        <div class="dia"><div class="dia-hdr"><span class="dia-lbl">Fat Pointer 두 종류 (스펙 보장)</span><span class="spec-badge spec-s">✅ 스펙 보장</span></div>
+<pre>슬라이스 Fat Pointer (&amp;[T], &amp;str):
+  ┌──────────────┬──────────┐
+  │  data_ptr    │  length  │  = 16 bytes
+  └──────────────┴──────────┘
+  ⚠️ 이전 오류 수정: &amp;str ≠ &amp;[u8]
+     str = 유효한 UTF-8 / [u8] = 임의 바이트
+
+트레이트 객체 Fat Pointer (&amp;dyn Trait):
+  ┌──────────────┬────────────────┐
+  │  data_ptr    │  vtable_ptr    │  = 16 bytes
+  └──────────────┴────────────────┘</pre></div>
+      </div>
+      <div class="concept-section t3-section" id="t3-c3">
+        <div class="concept-step-label">Step 3 / 5</div>
+        <h2 class="concept-h2">vtable 구조 — rustc 소스 기반</h2>
+        <div class="dia"><div class="dia-hdr"><span class="dia-lbl">vtable 레이아웃 (현재 rustc 구현)</span><span class="spec-badge spec-i">⚠️ 구현 세부사항</span></div>
+<pre>Lion의 vtable:
+  [0] MetadataDropInPlace — drop_in_place ← 항상 첫 번째
+  [1] MetadataSize — size_of::&lt;Lion&gt;()
+  [2] MetadataAlign — align_of::&lt;Lion&gt;()
+  [3] speak() 함수 포인터
+  [4] name() 함수 포인터
+
+근거: rustc 소스 rustc_middle/ty/vtable.rs :: VtblEntry</pre></div>
+      </div>
+      <div class="concept-section t3-section" id="t3-c4">
+        <div class="concept-step-label">Step 4 / 5</div>
+        <h2 class="concept-h2">동적 디스패치 호출 흐름</h2>
+        <div class="dia"><div class="dia-hdr"><span class="dia-lbl">animal.speak() 호출</span><span class="spec-badge spec-i">⚠️ 구현 세부사항</span></div>
+<pre>1. Fat Ptr에서 data_ptr / vtable_ptr 분리
+2. vtable_ptr로 vtable 접근 → [3] speak() 주소 읽기
+3. data_ptr를 self로 전달 → Lion::speak(&amp;lion) 실행
+
+추가 비용:
+  포인터 역참조 2회 + 간접 점프 1회
+  → 인라인 최적화 불가</pre></div>
+      </div>
+      <div class="concept-section t3-section" id="t3-c5">
+        <div class="concept-step-label">Step 5 / 5</div>
+        <h2 class="concept-h2">C++ vs Rust — 설계 철학의 차이</h2>
+        <div class="dia"><div class="dia-hdr"><span class="dia-lbl">vptr 위치 비교</span><span class="spec-badge spec-s">✅ 검증된 내용</span></div>
+<pre>C++ (virtual):                Rust:
+class Lion {                  struct Lion {
+  void* vptr;  ← 객체 내부!     name: String  // vptr 없음!
+  string name;                }
+};
+
+핵심 차이:
+  C++: vptr이 객체 안에 → 다중 상속 시 복잡
+  Rust: vtable_ptr이 참조 안에 → 객체 크기 불변
+
+안전한 API (Rust 1.60+):
+  std::ptr::metadata(&amp;val as &amp;dyn T)
+  std::mem::size_of_val(&amp;dyn_val)</pre></div>
+      </div>
+
+    <div class="ex-section" id="t3-examples">
+      <h2 class="ex-section-title">예제 1~10</h2>
+      <div class="stab-bar"><button class="stab-btn active" onclick="stab(this,'t3e-0')">1~5</button><button class="stab-btn" onclick="stab(this,'t3e-1')">6~10</button></div><div class="stab-pane active" id="t3e-0"><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#1</span>
+      <span class="ex-ttl">size_of / size_of_val — 크기 확인 (스펙 보장)</span>
+    </div>
+    <span class="ex-diff diff-easy">입문</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::mem;
+trait Animal { fn speak(&amp;self) -&gt; String; }
+struct Lion { name: String } struct Duck { name: String, fly: bool } struct Tiny;
+impl Animal for Lion  { fn speak(&amp;self)-&gt;String{"Roar".into()}  }
+impl Animal for Duck  { fn speak(&amp;self)-&gt;String{"Quack".into()} }
+impl Animal for Tiny  { fn speak(&amp;self)-&gt;String{"...".into()}   }
+
+fn inspect(label: &amp;str, a: &amp;dyn Animal) {
+    // vtable[1](size), vtable[2](align) 슬롯 경유 — Rust Reference 보장
+    println!("{:&lt;8}: size={} align={} sound={}", label, mem::size_of_val(a), mem::align_of_val(a), a.speak());
+}
+fn main() {
+    println!("=== 컴파일 타임 크기 (스펙 보장) ===");
+    println!("&amp;Lion:      {} bytes (thin)", mem::size_of::&lt;&amp;Lion&gt;());
+    println!("&amp;dyn:       {} bytes (fat)",  mem::size_of::&lt;&amp;dyn Animal&gt;());
+    println!("Box&lt;dyn&gt;:   {} bytes (fat)",  mem::size_of::&lt;Box&lt;dyn Animal&gt;&gt;());
+    println!("= 2 × usize: {} bytes\n",   2 * mem::size_of::&lt;usize&gt;());
+    println!("=== 런타임 크기 (vtable 경유) ===");
+    inspect("Lion", &amp;Lion { name: "Simba".into() });
+    inspect("Duck", &amp;Duck { name: "Donald".into(), fly: true });
+    inspect("Tiny", &amp;Tiny);
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>size_of_val(&amp;dyn T)</code>는 vtable[1] size 슬롯을 읽어 실제 타입 크기를 반환합니다. <code>Box&lt;dyn T&gt;</code> Drop 시 올바른 크기로 메모리를 해제하기 위해 필요합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-g"><span class="al-icon">✅</span><div><code>&amp;dyn Trait</code> 크기 = 16 bytes (64bit)는 언어 스펙으로 보장됩니다. — Rust Reference</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#2</span>
+      <span class="ex-ttl">std::ptr::metadata — vtable 동일성 (Rust 1.60+)</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::mem;
+trait Animal { fn speak(&amp;self) -&gt; &amp;str; }
+struct Lion; struct Duck;
+impl Animal for Lion { fn speak(&amp;self) -&gt; &amp;str { "Roar" } }
+impl Animal for Duck { fn speak(&amp;self) -&gt; &amp;str { "Quack" } }
+
+fn main() {
+    let (lion1, lion2, duck) = (Lion, Lion, Duck);
+    // 안전한 공식 API (Rust 1.60+) — unsafe transmute 금지!
+    let m1 = std::ptr::metadata(&amp;lion1 as &amp;dyn Animal);
+    let m2 = std::ptr::metadata(&amp;lion2 as &amp;dyn Animal);
+    let m3 = std::ptr::metadata(&amp;duck  as &amp;dyn Animal);
+    println!("Lion·Lion vtable 동일? {}", m1 == m2); // true
+    println!("Lion·Duck vtable 동일? {}", m1 == m3); // false
+
+    let a: &amp;dyn Animal = &amp;lion1;
+    println!("size_of_val:  {} bytes", mem::size_of_val(a));
+    println!("align_of_val: {} bytes", mem::align_of_val(a));
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>std::ptr::metadata()</code>는 Fat Pointer의 vtable 포인터를 안전하게 추출하는 공식 stable API(Rust 1.60+)입니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-r"><span class="al-icon">🔍</span><div><strong>이전 오류 수정:</strong> unsafe transmute로 vtable 직접 읽기는 UB 위험. <code>std::ptr::metadata()</code>가 올바른 방법입니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#3</span>
+      <span class="ex-ttl">Drop 추적 — vtable[0] drop_in_place</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">trait Animal { fn name(&amp;self) -&gt; &amp;str; }
+struct Lion { name: String } struct Duck { name: String }
+impl Drop for Lion { fn drop(&amp;mut self){println!("[DROP Lion '{}']",self.name)} }
+impl Drop for Duck { fn drop(&amp;mut self){println!("[DROP Duck '{}']",self.name)} }
+impl Animal for Lion { fn name(&amp;self) -&gt; &amp;str { &amp;self.name } }
+impl Animal for Duck { fn name(&amp;self) -&gt; &amp;str { &amp;self.name } }
+
+fn main() {
+    println!("=== 선언 역순 Drop ===");
+    {
+        let a: Box&lt;dyn Animal&gt; = Box::new(Lion { name: "Simba".into() });
+        let b: Box&lt;dyn Animal&gt; = Box::new(Duck { name: "Donald".into() });
+        println!("생성: {}, {}", a.name(), b.name());
+    } // b 먼저, a 나중
+    println!("\n=== Vec 역순 Drop ===");
+    {
+        let _v: Vec&lt;Box&lt;dyn Animal&gt;&gt; = vec![
+            Box::new(Lion { name: "A".into() }),
+            Box::new(Duck { name: "B".into() }),
+            Box::new(Lion { name: "C".into() }),
+        ];
+        println!("스코프 종료...");
+    } // C → B → A
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>vtable[0]은 항상 <code>drop_in_place</code> 함수 포인터입니다. 근거: rustc 소스 <code>VtblEntry::MetadataDropInPlace</code>.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-g"><span class="al-icon">✅</span><div><code>impl Drop</code>이 없어도 vtable[0] = drop_in_place는 항상 존재합니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#4</span>
+      <span class="ex-ttl">같은 데이터, 다른 vtable — 다중 트레이트 뷰</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::fmt;
+trait Animal    { fn speak(&amp;self) -&gt; &amp;str; }
+trait Printable { fn print_info(&amp;self); }
+struct Lion { name: String }
+impl Animal    for Lion { fn speak(&amp;self) -&gt; &amp;str { "Roar" } }
+impl Printable for Lion { fn print_info(&amp;self) { println!("나는 사자 {}!", self.name); } }
+impl fmt::Display for Lion { fn fmt(&amp;self,f:&amp;mut fmt::Formatter)-&gt;fmt::Result{write!(f,"Lion({})",self.name)} }
+
+fn main() {
+    let lion = Lion { name: "Simba".into() };
+    let as_animal:    &amp;dyn Animal    = &amp;lion;
+    let as_printable: &amp;dyn Printable = &amp;lion;
+    let ma = std::ptr::metadata(as_animal);
+    let mp = std::ptr::metadata(as_printable);
+    println!("Animal == Printable vtable? {} (달라야 정상)", ma == mp);
+    println!("Animal:    {}", as_animal.speak());
+    as_printable.print_info();
+    println!("Display:   {}", lion);
+    println!("\nC++:  객체 안에 vptr / Rust: Fat Ptr 안에 vtable_ptr");
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>같은 데이터도 다른 트레이트로 뷰를 만들면 다른 vtable을 가집니다. — rust-lang/rust#48795 "expected behavior"</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>C++ vptr은 객체 내부에, Rust vtable_ptr은 Fat Pointer 내부에 있습니다. 이 차이가 설계 철학의 핵심입니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#5</span>
+      <span class="ex-ttl">impl vs dyn 성능 비교 (Rust 1.66+)</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::time::Instant; use std::hint::black_box;
+trait Animal { fn value(&amp;self) -&gt; u64; }
+struct Lion { v: u64 }
+impl Animal for Lion { fn value(&amp;self) -&gt; u64 { self.v.wrapping_mul(2) } }
+fn use_impl(a: impl Animal) -&gt; u64 { a.value() }
+fn use_dyn(a: &amp;dyn Animal)  -&gt; u64 { a.value() }
+fn main() {
+    const N: u64 = 10_000_000;
+    let t=Instant::now(); let r1: u64=(0..N).map(|i|use_impl(black_box(Lion{v:i}))).sum();
+    println!("impl: {r1} {:?}", t.elapsed());
+    let t=Instant::now(); let r2: u64=(0..N).map(|i|use_dyn(black_box(&amp;Lion{v:i} as &amp;dyn Animal))).sum();
+    println!("dyn:  {r2} {:?}", t.elapsed());
+    println!("결과 동일: {} / impl=인라인가능 / dyn=바이너리절감", r1==r2);
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>black_box</code>로 최적화를 막고 실제 성능 차이를 측정합니다. 이전 오류 수정: <code>u64</code> 통일, <code>wrapping_mul</code> 오버플로우 방지.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-w"><span class="al-icon">⚠️</span><div>Rust 1.66+ 필요. 실무 벤치마크는 criterion 크레이트를 사용하세요.</div></div></div></div>
+</div></div><div class="stab-pane" id="t3e-1"><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#6</span>
+      <span class="ex-ttl">ZST(Zero-Sized Type) 확인</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::mem;
+trait Animal { fn speak(&amp;self) -&gt; &amp;str; }
+struct Lion;       // ZST: 크기 0
+struct LionFull { id: u64 }
+impl Animal for Lion     { fn speak(&amp;self) -&gt; &amp;str { "Roar"  } }
+impl Animal for LionFull { fn speak(&amp;self) -&gt; &amp;str { "Roar!" } }
+
+fn main() {
+    println!("Lion (ZST):  {} bytes", mem::size_of::&lt;Lion&gt;());
+    println!("LionFull:    {} bytes", mem::size_of::&lt;LionFull&gt;());
+    let zoo: Vec&lt;Box&lt;dyn Animal&gt;&gt; = vec![Box::new(Lion), Box::new(LionFull { id: 42 })];
+    for a in &amp;zoo {
+        println!("size_of_val={} sound={}", mem::size_of_val(a.as_ref()), a.speak());
+    }
+    // ZST Box: 힙 메모리 할당 없음 (Rust 최적화)
+    println!("\n&amp;dyn Animal = {} bytes ({}+{})",
+        mem::size_of::&lt;&amp;dyn Animal&gt;(), mem::size_of::&lt;usize&gt;(), mem::size_of::&lt;usize&gt;());
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>ZST(Zero-Sized Type)는 크기가 0인 타입입니다. <code>Box::new(ZST)</code>는 실제 힙 메모리를 할당하지 않습니다. vtable은 여전히 존재하며 정상 동작합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div>ZST는 Typestate 패턴의 <code>PhantomData&lt;State&gt;</code>, 마커 트레이트 구현 등에 자주 활용됩니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#7</span>
+      <span class="ex-ttl">스펙 보장 vs 구현 세부사항 — 최종 정리</span>
+    </div>
+    <span class="ex-diff diff-mid">중급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::mem;
+trait Animal { fn speak(&amp;self) -&gt; &amp;str; }
+struct Lion; impl Animal for Lion { fn speak(&amp;self) -&gt; &amp;str { "Roar" } }
+
+fn main() {
+    println!("=== 스펙으로 보장되는 것 ===");
+    let sz = mem::size_of::&lt;&amp;dyn Animal&gt;();
+    let u2 = 2 * mem::size_of::&lt;usize&gt;();
+    println!("&amp;dyn Animal == 2×usize? {} ({sz}=={u2})", sz == u2);
+    let lion = Lion;
+    let m1 = std::ptr::metadata(&amp;lion as &amp;dyn Animal);
+    let m2 = std::ptr::metadata(&amp;Lion  as &amp;dyn Animal);
+    println!("같은 타입 → 같은 vtable: {}", m1 == m2);
+    println!("vtable[0] = drop_in_place: 항상 존재 (rustc 소스 확인)");
+
+    println!("\n=== 구현 세부사항 (비보장) ===");
+    println!("Fat Ptr 내부 순서  — 비보장");
+    println!("vtable 바이트 오프셋 — 비보장");
+    println!("String 필드 순서   — 비보장");
+
+    println!("\n=== 절대 금지 ===");
+    println!("unsafe transmute로 vtable 직접 조작 → UB");
+    println!("std::raw::TraitObject 사용 → Rust 1.72 제거됨");
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>스펙 보장과 구현 세부사항을 명확히 구분하는 것이 중요합니다. 구현 세부사항에 의존한 코드는 rustc 버전 업그레이드 시 깨질 수 있습니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-g"><span class="al-icon">✅</span><div>안전한 공식 API: <code>std::ptr::metadata()</code>, <code>size_of_val()</code>, <code>align_of_val()</code></div></div><div class="al al-r"><span class="al-icon">❌</span><div>절대 금지: unsafe transmute vtable 조작, std::raw::TraitObject (1.72 제거)</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#8</span>
+      <span class="ex-ttl">Arc&lt;dyn Trait&gt;으로 vtable 공유 확인</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::sync::Arc; use std::thread;
+trait Animal: Send + Sync { fn speak(&amp;self) -&gt; String; }
+struct Lion { name: String }
+impl Animal for Lion { fn speak(&amp;self)-&gt;String{format!("{}: Roar!",self.name)} }
+
+fn main() {
+    let lion: Arc&lt;dyn Animal&gt; = Arc::new(Lion { name: "Simba".into() });
+    let lion2 = lion.clone();
+    let m1 = std::ptr::metadata(lion.as_ref());
+    let m2 = std::ptr::metadata(lion2.as_ref());
+    println!("Arc 클론 후 vtable 동일? {}", m1 == m2); // true
+
+    let mut h = vec![];
+    for i in 0..3 {
+        let a = lion.clone(); // ref count만 증가
+        h.push(thread::spawn(move || println!("Thread {i}: {}", a.speak())));
+    }
+    for hh in h { hh.join().unwrap(); }
+    println!("ref count: {}", Arc::strong_count(&amp;lion));
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p><code>Arc::clone()</code>은 실제 데이터나 vtable을 복사하지 않고 참조 카운트만 증가시킵니다. 모든 클론이 같은 vtable을 공유합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-b"><span class="al-icon">💡</span><div><code>Arc&lt;dyn T&gt;</code>는 <code>T: Send + Sync</code>가 필요합니다.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#9</span>
+      <span class="ex-ttl">다운캐스트 — Any 트레이트</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::any::Any;
+trait Animal: Any { fn speak(&amp;self) -&gt; &amp;str; fn as_any(&amp;self) -&gt; &amp;dyn Any; }
+struct Lion { pub age: u32 } struct Duck { pub can_fly: bool }
+impl Animal for Lion  { fn speak(&amp;self)-&gt;&amp;str{"Roar"}  fn as_any(&amp;self)-&gt;&amp;dyn Any{self} }
+impl Animal for Duck  { fn speak(&amp;self)-&gt;&amp;str{"Quack"} fn as_any(&amp;self)-&gt;&amp;dyn Any{self} }
+
+fn describe(a: &amp;dyn Animal) {
+    println!("소리: {}", a.speak());
+    if let Some(l) = a.as_any().downcast_ref::&lt;Lion&gt;() { println!("  Lion! 나이={}", l.age); }
+    if let Some(d) = a.as_any().downcast_ref::&lt;Duck&gt;() { println!("  Duck! 비행={}", d.can_fly); }
+}
+fn main() {
+    let zoo: Vec&lt;Box&lt;dyn Animal&gt;&gt; = vec![Box::new(Lion{age:5}), Box::new(Duck{can_fly:true})];
+    for a in &amp;zoo { describe(a.as_ref()); println!(); }
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>다운캐스트는 <code>dyn Trait</code>에서 구체 타입을 복원합니다. <code>downcast_ref::&lt;T&gt;()</code>는 타입 ID를 확인하여 맞으면 <code>Some(&amp;T)</code>, 아니면 <code>None</code>을 반환합니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-r"><span class="al-icon">⚠️</span><div>다운캐스트가 자주 필요하다면 설계 문제일 수 있습니다. 트레이트에 메서드를 추가하거나 <code>enum</code>을 먼저 고려하세요.</div></div></div></div>
+</div><div class="ex-card">
+  <div class="ex-hdr">
+    <div class="ex-meta">
+      <span class="ex-num">#10</span>
+      <span class="ex-ttl">종합 — 동적 디스패치 전체 흐름</span>
+    </div>
+    <span class="ex-diff diff-hard">고급</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="etab(this)">코드</button>
+    <button class="tab-btn" onclick="etab(this)">개념 설명</button>
+    <button class="tab-btn" onclick="etab(this)">주의사항</button>
+  </div>
+  <div class="tab-pane active"><div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">RUST</span>
+    <button class="copy-btn" onclick="cp(this)">복사</button></div>
+<pre><code class="language-rust">use std::mem;
+trait Animal { fn speak(&amp;self)-&gt;String; fn legs(&amp;self)-&gt;u32; }
+struct Lion { name: String } struct Duck { name: String }
+impl Animal for Lion { fn speak(&amp;self)-&gt;String{format!("{}: Roar!",self.name)} fn legs(&amp;self)-&gt;u32{4} }
+impl Animal for Duck { fn speak(&amp;self)-&gt;String{format!("{}: Quack!",self.name)} fn legs(&amp;self)-&gt;u32{2} }
+
+fn main() {
+    println!("╔══════════════════════════════════╗");
+    println!("║ 동적 디스패치 전체 흐름 종합     ║");
+    println!("╚══════════════════════════════════╝\n");
+
+    // 1. 생성 — Box::new() 힙 할당 + Fat Pointer 생성
+    let zoo: Vec&lt;Box&lt;dyn Animal&gt;&gt; = vec![
+        Box::new(Lion { name: "Simba".into() }),
+        Box::new(Duck { name: "Donald".into() }),
+    ];
+
+    // 2. Fat Pointer 크기 (스펙 보장)
+    println!("[1] Fat Pointer: {} bytes", mem::size_of::&lt;Box&lt;dyn Animal&gt;&gt;());
+
+    // 3. vtable 동일성 확인
+    let m1 = std::ptr::metadata(zoo[0].as_ref());
+    let m2 = std::ptr::metadata(zoo[1].as_ref());
+    println!("[2] Lion·Duck vtable 동일? {}", m1 == m2);
+
+    // 4. vtable[1] 경유 크기
+    for a in &amp;zoo {
+        println!("[3] size={}B → {}", mem::size_of_val(a.as_ref()), a.speak());
+    }
+
+    // 5. vtable[3+] 경유 메서드 호출
+    let total: u32 = zoo.iter().map(|a| a.legs()).sum();
+    println!("[4] 총 다리: {}개", total);
+
+    println!("\n[5] Drop 시작 (vtable[0] drop_in_place 경유)...");
+    // zoo 자동 Drop
+}</code></pre>
+  </div></div>
+  <div class="tab-pane"><div class="epane"><p>3부의 모든 내용을 하나로 통합합니다: Box 생성 → Fat Pointer → vtable 확인 → 메서드 호출 → Drop까지 단계별로 보여줍니다.</p></div></div>
+  <div class="tab-pane"><div class="wpane"><div class="al al-g"><span class="al-icon">✅</span><div>스펙 보장: 크기=16 bytes, vtable 존재, drop/size/align 슬롯</div></div><div class="al al-w"><span class="al-icon">⚠️</span><div>구현 세부사항: vtable 내부 순서, 바이트 오프셋</div></div></div></div>
+</div>
+    </div>
+  </div>
+
+</div>
+</div>
+</div>
+
+<script>
+
+const sidebarData = {
+  t1: [
+    { title:'개념 학습', items:[
+      { id:'t1-c1', label:'Step 1. 왜 크기가 필요한가' },
+      { id:'t1-c2', label:'Step 2. Fat Pointer 구조' },
+      { id:'t1-c3', label:'Step 3. dyn-compatible 규칙' },
+      { id:'t1-c4', label:'Step 4. 선택 결정 트리' },
+      { id:'t1-c5', label:'Step 5. 핵심 정리' },
+    ]},
+    { title:'기초 예제 1~15', items:[
+      { id:'t1-basic', label:'예제 1~5  입문' },
+      { id:'t1-basic', label:'예제 6~10 중급' },
+      { id:'t1-basic', label:'예제 11~15 중급' },
+    ]},
+    { title:'심화 예제 16~30', items:[
+      { id:'t1-adv', label:'예제 16~20 고급' },
+      { id:'t1-adv', label:'예제 21~25 고급' },
+      { id:'t1-adv', label:'예제 26~30 종합' },
+    ]},
+  ],
+  t2: [
+    { title:'개념 학습', items:[
+      { id:'t2-c1', label:'Step 1. 단형화' },
+      { id:'t2-c2', label:'Step 2. Opaque Return Type' },
+      { id:'t2-c3', label:'Step 3. 필수 사용 케이스' },
+      { id:'t2-c4', label:'Step 4. RPIT (Rust 1.75+)' },
+      { id:'t2-c5', label:'Step 5. Rust 2024 변화' },
+    ]},
+    { title:'기초 예제 1~15', items:[
+      { id:'t2-basic', label:'예제 1~5  입문' },
+      { id:'t2-basic', label:'예제 6~10 중급' },
+      { id:'t2-basic', label:'예제 11~15 고급' },
+    ]},
+    { title:'심화 예제 16~30', items:[
+      { id:'t2-adv', label:'예제 16~20 심화' },
+      { id:'t2-adv', label:'예제 21~25 심화' },
+      { id:'t2-adv', label:'예제 26~30 통합' },
+    ]},
+  ],
+  t3: [
+    { title:'개념 학습', items:[
+      { id:'t3-c1', label:'Step 1. 포인터 기초' },
+      { id:'t3-c2', label:'Step 2. Fat Pointer' },
+      { id:'t3-c3', label:'Step 3. vtable 구조' },
+      { id:'t3-c4', label:'Step 4. 호출 흐름' },
+      { id:'t3-c5', label:'Step 5. C++ vs Rust' },
+    ]},
+    { title:'예제 1~10', items:[
+      { id:'t3-examples', label:'예제 1~5' },
+      { id:'t3-examples', label:'예제 6~10' },
+    ]},
+  ],
+};
+
+let currentTab = 't1';
+function switchTab(tab) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active-t1','active-t2','active-t3'));
+  document.querySelector('[data-tab="' + tab + '"]').classList.add('active-' + tab);
+  currentTab = tab;
+  buildSidebar(tab);
+  document.getElementById('main-scroll').scrollTo({ top:0, behavior:'smooth' });
+}
+
+function buildSidebar(tab) {
+  var data = sidebarData[tab];
+  var el = document.getElementById('sb-content');
+  var html2 = '';
+  data.forEach(function(group) {
+    html2 += '<div class="sb-group"><div class="sb-group-title">' + group.title + '</div>';
+    group.items.forEach(function(item) {
+      html2 += '<a class="sb-item" data-target="' + item.id + '" href="#" onclick="scrollTo2(' + JSON.stringify(item.id) + ');return false;">' + item.label + '</a>';
+    });
+    html2 += '</div>';
+  });
+  el.innerHTML = html2;
+}
+
+function scrollTo2(id) {
+  const el = document.getElementById(id);
+  if(el) { el.scrollIntoView({ behavior:'smooth', block:'start' }); }
+}
+
+function etab(btn) {
+  const bar  = btn.closest('.tab-bar');
+  const card = btn.closest('.ex-card');
+  bar.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  card.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  const idx = Array.from(bar.children).indexOf(btn);
+  card.querySelectorAll('.tab-pane')[idx].classList.add('active');
+}
+
+function stab(btn, paneId) {
+  const bar = btn.closest('.stab-bar');
+  bar.querySelectorAll('.stab-btn').forEach(b => b.classList.remove('active'));
+  const pane = document.getElementById(paneId);
+  if(!pane) return;
+  const parent = pane.parentElement;
+  parent.querySelectorAll('.stab-pane').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  pane.classList.add('active');
+}
+
+function cp(btn) {
+  const code = btn.closest('.code-wrap').querySelector('code').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ 복사됨';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('theme-btn').textContent = isDark ? '🌙 다크' : '☀ 라이트';
+  localStorage.setItem('rust-guide-theme', isDark ? 'light' : 'dark');
+}
+
+(function() {
+  const saved = localStorage.getItem('rust-guide-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  const btn = document.getElementById('theme-btn');
+  if(btn) btn.textContent = saved === 'dark' ? '☀ 라이트' : '🌙 다크';
+})();
+
+buildSidebar('t1');
+document.addEventListener('DOMContentLoaded', function() { hljs.highlightAll(); });
+if(document.readyState !== 'loading') { hljs.highlightAll(); }
+
+/* ── 스크롤 스파이 ── */
+(function() {
+  var mainEl = document.getElementById('main-scroll');
+  if (!mainEl) return;
+
+  mainEl.addEventListener('scroll', function() {
+    var data = sidebarData[currentTab];
+    if (!data) return;
+
+    // 중복 제거한 id 목록
+    var ids = [];
+    data.forEach(function(g) {
+      g.items.forEach(function(it) {
+        if (ids.indexOf(it.id) === -1) ids.push(it.id);
+      });
+    });
+
+    // getBoundingClientRect: 현재 viewport 기준 위치
+    // mainEl의 top을 기준으로 섹션 위치 계산
+    var mainTop = mainEl.getBoundingClientRect().top;
+    var active = null;
+    ids.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var rect = el.getBoundingClientRect();
+      // 섹션 상단이 viewport 상단 + 150px 이내면 active
+      if (rect.top - mainTop <= 150) active = id;
+    });
+
+    // data-target 속성으로 정확히 매칭
+    var sbItems = document.querySelectorAll('#sb-content .sb-item');
+    sbItems.forEach(function(item) { item.classList.remove('active'); });
+    if (active) {
+      sbItems.forEach(function(item) {
+        if (item.getAttribute('data-target') === active) {
+          item.classList.add('active');
+          // 사이드바 자동 스크롤
+          item.scrollIntoView({ block: 'nearest' });
+        }
+      });
+    }
+  });
+})();
+
+</script>
+</body>
+</html>

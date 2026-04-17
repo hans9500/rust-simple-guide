@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rust Iterator — Lazy Evaluation 완전 가이드</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#ffffff;--bg2:#f5f4ef;--bg3:#eeecea;--bg4:#e3e1db;
+  --text:#1a1a18;--text2:#5f5e5a;--text3:#9c9a92;
+  --bd:rgba(0,0,0,.10);--bd2:rgba(0,0,0,.18);
+  --bl-bg:#e6f1fb;--bl-t:#0c447c;--bl-b:#378add;
+  --gn-bg:#eaf3de;--gn-t:#27500a;--gn-b:#639922;
+  --rd-bg:#fcebeb;--rd-t:#791f1f;--rd-b:#e24b4a;
+  --yw-bg:#faeeda;--yw-t:#633806;--yw-b:#ba7517;
+  --tl-bg:#e1f5ee;--tl-t:#085041;--tl-b:#1d9e75;
+  --pp-bg:#eeedfe;--pp-t:#3c3489;--pp-b:#7f77dd;
+  --sb:244px; --hh:52px;
+}
+body.dark{
+  --bg:#1a1a18;--bg2:#222220;--bg3:#2c2c29;--bg4:#363632;
+  --text:#e8e6de;--text2:#b4b2a9;--text3:#6e6c64;
+  --bd:rgba(255,255,255,.08);--bd2:rgba(255,255,255,.16);
+  --bl-bg:#0c2a44;--bl-t:#85b7eb;--bl-b:#185fa5;
+  --gn-bg:#17340a;--gn-t:#97c459;--gn-b:#3b6d11;
+  --rd-bg:#2e0e0e;--rd-t:#f09595;--rd-b:#a32d2d;
+  --yw-bg:#2a1a04;--yw-t:#fac775;--yw-b:#854f0b;
+  --tl-bg:#04201a;--tl-t:#5dcaa5;--tl-b:#0f6e56;
+  --pp-bg:#1a1740;--pp-t:#afa9ec;--pp-b:#534ab7;
+}
+html{scroll-behavior:smooth;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+     background:var(--bg3);color:var(--text);line-height:1.7;
+     transition:background .25s,color .25s;}
+
+/* ── header ── */
+.hdr{position:fixed;top:0;left:0;right:0;z-index:200;height:var(--hh);
+     background:var(--bg);border-bottom:.5px solid var(--bd2);
+     display:flex;align-items:center;padding:0 22px;gap:14px;}
+.hdr-logo{font-size:14px;font-weight:500;white-space:nowrap;}
+.hdr-logo span{color:var(--bl-t);font-family:'Courier New',monospace;}
+.hdr-space{flex:1;}
+.theme-btn{padding:5px 14px;font-size:12px;border-radius:20px;
+           border:.5px solid var(--bd2);background:var(--bg2);
+           color:var(--text2);cursor:pointer;font-family:inherit;
+           transition:all .2s;}
+.theme-btn:hover{background:var(--bg4);color:var(--text);}
+
+/* ── sidebar ── */
+.sb{position:fixed;top:var(--hh);left:0;bottom:0;width:var(--sb);
+    overflow-y:auto;background:var(--bg);border-right:.5px solid var(--bd2);
+    padding:14px 0 40px;z-index:100;transition:background .25s;}
+.sb-sec{font-size:10px;font-weight:600;letter-spacing:.08em;
+        text-transform:uppercase;color:var(--text3);padding:14px 20px 4px;}
+.sb-a{display:block;padding:6px 20px;font-size:13px;color:var(--text2);
+      text-decoration:none;border-left:2px solid transparent;
+      transition:all .15s;line-height:1.4;}
+.sb-a:hover{color:var(--text);background:var(--bg2);}
+.sb-a.on{color:var(--bl-t);border-left-color:var(--bl-b);
+          background:var(--bl-bg);font-weight:500;}
+
+/* ── main ── */
+.main{margin-left:var(--sb);margin-top:var(--hh);
+      padding:52px 60px 120px;max-width:calc(var(--sb) + 860px);}
+@media(max-width:900px){.sb{display:none;}.main{margin-left:0;padding:28px 20px 80px;}}
+
+/* ── section ── */
+.section{margin-bottom:80px;}
+.sec-num{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+         color:var(--bl-t);font-family:'Courier New',monospace;margin-bottom:8px;}
+.sec-h{font-size:27px;font-weight:500;margin-bottom:10px;line-height:1.3;}
+.sec-p{font-size:14px;color:var(--text2);max-width:700px;line-height:1.85;margin-bottom:28px;}
+.sec-p code{font-family:'Courier New',monospace;font-size:13px;
+            background:var(--bg4);padding:1px 6px;border-radius:4px;color:var(--text);}
+.divider{height:.5px;background:var(--bd2);margin:80px 0;}
+
+/* ── quote ── */
+.qbox{border-left:3px solid var(--bl-b);background:var(--bl-bg);
+      padding:14px 20px;border-radius:0 10px 10px 0;margin-bottom:24px;
+      font-family:'Courier New',monospace;font-size:12.5px;
+      color:var(--bl-t);line-height:1.9;white-space:pre-wrap;}
+.qsrc{font-size:11px;color:var(--text3);margin-top:8px;font-family:sans-serif;font-style:italic;}
+
+/* ── cards ── */
+.grid{display:grid;gap:12px;margin-bottom:24px;}
+.g2{grid-template-columns:1fr 1fr;}
+.g3{grid-template-columns:1fr 1fr 1fr;}
+@media(max-width:680px){.g2,.g3{grid-template-columns:1fr;}}
+.card{border-radius:10px;padding:16px 18px;border:.5px solid var(--bd2);background:var(--bg2);}
+.card.bl{background:var(--bl-bg);border-color:var(--bl-b);}
+.card.gn{background:var(--gn-bg);border-color:var(--gn-b);}
+.card.rd{background:var(--rd-bg);border-color:var(--rd-b);}
+.card.yw{background:var(--yw-bg);border-color:var(--yw-b);}
+.card.tl{background:var(--tl-bg);border-color:var(--tl-b);}
+.card.pp{background:var(--pp-bg);border-color:var(--pp-b);}
+.ct{font-size:13px;font-weight:600;margin-bottom:6px;}
+.card.bl .ct{color:var(--bl-t);} .card.gn .ct{color:var(--gn-t);}
+.card.rd .ct{color:var(--rd-t);} .card.yw .ct{color:var(--yw-t);}
+.card.tl .ct{color:var(--tl-t);} .card.pp .ct{color:var(--pp-t);}
+.cb{font-size:13px;color:var(--text2);line-height:1.75;}
+.card.bl .cb{color:var(--bl-t);opacity:.85;} .card.gn .cb{color:var(--gn-t);opacity:.85;}
+.card.rd .cb{color:var(--rd-t);opacity:.85;} .card.yw .cb{color:var(--yw-t);opacity:.85;}
+.card.tl .cb{color:var(--tl-t);opacity:.85;} .card.pp .cb{color:var(--pp-t);opacity:.85;}
+.cb code{font-family:'Courier New',monospace;font-size:12px;}
+
+/* ── VS Code Dark Modern ── */
+/* Background: #1f1f1f  Foreground: #d4d4d4                           */
+/* Token colors from dark_vs.json + dark_plus.json (Dark Modern base) */
+.vsc{border-radius:10px;overflow:hidden;margin-bottom:28px;
+     border:1px solid #3c3c3c;box-shadow:0 4px 20px rgba(0,0,0,.28);}
+.vsc-bar{background:#2d2d2d;padding:9px 16px;display:flex;
+         align-items:center;gap:7px;border-bottom:1px solid #3c3c3c;}
+.dot{width:12px;height:12px;border-radius:50%;display:inline-block;}
+.dot.r{background:#ff5f57;} .dot.y{background:#febc2e;} .dot.g{background:#28c840;}
+.fname{font-size:12px;color:#cccccc;font-family:'Courier New',monospace;margin-left:6px;}
+.vsc-body{background:#1f1f1f;padding:20px 0 20px 0;
+          font-family:'Cascadia Code','Fira Code',Consolas,'Courier New',monospace;
+          font-size:13.5px;line-height:1.78;overflow-x:auto;color:#d4d4d4;}
+.vsc-body table{border-collapse:collapse;width:100%;}
+.vsc-body td.ln{color:#858585;font-size:11.5px;padding:0 18px 0 22px;
+                text-align:right;user-select:none;min-width:44px;vertical-align:top;
+                border-right:1px solid #333;}
+.vsc-body td.cd{white-space:pre;vertical-align:top;padding:0 22px;}
+/* ── token colors ── */
+.k {color:#569cd6;}               /* fn let mut pub use struct enum trait impl type where mod */
+.kc{color:#c586c0;}               /* if else match for while loop return break continue */
+.t {color:#4ec9b0;}               /* Vec Option Result String i32 u64 bool usize HashMap … */
+.f {color:#dcdcaa;}               /* function & method names, macros */
+.s {color:#ce9178;}               /* string literals "…" '…' */
+.cm{color:#6a9955;font-style:italic;} /* // comments */
+.n {color:#b5cea8;}               /* numeric literals 42 3.14 0xFF */
+.v {color:#9cdcfe;}               /* variables, parameters */
+.lf{color:#569cd6;}               /* lifetimes 'a 'static */
+.at{color:#9cdcfe;}               /* attributes #[…] */
+.mc{color:#dcdcaa;}               /* macros vec! println! assert_eq! */
+.p {color:#d4d4d4;}               /* punctuation . , ; : :: { } ( ) [ ] */
+/* (self → .k, None/Some/true/false/Ok/Err → .t) */
+
+/* ── table ── */
+.tbl{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:24px;}
+.tbl th{padding:8px 14px;text-align:left;font-size:11px;font-weight:500;
+        color:var(--text3);border-bottom:1px solid var(--bd2);
+        background:var(--bg2);font-family:'Courier New',monospace;}
+.tbl td{padding:8px 14px;border-bottom:.5px solid var(--bd);font-size:13px;color:var(--text2);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:var(--bg2);}
+.pass{color:var(--gn-t);font-weight:500;font-family:'Courier New',monospace;}
+.fail{color:var(--rd-t);font-family:'Courier New',monospace;}
+.tx  {color:var(--yw-t);font-family:'Courier New',monospace;}
+.dim {color:var(--text3);font-family:'Courier New',monospace;}
+.src {font-family:'Courier New',monospace;font-weight:600;color:var(--text);}
+
+/* ── pills ── */
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;
+      font-size:11px;font-weight:500;font-family:'Courier New',monospace;}
+.pill.bl{background:var(--bl-bg);color:var(--bl-t);border:.5px solid var(--bl-b);}
+.pill.gn{background:var(--gn-bg);color:var(--gn-t);border:.5px solid var(--gn-b);}
+.pill.rd{background:var(--rd-bg);color:var(--rd-t);border:.5px solid var(--rd-b);}
+.pill.tl{background:var(--tl-bg);color:var(--tl-t);border:.5px solid var(--tl-b);}
+.pill.dim{background:var(--bg3);color:var(--text3);border:.5px solid var(--bd2);}
+
+/* ── method grid ── */
+.mg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
+    gap:8px;margin-bottom:24px;}
+.mc2{padding:12px 14px;border-radius:9px;border:.5px solid var(--bd2);background:var(--bg2);}
+.mc2.ad{border-left:3px solid var(--bl-b);}
+.mc2.cs{border-left:3px solid var(--gn-b);}
+.mn{font-family:'Courier New',monospace;font-size:13px;font-weight:700;margin-bottom:3px;}
+.mc2.ad .mn{color:var(--bl-t);} .mc2.cs .mn{color:var(--gn-t);}
+.ms{font-family:'Courier New',monospace;font-size:10.5px;color:var(--text3);
+    margin-bottom:5px;line-height:1.5;}
+.md{font-size:12px;color:var(--text2);line-height:1.5;}
+
+/* ── compare ── */
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
+@media(max-width:580px){.cmp{grid-template-columns:1fr;}}
+.cc{border-radius:10px;padding:18px 20px;}
+.cc.lz{background:var(--gn-bg);border:.5px solid var(--gn-b);}
+.cc.eg{background:var(--rd-bg);border:.5px solid var(--rd-b);}
+.cc-t{font-size:13px;font-weight:600;margin-bottom:10px;}
+.cc.lz .cc-t{color:var(--gn-t);} .cc.eg .cc-t{color:var(--rd-t);}
+.cc-r{display:flex;justify-content:space-between;font-size:12px;
+      font-family:'Courier New',monospace;padding:4px 0;
+      border-bottom:.5px solid rgba(0,0,0,.07);}
+.cc-r:last-child{border-bottom:none;}
+.cc.lz .cc-r{color:var(--gn-t);} .cc.eg .cc-r{color:var(--rd-t);}
+.cc-n{font-weight:700;}
+
+/* ── desugar ── */
+.dsug{display:grid;grid-template-columns:1fr 44px 1fr;gap:10px;
+      align-items:start;margin-bottom:24px;}
+@media(max-width:640px){.dsug{grid-template-columns:1fr;}}
+.dsug-arr{display:flex;align-items:center;justify-content:center;
+          padding-top:38px;font-size:22px;color:var(--text3);}
+
+/* ── note ── */
+.note{display:flex;gap:14px;padding:14px 18px;border-radius:10px;
+      margin-bottom:24px;background:var(--yw-bg);border:.5px solid var(--yw-b);}
+.ni{font-size:16px;flex-shrink:0;margin-top:2px;}
+.nb{font-size:13px;color:var(--yw-t);line-height:1.75;}
+.nb strong{font-weight:600;} .nb code{font-family:'Courier New',monospace;font-size:12px;}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-logo">Rust <span>Iterator</span> &mdash; Lazy Evaluation 완전 가이드</div>
+  <div class="hdr-space"></div>
+  <button class="theme-btn" id="tbtn" onclick="toggleTheme()">&#127769; Dark</button>
+</header>
+
+<nav class="sb" id="sidebar">
+  <div class="sb-sec">기초</div>
+  <a class="sb-a" href="#s1">01. Iterator 트레이트</a>
+  <a class="sb-a" href="#s2">02. Lazy란 무엇인가</a>
+  <a class="sb-a" href="#s3">03. 요소 흐름 추적</a>
+  <div class="sb-sec">메서드</div>
+  <a class="sb-a" href="#s4">04. 어댑터 vs 소비자</a>
+  <a class="sb-a" href="#s5">05. map · filter · take · skip</a>
+  <a class="sb-a" href="#s6">06. fold · any · find · enumerate</a>
+  <a class="sb-a" href="#s7">07. chain · zip · flat_map</a>
+  <a class="sb-a" href="#s8">08. collect 다양한 타입</a>
+  <div class="sb-sec">심화</div>
+  <a class="sb-a" href="#s9">09. for 루프 desugaring</a>
+  <a class="sb-a" href="#s10">10. Lazy vs Eager 정량 비교</a>
+  <a class="sb-a" href="#s11">11. 무한 이터레이터</a>
+  <a class="sb-a" href="#s12">12. 커스텀 Iterator 구현</a>
+</nav>
+
+<main class="main">
+
+<section class="section" id="s1">
+<div class="sec-num">Section 01 / 기초</div>
+<div class="sec-h">Iterator 트레이트의 핵심 구조</div>
+<div class="sec-p">
+  Rust의 모든 이터레이터는 <code>std::iter::Iterator</code> 트레이트를 구현합니다.
+  이 트레이트에서 <strong>직접 구현해야 하는 메서드는 <code>next()</code> 하나뿐</strong>입니다.
+  <code>map</code>, <code>filter</code>, <code>fold</code> 등 70개 이상의 메서드는
+  모두 <code>next()</code>를 기반으로 한 디폴트 구현으로 자동 제공됩니다.
+</div>
+<div class="qbox">#[must_use = "iterators are lazy and do nothing unless consumed"]
+pub trait Iterator {
+    type Item;
+    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt;;
+    // 나머지 70개+ 메서드는 모두 next() 기반 default 구현
+    fn map&lt;B, F&gt;(self, f: F) -&gt; Map&lt;Self, F&gt;
+    where
+        F: FnMut(Self::Item) -&gt; B,
+    { ... }
+    fn filter&lt;P&gt;(self, predicate: P) -&gt; Filter&lt;Self, P&gt;
+    where
+        P: FnMut(&amp;Self::Item) -&gt; bool,
+    { ... }
+    fn collect&lt;B&gt;(self) -&gt; B
+    where
+        B: FromIterator&lt;Self::Item&gt;,
+    { ... }
+    // ...
+}<div class="qsrc">출처: doc.rust-lang.org/std/iter/trait.Iterator.html</div></div>
+<div class="grid g3">
+  <div class="card bl"><div class="ct">type Item</div>
+    <div class="cb">이터레이터가 반환하는 요소 타입.<br>
+      <code>.iter()</code> → <code>&amp;T</code><br>
+      <code>.iter_mut()</code> → <code>&amp;mut T</code><br>
+      <code>.into_iter()</code> → <code>T</code>
+    </div>
+  </div>
+  <div class="card gn"><div class="ct">fn next(&amp;mut self) → Option&lt;Item&gt;</div>
+    <div class="cb">
+      요소가 있으면 <code>Some(v)</code>, 소진되면 <code>None</code>.<br>
+      구현 필수는 이것 하나뿐.<br>
+      이후 모든 메서드는 자동 사용 가능.
+    </div>
+  </div>
+  <div class="card pp"><div class="ct">#[must_use]</div>
+    <div class="cb">
+      소비자 없이 어댑터만 쓰면 경고:<br>
+      <code>unused `Map` that must be used</code><br>
+      <code>iterators are lazy and do nothing unless consumed</code>
+    </div>
+  </div>
+</div>
+  <div class="vsc">
+    <div class="vsc-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="fname">iterator_trait.rs</span>
+    </div>
+    <div class="vsc-body"><table>
+      <tr><td class="ln">1</td><td class="cd"><span class="cm">// Iterator 트레이트 직접 사용 — next()를 명시적으로 호출</span></td></tr>
+      <tr><td class="ln">2</td><td class="cd"><span class="cm">// 출처: doc.rust-lang.org/std/iter/trait.Iterator.html</span></td></tr>
+      <tr><td class="ln">3</td><td class="cd"></td></tr>
+      <tr><td class="ln">4</td><td class="cd"><span class="k">fn</span><span class="p"> </span><span class="f">main</span><span class="p">() {</span></td></tr>
+      <tr><td class="ln">5</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">a</span><span class="p"> = [</span><span class="n">1</span><span class="p">, </span><span class="n">2</span><span class="p">, </span><span class="n">3</span><span class="p">];</span></td></tr>
+      <tr><td class="ln">6</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="k">mut</span><span class="p"> </span><span class="v">iter</span><span class="p"> = </span><span class="v">a</span><span class="p">.</span><span class="f">iter</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">7</td><td class="cd"></td></tr>
+      <tr><td class="ln">8</td><td class="cd"><span class="cm">    // Some(v) 반환: 요소가 있는 동안</span></td></tr>
+      <tr><td class="ln">9</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="t">Some</span><span class="p">(&</span><span class="n">1</span><span class="p">), </span><span class="v">iter</span><span class="p">.</span><span class="f">next</span><span class="p">());</span></td></tr>
+      <tr><td class="ln">10</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="t">Some</span><span class="p">(&</span><span class="n">2</span><span class="p">), </span><span class="v">iter</span><span class="p">.</span><span class="f">next</span><span class="p">());</span></td></tr>
+      <tr><td class="ln">11</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="t">Some</span><span class="p">(&</span><span class="n">3</span><span class="p">), </span><span class="v">iter</span><span class="p">.</span><span class="f">next</span><span class="p">());</span></td></tr>
+      <tr><td class="ln">12</td><td class="cd"></td></tr>
+      <tr><td class="ln">13</td><td class="cd"><span class="cm">    // None 반환: 소진되면</span></td></tr>
+      <tr><td class="ln">14</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="t">None</span><span class="p">, </span><span class="v">iter</span><span class="p">.</span><span class="f">next</span><span class="p">());</span></td></tr>
+      <tr><td class="ln">15</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="t">None</span><span class="p">, </span><span class="v">iter</span><span class="p">.</span><span class="f">next</span><span class="p">());  </span><span class="cm">// 계속 None</span></td></tr>
+      <tr><td class="ln">16</td><td class="cd"><span class="p">}</span></td></tr>
+    </table></div>
+  </div>
+</section>
+<div class="divider"></div>
+<section class="section" id="s2">
+<div class="sec-num">Section 02 / 기초</div>
+<div class="sec-h">Lazy란 무엇인가</div>
+<div class="sec-p">
+  <code>map()</code>, <code>filter()</code> 같은 <strong>어댑터(adapter)</strong>를 호출해도
+  클로저는 단 한 번도 실행되지 않습니다.
+  <strong>소비자(consuming adapter)</strong>가 호출되는 순간에만 전체 체인이 실행됩니다.
+  Rust 컴파일러는 소비자 없이 어댑터만 남기면 경고를 발생시킵니다.
+</div>
+<div class="note">
+  <div class="ni">&#9888;</div>
+  <div class="nb"><strong>컴파일러 경고 — 공식 문서 예시</strong><br>
+    <code>v1.iter().map(|x| x + 1);</code> 처럼 소비자 없이 두면:<br>
+    <code>warning: unused `Map` that must be used</code><br>
+    <code>= note: iterators are lazy and do nothing unless consumed</code><br>
+    <code>= note: `#[warn(unused_must_use)]` on by default</code>
+  </div>
+</div>
+<div class="grid g2">
+  <div class="card bl"><div class="ct">어댑터 (Adapter) — lazy</div>
+    <div class="cb">Iterator를 받아 <strong>다른 Iterator를 반환</strong>.<br>
+    호출 시 아무것도 실행 안 됨 — 체인 "레시피"만 저장.<br>
+    <code>map, filter, take, skip, zip, chain, flat_map …</code>
+    </div>
+  </div>
+  <div class="card gn"><div class="ct">소비자 (Consuming Adapter) — 실행 트리거</div>
+    <div class="cb">Iterator를 받아 <strong>최종 값을 반환</strong>.<br>
+    호출 순간 chain 전체 실행. next()를 반복 호출해 소진.<br>
+    <code>collect, sum, fold, any, all, find, for_each …</code>
+    </div>
+  </div>
+</div>
+  <div class="vsc">
+    <div class="vsc-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="fname">lazy_demo.rs</span>
+    </div>
+    <div class="vsc-body"><table>
+      <tr><td class="ln">1</td><td class="cd"><span class="cm">// Lazy 동작 증명: 클로저 실행 횟수를 Cell로 직접 측정</span></td></tr>
+      <tr><td class="ln">2</td><td class="cd"><span class="k">use</span><span class="p"> </span><span class="t">std</span><span class="p">::</span><span class="t">cell</span><span class="p">::</span><span class="t">Cell</span><span class="p">;</span></td></tr>
+      <tr><td class="ln">3</td><td class="cd"></td></tr>
+      <tr><td class="ln">4</td><td class="cd"><span class="k">fn</span><span class="p"> </span><span class="f">main</span><span class="p">() {</span></td></tr>
+      <tr><td class="ln">5</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">v</span><span class="p"> = </span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">, </span><span class="n">2</span><span class="p">, </span><span class="n">3</span><span class="p">, </span><span class="n">4</span><span class="p">, </span><span class="n">5</span><span class="p">];</span></td></tr>
+      <tr><td class="ln">6</td><td class="cd"></td></tr>
+      <tr><td class="ln">7</td><td class="cd"><span class="cm">    // ❌ 소비자 없음 → 클로저 0회 실행, 컴파일러 경고 발생</span></td></tr>
+      <tr><td class="ln">8</td><td class="cd"><span class="cm">    // warning: unused `Map` that must be used</span></td></tr>
+      <tr><td class="ln">9</td><td class="cd"><span class="p">    </span><span class="v">v</span><span class="p">.</span><span class="f">iter</span><span class="p">().</span><span class="f">map</span><span class="p">(|</span><span class="v">x</span><span class="p">| </span><span class="v">x</span><span class="p"> + </span><span class="n">1</span><span class="p">);</span><span class="cm">  // 아무것도 안 됨!</span></td></tr>
+      <tr><td class="ln">10</td><td class="cd"></td></tr>
+      <tr><td class="ln">11</td><td class="cd"><span class="cm">    // 실행 횟수 추적</span></td></tr>
+      <tr><td class="ln">12</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">count</span><span class="p"> = </span><span class="t">Cell</span><span class="p">::</span><span class="f">new</span><span class="p">(</span><span class="n">0usize</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">13</td><td class="cd"></td></tr>
+      <tr><td class="ln">14</td><td class="cd"><span class="cm">    // ✅ collect()가 없으면 map 클로저는 실행 안 됨</span></td></tr>
+      <tr><td class="ln">15</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">_lazy</span><span class="p"> = </span><span class="v">v</span><span class="p">.</span><span class="f">iter</span><span class="p">().</span><span class="f">map</span><span class="p">(|</span><span class="v">x</span><span class="p">| {</span></td></tr>
+      <tr><td class="ln">16</td><td class="cd"><span class="p">        </span><span class="v">count</span><span class="p">.</span><span class="f">set</span><span class="p">(</span><span class="v">count</span><span class="p">.</span><span class="f">get</span><span class="p">() + </span><span class="n">1</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">17</td><td class="cd"><span class="p">        </span><span class="v">x</span><span class="p"> + </span><span class="n">1</span></td></tr>
+      <tr><td class="ln">18</td><td class="cd"><span class="p">    });</span></td></tr>
+      <tr><td class="ln">19</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">count</span><span class="p">.</span><span class="f">get</span><span class="p">(), </span><span class="n">0</span><span class="p">);  </span><span class="cm">// 여기까지 클로저 0회</span></td></tr>
+      <tr><td class="ln">20</td><td class="cd"></td></tr>
+      <tr><td class="ln">21</td><td class="cd"><span class="cm">    // ✅ collect() 호출 → 그제서야 전체 실행</span></td></tr>
+      <tr><td class="ln">22</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">result</span><span class="p">: </span><span class="t">Vec</span><span class="p"><</span><span class="t">i32</span><span class="p">> = </span><span class="v">v</span><span class="p">.</span><span class="f">iter</span><span class="p">().</span><span class="f">map</span><span class="p">(|</span><span class="v">x</span><span class="p">| {</span></td></tr>
+      <tr><td class="ln">23</td><td class="cd"><span class="p">        </span><span class="v">count</span><span class="p">.</span><span class="f">set</span><span class="p">(</span><span class="v">count</span><span class="p">.</span><span class="f">get</span><span class="p">() + </span><span class="n">1</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">24</td><td class="cd"><span class="p">        </span><span class="v">x</span><span class="p"> + </span><span class="n">1</span></td></tr>
+      <tr><td class="ln">25</td><td class="cd"><span class="p">    }).</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">26</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">count</span><span class="p">.</span><span class="f">get</span><span class="p">(), </span><span class="n">5</span><span class="p">);  </span><span class="cm">// collect() 후 5회</span></td></tr>
+      <tr><td class="ln">27</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">result</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[</span><span class="n">2</span><span class="p">, </span><span class="n">3</span><span class="p">, </span><span class="n">4</span><span class="p">, </span><span class="n">5</span><span class="p">, </span><span class="n">6</span><span class="p">]);</span></td></tr>
+      <tr><td class="ln">28</td><td class="cd"></td></tr>
+      <tr><td class="ln">29</td><td class="cd"><span class="cm">    // ❌ 사이드 이펙트 목적의 map — 실행 안 됨!</span></td></tr>
+      <tr><td class="ln">30</td><td class="cd"><span class="cm">    // "don't do this: (0..5).map(|x| println!("{x}"));</span></td></tr>
+      <tr><td class="ln">31</td><td class="cd"><span class="cm">    //  it won't even execute, as it is lazy." — 공식 문서</span></td></tr>
+      <tr><td class="ln">32</td><td class="cd"><span class="p">    (</span><span class="n">0</span><span class="p">..</span><span class="n">5</span><span class="p">).</span><span class="f">map</span><span class="p">(|</span><span class="v">x</span><span class="p">| </span><span class="mc">println!</span><span class="p">(</span><span class="s">"{x}"</span><span class="p">));  </span><span class="cm">// println! 0회!</span></td></tr>
+      <tr><td class="ln">33</td><td class="cd"></td></tr>
+      <tr><td class="ln">34</td><td class="cd"><span class="cm">    // ✅ 사이드 이펙트는 for 루프 또는 for_each 사용</span></td></tr>
+      <tr><td class="ln">35</td><td class="cd"><span class="p">    (</span><span class="n">0</span><span class="p">..</span><span class="n">5</span><span class="p">).</span><span class="f">for_each</span><span class="p">(|</span><span class="v">x</span><span class="p">| </span><span class="mc">println!</span><span class="p">(</span><span class="s">"{x}"</span><span class="p">));  </span><span class="cm">// 5회 실행</span></td></tr>
+      <tr><td class="ln">36</td><td class="cd"><span class="p">}</span></td></tr>
+    </table></div>
+  </div>
+</section>
+<div class="divider"></div>
+<section class="section" id="s3">
+<div class="sec-num">Section 03 / 기초</div>
+<div class="sec-h">요소 흐름 단계별 추적</div>
+<div class="sec-p">
+  <code>(1..=10).filter(짝수).map(×2).take(3).collect()</code> 조합에서
+  각 요소가 어떻게 처리되는지 추적합니다.
+  <code>take(3)</code>이 충족되는 순간 나머지 요소는 소스에서
+  <strong>꺼내지도 않습니다</strong> — Short-circuit.
+</div>
+
+<table class="tbl">
+<thead><tr>
+  <th>소스</th><th>filter(x%2==0)</th><th>map(x*2)</th>
+  <th>take(3)</th><th>결과</th><th>판정</th>
+</tr></thead>
+<tbody>
+  <tr><td class="src">1</td><td class="fail">false</td><td class="fail">—</td><td class="fail">—</td><td>—</td><td><span class="pill rd">제거</span></td></tr>
+  <tr><td class="src">2</td><td class="pass">true</td><td class="tx">2×2=4</td><td class="pass">1/3</td><td class="pass">4</td><td><span class="pill gn">수집 1</span></td></tr>
+  <tr><td class="src">3</td><td class="fail">false</td><td class="fail">—</td><td class="fail">—</td><td>—</td><td><span class="pill rd">제거</span></td></tr>
+  <tr><td class="src">4</td><td class="pass">true</td><td class="tx">4×2=8</td><td class="pass">2/3</td><td class="pass">8</td><td><span class="pill gn">수집 2</span></td></tr>
+  <tr><td class="src">5</td><td class="fail">false</td><td class="fail">—</td><td class="fail">—</td><td>—</td><td><span class="pill rd">제거</span></td></tr>
+  <tr><td class="src">6</td><td class="pass">true</td><td class="tx">6×2=12</td><td class="pass">3/3 ✓</td><td class="pass">12</td><td><span class="pill tl">수집 3 완료</span></td></tr>
+  <tr style="opacity:.38"><td class="src">7</td><td class="dim" colspan="4">take(3) 달성 → Short-circuit. 소스에서 꺼내지도 않음.</td><td><span class="pill dim">미접근</span></td></tr>
+  <tr style="opacity:.38"><td class="src">8,9,10</td><td class="dim" colspan="4">take(3) 달성 → 이후 전부 미접근.</td><td><span class="pill dim">미접근</span></td></tr>
+</tbody>
+</table>
+<div class="grid g3">
+  <div class="card bl"><div class="ct">filter 호출</div><div class="cb">6회 — take(3) 충족까지만.<br>Eager라면 10회 전부 검사.</div></div>
+  <div class="card tl"><div class="ct">map 호출</div><div class="cb">3회 — filter 통과한 짝수(2,4,6)에만.<br>Eager라면 5회.</div></div>
+  <div class="card gn"><div class="ct">Short-circuit</div><div class="cb">take(3) 후 7~10은 소스에서 꺼내지도 않음.<br>무한 이터레이터에서 특히 중요.</div></div>
+</div>
+  <div class="vsc">
+    <div class="vsc-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="fname">element_flow.rs</span>
+    </div>
+    <div class="vsc-body"><table>
+      <tr><td class="ln">1</td><td class="cd"><span class="cm">// Cell로 각 단계 호출 횟수를 직접 측정해 Lazy 동작을 증명</span></td></tr>
+      <tr><td class="ln">2</td><td class="cd"><span class="k">use</span><span class="p"> </span><span class="t">std</span><span class="p">::</span><span class="t">cell</span><span class="p">::</span><span class="t">Cell</span><span class="p">;</span></td></tr>
+      <tr><td class="ln">3</td><td class="cd"></td></tr>
+      <tr><td class="ln">4</td><td class="cd"><span class="k">fn</span><span class="p"> </span><span class="f">main</span><span class="p">() {</span></td></tr>
+      <tr><td class="ln">5</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">filter_n</span><span class="p"> = </span><span class="t">Cell</span><span class="p">::</span><span class="f">new</span><span class="p">(</span><span class="n">0usize</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">6</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">map_n</span><span class="p">    = </span><span class="t">Cell</span><span class="p">::</span><span class="f">new</span><span class="p">(</span><span class="n">0usize</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">7</td><td class="cd"></td></tr>
+      <tr><td class="ln">8</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">result</span><span class="p">: </span><span class="t">Vec</span><span class="p"><</span><span class="t">i32</span><span class="p">> = (</span><span class="n">1</span><span class="p">..=</span><span class="n">10</span><span class="p">)</span></td></tr>
+      <tr><td class="ln">9</td><td class="cd"><span class="p">        .</span><span class="f">filter</span><span class="p">(|</span><span class="v">x</span><span class="p">| {</span></td></tr>
+      <tr><td class="ln">10</td><td class="cd"><span class="p">            </span><span class="v">filter_n</span><span class="p">.</span><span class="f">set</span><span class="p">(</span><span class="v">filter_n</span><span class="p">.</span><span class="f">get</span><span class="p">() + </span><span class="n">1</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">11</td><td class="cd"><span class="p">            </span><span class="v">x</span><span class="p"> % </span><span class="n">2</span><span class="p"> == </span><span class="n">0</span></td></tr>
+      <tr><td class="ln">12</td><td class="cd"><span class="p">        })</span></td></tr>
+      <tr><td class="ln">13</td><td class="cd"><span class="p">        .</span><span class="f">map</span><span class="p">(|</span><span class="v">x</span><span class="p">| {</span></td></tr>
+      <tr><td class="ln">14</td><td class="cd"><span class="p">            </span><span class="v">map_n</span><span class="p">.</span><span class="f">set</span><span class="p">(</span><span class="v">map_n</span><span class="p">.</span><span class="f">get</span><span class="p">() + </span><span class="n">1</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">15</td><td class="cd"><span class="p">            </span><span class="v">x</span><span class="p"> * </span><span class="n">2</span></td></tr>
+      <tr><td class="ln">16</td><td class="cd"><span class="p">        })</span></td></tr>
+      <tr><td class="ln">17</td><td class="cd"><span class="p">        .</span><span class="f">take</span><span class="p">(</span><span class="n">3</span><span class="p">)</span></td></tr>
+      <tr><td class="ln">18</td><td class="cd"><span class="p">        .</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">19</td><td class="cd"></td></tr>
+      <tr><td class="ln">20</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">result</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[</span><span class="n">4</span><span class="p">, </span><span class="n">8</span><span class="p">, </span><span class="n">12</span><span class="p">]);</span></td></tr>
+      <tr><td class="ln">21</td><td class="cd"></td></tr>
+      <tr><td class="ln">22</td><td class="cd"><span class="cm">    // 핵심: filter 6회, map 3회만 호출 (전체 10회/5회 아님)</span></td></tr>
+      <tr><td class="ln">23</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">filter_n</span><span class="p">.</span><span class="f">get</span><span class="p">(), </span><span class="n">6</span><span class="p">);  </span><span class="cm">// 2,4,6까지 6번만</span></td></tr>
+      <tr><td class="ln">24</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">map_n</span><span class="p">.</span><span class="f">get</span><span class="p">(),    </span><span class="n">3</span><span class="p">);  </span><span class="cm">// 짝수 3개에만 적용</span></td></tr>
+      <tr><td class="ln">25</td><td class="cd"><span class="p">}</span></td></tr>
+    </table></div>
+  </div>
+</section>
+<div class="divider"></div>
+<section class="section" id="s4">
+<div class="sec-num">Section 04 / 메서드</div>
+<div class="sec-h">어댑터 vs 소비자 — 전체 분류</div>
+<div class="sec-p">
+  공식 문서(<code>std::iter</code>) 기반 전체 분류입니다.
+  어댑터는 <code>Iterator</code>를 반환(lazy),
+  소비자는 최종 값을 반환하며 실행을 트리거합니다.
+</div>
+<div style="margin-bottom:12px">
+  <span class="pill bl">어댑터 — lazy, Iterator 반환</span>
+  &nbsp;&nbsp;
+  <span class="pill gn">소비자 — 실행 트리거</span>
+</div>
+<div class="mg">
+  <div class="mc2 ad"><div class="mn">map</div>
+    <div class="ms">fn map&lt;B,F&gt;(self, f:F) -&gt; Map&lt;Self,F&gt;<br>where F: FnMut(Self::Item) -&gt; B</div>
+    <div class="md">각 요소를 클로저로 변환. 타입 변경 가능.</div></div>
+  <div class="mc2 ad"><div class="mn">filter</div>
+    <div class="ms">fn filter&lt;P&gt;(self, p:P) -&gt; Filter&lt;Self,P&gt;<br>where P: FnMut(&amp;Self::Item) -&gt; bool</div>
+    <div class="md">true인 요소만 통과.</div></div>
+  <div class="mc2 ad"><div class="mn">filter_map</div>
+    <div class="ms">fn filter_map&lt;B,F&gt;(self, f:F) -&gt; FilterMap&lt;Self,F&gt;<br>where F: FnMut(Self::Item) -&gt; Option&lt;B&gt;</div>
+    <div class="md">Some(v)만 통과. filter+map 합체.</div></div>
+  <div class="mc2 ad"><div class="mn">take</div>
+    <div class="ms">fn take(self, n: usize) -&gt; Take&lt;Self&gt;</div>
+    <div class="md">앞 n개만. n개 후 None. Short-circuit.</div></div>
+  <div class="mc2 ad"><div class="mn">skip</div>
+    <div class="ms">fn skip(self, n: usize) -&gt; Skip&lt;Self&gt;</div>
+    <div class="md">앞 n개 건너뛰고 이후 yield.</div></div>
+  <div class="mc2 ad"><div class="mn">take_while</div>
+    <div class="ms">fn take_while&lt;P&gt;(self, p:P) -&gt; TakeWhile&lt;Self,P&gt;<br>where P: FnMut(&amp;Self::Item) -&gt; bool</div>
+    <div class="md">조건 false 되는 순간 종료.</div></div>
+  <div class="mc2 ad"><div class="mn">skip_while</div>
+    <div class="ms">fn skip_while&lt;P&gt;(self, p:P) -&gt; SkipWhile&lt;Self,P&gt;<br>where P: FnMut(&amp;Self::Item) -&gt; bool</div>
+    <div class="md">조건 false부터 yield 시작.</div></div>
+  <div class="mc2 ad"><div class="mn">enumerate</div>
+    <div class="ms">fn enumerate(self) -&gt; Enumerate&lt;Self&gt;</div>
+    <div class="md">(index, value) 쌍으로 yield.</div></div>
+  <div class="mc2 ad"><div class="mn">zip</div>
+    <div class="ms">fn zip&lt;U&gt;(self, other:U) -&gt; Zip&lt;Self, U::IntoIter&gt;<br>where U: IntoIterator</div>
+    <div class="md">두 이터레이터를 (a,b) 쌍으로. 짧은 쪽 기준.</div></div>
+  <div class="mc2 ad"><div class="mn">chain</div>
+    <div class="ms">fn chain&lt;U&gt;(self, other:U) -&gt; Chain&lt;Self,U::IntoIter&gt;<br>where U: IntoIterator&lt;Item=Self::Item&gt;</div>
+    <div class="md">두 이터레이터 이어붙임.</div></div>
+  <div class="mc2 ad"><div class="mn">flat_map</div>
+    <div class="ms">fn flat_map&lt;U,F&gt;(self, f:F) -&gt; FlatMap&lt;Self,U,F&gt;<br>where F: FnMut(Self::Item)-&gt;U, U: IntoIterator</div>
+    <div class="md">map 후 중첩 이터레이터 한 층 펼침.</div></div>
+  <div class="mc2 ad"><div class="mn">flatten</div>
+    <div class="ms">fn flatten(self) -&gt; Flatten&lt;Self&gt;<br>where Self::Item: IntoIterator</div>
+    <div class="md">중첩 이터레이터를 한 층 펼침.</div></div>
+  <div class="mc2 ad"><div class="mn">peekable</div>
+    <div class="ms">fn peekable(self) -&gt; Peekable&lt;Self&gt;</div>
+    <div class="md">peek()으로 다음 값 미리보기. next() 소비 안 함.</div></div>
+  <div class="mc2 ad"><div class="mn">cloned / copied</div>
+    <div class="ms">fn cloned(self) -&gt; Cloned&lt;Self&gt;<br>where Self::Item: Clone</div>
+    <div class="md">&amp;T → T. copied는 Copy 타입 전용.</div></div>
+  <div class="mc2 ad"><div class="mn">rev</div>
+    <div class="ms">fn rev(self) -&gt; Rev&lt;Self&gt;<br>where Self: DoubleEndedIterator</div>
+    <div class="md">역순으로 yield.</div></div>
+  <div class="mc2 ad"><div class="mn">step_by</div>
+    <div class="ms">fn step_by(self, step: usize) -&gt; StepBy&lt;Self&gt;</div>
+    <div class="md">step 간격으로 yield.</div></div>
+  <div class="mc2 cs"><div class="mn">collect</div>
+    <div class="ms">fn collect&lt;B&gt;(self) -&gt; B<br>where B: FromIterator&lt;Self::Item&gt;</div>
+    <div class="md">Vec, HashSet, HashMap, String 등 수집.</div></div>
+  <div class="mc2 cs"><div class="mn">for_each</div>
+    <div class="ms">fn for_each&lt;F&gt;(self, f:F)<br>where F: FnMut(Self::Item)</div>
+    <div class="md">각 요소에 클로저. 반환값 없음.</div></div>
+  <div class="mc2 cs"><div class="mn">fold</div>
+    <div class="ms">fn fold&lt;B,F&gt;(self, init:B, f:F) -&gt; B<br>where F: FnMut(B, Self::Item) -&gt; B</div>
+    <div class="md">초기값+누적 클로저. 가장 범용적 소비자.</div></div>
+  <div class="mc2 cs"><div class="mn">sum / product</div>
+    <div class="ms">fn sum&lt;S&gt;(self) -&gt; S<br>where S: Sum&lt;Self::Item&gt;</div>
+    <div class="md">합계/곱. fold의 특수 케이스.</div></div>
+  <div class="mc2 cs"><div class="mn">count</div>
+    <div class="ms">fn count(self) -&gt; usize</div>
+    <div class="md">전체 소진 후 개수 반환.</div></div>
+  <div class="mc2 cs"><div class="mn">any / all</div>
+    <div class="ms">fn any&lt;F&gt;(&amp;mut self, f:F) -&gt; bool<br>where F: FnMut(Self::Item) -&gt; bool</div>
+    <div class="md">Short-circuit. any: true 즉시 종료. all: false 즉시 종료.</div></div>
+  <div class="mc2 cs"><div class="mn">find / position</div>
+    <div class="ms">fn find&lt;P&gt;(&amp;mut self, p:P) -&gt; Option&lt;Self::Item&gt;</div>
+    <div class="md">첫 매칭 요소/인덱스. Short-circuit.</div></div>
+  <div class="mc2 cs"><div class="mn">max / min</div>
+    <div class="ms">fn max(self) -&gt; Option&lt;Self::Item&gt;<br>where Self::Item: Ord</div>
+    <div class="md">전체 소진 필요. 무한 이터레이터 사용 불가!</div></div>
+  <div class="mc2 cs"><div class="mn">last</div>
+    <div class="ms">fn last(self) -&gt; Option&lt;Self::Item&gt;</div>
+    <div class="md">마지막 요소. 전체 소진 필요.</div></div>
+</div>
+</section>
+<div class="divider"></div>
+<section class="section" id="s5">
+<div class="sec-num">Section 05 / 메서드</div>
+<div class="sec-h">map · filter · take · skip</div>
+<div class="sec-p">
+  가장 많이 쓰이는 어댑터 4종의 완전한 코드 예제입니다.
+  <code>iter()</code>는 <code>&amp;T</code>를 yield하므로 <code>filter</code>의 클로저는
+  <code>&amp;&amp;T</code>를 받습니다. <code>copied()</code>로 소유권을 획득할 수 있습니다.
+</div>
+  <div class="vsc">
+    <div class="vsc-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="fname">map_filter_take_skip.rs</span>
+    </div>
+    <div class="vsc-body"><table>
+      <tr><td class="ln">1</td><td class="cd"><span class="k">fn</span><span class="p"> </span><span class="f">main</span><span class="p">() {</span></td></tr>
+      <tr><td class="ln">2</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">v</span><span class="p"> = </span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">, </span><span class="n">2</span><span class="p">, </span><span class="n">3</span><span class="p">, </span><span class="n">4</span><span class="p">, </span><span class="n">5</span><span class="p">, </span><span class="n">6</span><span class="p">, </span><span class="n">7</span><span class="p">, </span><span class="n">8</span><span class="p">, </span><span class="n">9</span><span class="p">, </span><span class="n">10</span><span class="p">];</span></td></tr>
+      <tr><td class="ln">3</td><td class="cd"></td></tr>
+      <tr><td class="ln">4</td><td class="cd"><span class="cm">    // ── map: 각 요소 변환. iter()는 &i32 yield → |&x| 로 역참조 ──</span></td></tr>
+      <tr><td class="ln">5</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">doubled</span><span class="p">: </span><span class="t">Vec</span><span class="p"><</span><span class="t">i32</span><span class="p">> = </span><span class="v">v</span><span class="p">.</span><span class="f">iter</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">6</td><td class="cd"><span class="p">        .</span><span class="f">map</span><span class="p">(|&</span><span class="v">x</span><span class="p">| </span><span class="v">x</span><span class="p"> * </span><span class="n">2</span><span class="p">)</span></td></tr>
+      <tr><td class="ln">7</td><td class="cd"><span class="p">        .</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">8</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">doubled</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[</span><span class="n">2</span><span class="p">,</span><span class="n">4</span><span class="p">,</span><span class="n">6</span><span class="p">,</span><span class="n">8</span><span class="p">,</span><span class="n">10</span><span class="p">,</span><span class="n">12</span><span class="p">,</span><span class="n">14</span><span class="p">,</span><span class="n">16</span><span class="p">,</span><span class="n">18</span><span class="p">,</span><span class="n">20</span><span class="p">]);</span></td></tr>
+      <tr><td class="ln">9</td><td class="cd"></td></tr>
+      <tr><td class="ln">10</td><td class="cd"><span class="cm">    // map으로 타입 변환: i32 → String</span></td></tr>
+      <tr><td class="ln">11</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">strs</span><span class="p">: </span><span class="t">Vec</span><span class="p"><</span><span class="t">String</span><span class="p">> = </span><span class="v">v</span><span class="p">.</span><span class="f">iter</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">12</td><td class="cd"><span class="p">        .</span><span class="f">map</span><span class="p">(|</span><span class="v">x</span><span class="p">| </span><span class="v">x</span><span class="p">.</span><span class="f">to_string</span><span class="p">())</span></td></tr>
+      <tr><td class="ln">13</td><td class="cd"><span class="p">        .</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">14</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">strs</span><span class="p">[</span><span class="n">0</span><span class="p">], </span><span class="s">"1"</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">15</td><td class="cd"></td></tr>
+      <tr><td class="ln">16</td><td class="cd"><span class="cm">    // ── filter: predicate는 &&i32를 받음 (iter() + filter 각각 & 추가) ──</span></td></tr>
+      <tr><td class="ln">17</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">evens</span><span class="p">: </span><span class="t">Vec</span><span class="p"><&</span><span class="t">i32</span><span class="p">> = </span><span class="v">v</span><span class="p">.</span><span class="f">iter</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">18</td><td class="cd"><span class="p">        .</span><span class="f">filter</span><span class="p">(|&&</span><span class="v">x</span><span class="p">| </span><span class="v">x</span><span class="p"> % </span><span class="n">2</span><span class="p"> == </span><span class="n">0</span><span class="p">)</span></td></tr>
+      <tr><td class="ln">19</td><td class="cd"><span class="p">        .</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">20</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">evens</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[&</span><span class="n">2</span><span class="p">, &</span><span class="n">4</span><span class="p">, &</span><span class="n">6</span><span class="p">, &</span><span class="n">8</span><span class="p">, &</span><span class="n">10</span><span class="p">]);</span></td></tr>
+      <tr><td class="ln">21</td><td class="cd"></td></tr>
+      <tr><td class="ln">22</td><td class="cd"><span class="cm">    // copied()로 &i32 → i32 복사 후 filter (더 깔끔)</span></td></tr>
+      <tr><td class="ln">23</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">evens2</span><span class="p">: </span><span class="t">Vec</span><span class="p"><</span><span class="t">i32</span><span class="p">> = </span><span class="v">v</span><span class="p">.</span><span class="f">iter</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">24</td><td class="cd"><span class="p">        .</span><span class="f">copied</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">25</td><td class="cd"><span class="p">        .</span><span class="f">filter</span><span class="p">(|&</span><span class="v">x</span><span class="p">| </span><span class="v">x</span><span class="p"> % </span><span class="n">2</span><span class="p"> == </span><span class="n">0</span><span class="p">)</span></td></tr>
+      <tr><td class="ln">26</td><td class="cd"><span class="p">        .</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">27</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">evens2</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[</span><span class="n">2</span><span class="p">, </span><span class="n">4</span><span class="p">, </span><span class="n">6</span><span class="p">, </span><span class="n">8</span><span class="p">, </span><span class="n">10</span><span class="p">]);</span></td></tr>
+      <tr><td class="ln">28</td><td class="cd"></td></tr>
+      <tr><td class="ln">29</td><td class="cd"><span class="cm">    // ── take / skip ──</span></td></tr>
+      <tr><td class="ln">30</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">first3</span><span class="p">: </span><span class="t">Vec</span><span class="p"><&</span><span class="t">i32</span><span class="p">> = </span><span class="v">v</span><span class="p">.</span><span class="f">iter</span><span class="p">().</span><span class="f">take</span><span class="p">(</span><span class="n">3</span><span class="p">).</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">31</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">first3</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[&</span><span class="n">1</span><span class="p">, &</span><span class="n">2</span><span class="p">, &</span><span class="n">3</span><span class="p">]);</span></td></tr>
+      <tr><td class="ln">32</td><td class="cd"></td></tr>
+      <tr><td class="ln">33</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">after3</span><span class="p">: </span><span class="t">Vec</span><span class="p"><&</span><span class="t">i32</span><span class="p">> = </span><span class="v">v</span><span class="p">.</span><span class="f">iter</span><span class="p">().</span><span class="f">skip</span><span class="p">(</span><span class="n">3</span><span class="p">).</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">34</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">after3</span><span class="p">[</span><span class="n">0</span><span class="p">], &</span><span class="n">4</span><span class="p">);   </span><span class="cm">// 4번째부터 시작</span></td></tr>
+      <tr><td class="ln">35</td><td class="cd"></td></tr>
+      <tr><td class="ln">36</td><td class="cd"><span class="cm">    // ── take_while / skip_while ──</span></td></tr>
+      <tr><td class="ln">37</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">w</span><span class="p"> = </span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">, </span><span class="n">2</span><span class="p">, </span><span class="n">3</span><span class="p">, </span><span class="n">4</span><span class="p">, </span><span class="n">1</span><span class="p">, </span><span class="n">2</span><span class="p">];</span><span class="cm">  // 뒤에 다시 1,2</span></td></tr>
+      <tr><td class="ln">38</td><td class="cd"></td></tr>
+      <tr><td class="ln">39</td><td class="cd"><span class="cm">    // take_while: 조건 깨지는 순간 종료. 뒤의 1,2는 보지 않음.</span></td></tr>
+      <tr><td class="ln">40</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">tw</span><span class="p">: </span><span class="t">Vec</span><span class="p"><</span><span class="t">i32</span><span class="p">> = </span><span class="v">w</span><span class="p">.</span><span class="f">iter</span><span class="p">().</span><span class="f">copied</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">41</td><td class="cd"><span class="p">        .</span><span class="f">take_while</span><span class="p">(|&</span><span class="v">x</span><span class="p">| </span><span class="v">x</span><span class="p"> < </span><span class="n">4</span><span class="p">).</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">42</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">tw</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">, </span><span class="n">2</span><span class="p">, </span><span class="n">3</span><span class="p">]);  </span><span class="cm">// 4에서 종료</span></td></tr>
+      <tr><td class="ln">43</td><td class="cd"></td></tr>
+      <tr><td class="ln">44</td><td class="cd"><span class="cm">    // skip_while: 조건 false 이후부터 전부 yield (뒤의 1,2 포함)</span></td></tr>
+      <tr><td class="ln">45</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">sw</span><span class="p">: </span><span class="t">Vec</span><span class="p"><</span><span class="t">i32</span><span class="p">> = </span><span class="v">w</span><span class="p">.</span><span class="f">iter</span><span class="p">().</span><span class="f">copied</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">46</td><td class="cd"><span class="p">        .</span><span class="f">skip_while</span><span class="p">(|&</span><span class="v">x</span><span class="p">| </span><span class="v">x</span><span class="p"> < </span><span class="n">3</span><span class="p">).</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">47</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">sw</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[</span><span class="n">3</span><span class="p">, </span><span class="n">4</span><span class="p">, </span><span class="n">1</span><span class="p">, </span><span class="n">2</span><span class="p">]);</span></td></tr>
+      <tr><td class="ln">48</td><td class="cd"><span class="p">}</span></td></tr>
+    </table></div>
+  </div>
+</section>
+<div class="divider"></div>
+<section class="section" id="s6">
+<div class="sec-num">Section 06 / 메서드</div>
+<div class="sec-h">fold · any · all · find · enumerate</div>
+<div class="sec-p">
+  <code>fold</code>는 이터레이터에서 가장 범용적인 소비자입니다.
+  <code>sum</code>, <code>product</code>, <code>count</code>는 모두 <code>fold</code>의 특수 케이스입니다.
+  <code>any</code>, <code>all</code>, <code>find</code>, <code>position</code>은
+  조건 충족 시 즉시 중단하는 <strong>Short-circuit 소비자</strong>입니다.
+</div>
+  <div class="vsc">
+    <div class="vsc-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="fname">fold_find_enumerate.rs</span>
+    </div>
+    <div class="vsc-body"><table>
+      <tr><td class="ln">1</td><td class="cd"><span class="k">fn</span><span class="p"> </span><span class="f">main</span><span class="p">() {</span></td></tr>
+      <tr><td class="ln">2</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">v</span><span class="p"> = </span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">, </span><span class="n">2</span><span class="p">, </span><span class="n">3</span><span class="p">, </span><span class="n">4</span><span class="p">, </span><span class="n">5</span><span class="p">];</span></td></tr>
+      <tr><td class="ln">3</td><td class="cd"></td></tr>
+      <tr><td class="ln">4</td><td class="cd"><span class="cm">    // ── fold: 초기값 + 누적 클로저 ──</span></td></tr>
+      <tr><td class="ln">5</td><td class="cd"><span class="cm">    // fold(init, |accumulator, element| new_accumulator)</span></td></tr>
+      <tr><td class="ln">6</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">sum</span><span class="p">: </span><span class="t">i32</span><span class="p"> = </span><span class="v">v</span><span class="p">.</span><span class="f">iter</span><span class="p">().</span><span class="f">fold</span><span class="p">(</span><span class="n">0</span><span class="p">, |</span><span class="v">acc</span><span class="p">, </span><span class="v">x</span><span class="p">| </span><span class="v">acc</span><span class="p"> + </span><span class="v">x</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">7</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">sum</span><span class="p">, </span><span class="n">15</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">8</td><td class="cd"></td></tr>
+      <tr><td class="ln">9</td><td class="cd"><span class="cm">    // fold로 최댓값 구현 (max()의 내부 동작과 동일)</span></td></tr>
+      <tr><td class="ln">10</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">max</span><span class="p">: </span><span class="t">i32</span><span class="p"> = </span><span class="v">v</span><span class="p">.</span><span class="f">iter</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">11</td><td class="cd"><span class="p">        .</span><span class="f">fold</span><span class="p">(</span><span class="t">i32</span><span class="p">::</span><span class="t">MIN</span><span class="p">, |</span><span class="v">acc</span><span class="p">, &</span><span class="v">x</span><span class="p">| </span><span class="kc">if</span><span class="p"> </span><span class="v">x</span><span class="p"> > </span><span class="v">acc</span><span class="p"> { </span><span class="v">x</span><span class="p"> } </span><span class="kc">else</span><span class="p"> { </span><span class="v">acc</span><span class="p"> });</span></td></tr>
+      <tr><td class="ln">12</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">max</span><span class="p">, </span><span class="n">5</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">13</td><td class="cd"></td></tr>
+      <tr><td class="ln">14</td><td class="cd"><span class="cm">    // fold로 문자열 연결</span></td></tr>
+      <tr><td class="ln">15</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">joined</span><span class="p"> = </span><span class="mc">vec!</span><span class="p">[</span><span class="s">"Rust"</span><span class="p">, </span><span class="s">" is"</span><span class="p">, </span><span class="s">" fast"</span><span class="p">]</span></td></tr>
+      <tr><td class="ln">16</td><td class="cd"><span class="p">        .</span><span class="f">iter</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">17</td><td class="cd"><span class="p">        .</span><span class="f">fold</span><span class="p">(</span><span class="t">String</span><span class="p">::</span><span class="f">new</span><span class="p">(), |</span><span class="k">mut</span><span class="p"> </span><span class="v">acc</span><span class="p">, </span><span class="v">s</span><span class="p">| {</span></td></tr>
+      <tr><td class="ln">18</td><td class="cd"><span class="p">            </span><span class="v">acc</span><span class="p">.</span><span class="f">push_str</span><span class="p">(</span><span class="v">s</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">19</td><td class="cd"><span class="p">            </span><span class="v">acc</span></td></tr>
+      <tr><td class="ln">20</td><td class="cd"><span class="p">        });</span></td></tr>
+      <tr><td class="ln">21</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">joined</span><span class="p">, </span><span class="s">"Rust is fast"</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">22</td><td class="cd"></td></tr>
+      <tr><td class="ln">23</td><td class="cd"><span class="cm">    // ── enumerate: (index, &value) 쌍으로 yield ──</span></td></tr>
+      <tr><td class="ln">24</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">fruits</span><span class="p"> = </span><span class="mc">vec!</span><span class="p">[</span><span class="s">"apple"</span><span class="p">, </span><span class="s">"banana"</span><span class="p">, </span><span class="s">"cherry"</span><span class="p">];</span></td></tr>
+      <tr><td class="ln">25</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">result</span><span class="p">: </span><span class="t">Vec</span><span class="p"><(</span><span class="t">usize</span><span class="p">, &&</span><span class="t">str</span><span class="p">)> = </span><span class="v">fruits</span><span class="p">.</span><span class="f">iter</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">26</td><td class="cd"><span class="p">        .</span><span class="f">enumerate</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">27</td><td class="cd"><span class="p">        .</span><span class="f">filter</span><span class="p">(|&(</span><span class="v">i</span><span class="p">, _)| </span><span class="v">i</span><span class="p"> % </span><span class="n">2</span><span class="p"> == </span><span class="n">0</span><span class="p">)</span><span class="cm">  // 짝수 인덱스만</span></td></tr>
+      <tr><td class="ln">28</td><td class="cd"><span class="p">        .</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">29</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">result</span><span class="p">[</span><span class="n">0</span><span class="p">].</span><span class="n">0</span><span class="p">, </span><span class="n">0</span><span class="p">);  </span><span class="cm">// 인덱스 0 = "apple"</span></td></tr>
+      <tr><td class="ln">30</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">result</span><span class="p">[</span><span class="n">1</span><span class="p">].</span><span class="n">0</span><span class="p">, </span><span class="n">2</span><span class="p">);  </span><span class="cm">// 인덱스 2 = "cherry"</span></td></tr>
+      <tr><td class="ln">31</td><td class="cd"></td></tr>
+      <tr><td class="ln">32</td><td class="cd"><span class="cm">    // ── any / all — Short-circuit ──</span></td></tr>
+      <tr><td class="ln">33</td><td class="cd"><span class="p">    </span><span class="mc">assert!</span><span class="p">(</span><span class="v">v</span><span class="p">.</span><span class="f">iter</span><span class="p">().</span><span class="f">any</span><span class="p">(|&</span><span class="v">x</span><span class="p">| </span><span class="v">x</span><span class="p"> > </span><span class="n">3</span><span class="p">));   </span><span class="cm">// 4에서 즉시 true</span></td></tr>
+      <tr><td class="ln">34</td><td class="cd"><span class="p">    </span><span class="mc">assert!</span><span class="p">(!</span><span class="v">v</span><span class="p">.</span><span class="f">iter</span><span class="p">().</span><span class="f">any</span><span class="p">(|&</span><span class="v">x</span><span class="p">| </span><span class="v">x</span><span class="p"> > </span><span class="n">10</span><span class="p">)); </span><span class="cm">// 전부 검사 후 false</span></td></tr>
+      <tr><td class="ln">35</td><td class="cd"><span class="p">    </span><span class="mc">assert!</span><span class="p">(</span><span class="v">v</span><span class="p">.</span><span class="f">iter</span><span class="p">().</span><span class="f">all</span><span class="p">(|&</span><span class="v">x</span><span class="p">| </span><span class="v">x</span><span class="p"> > </span><span class="n">0</span><span class="p">));   </span><span class="cm">// 전부 양수</span></td></tr>
+      <tr><td class="ln">36</td><td class="cd"><span class="p">    </span><span class="mc">assert!</span><span class="p">(!</span><span class="v">v</span><span class="p">.</span><span class="f">iter</span><span class="p">().</span><span class="f">all</span><span class="p">(|&</span><span class="v">x</span><span class="p">| </span><span class="v">x</span><span class="p"> > </span><span class="n">2</span><span class="p">)); </span><span class="cm">// 1에서 즉시 false</span></td></tr>
+      <tr><td class="ln">37</td><td class="cd"></td></tr>
+      <tr><td class="ln">38</td><td class="cd"><span class="cm">    // ── find / position ──</span></td></tr>
+      <tr><td class="ln">39</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">first_even</span><span class="p"> = </span><span class="v">v</span><span class="p">.</span><span class="f">iter</span><span class="p">().</span><span class="f">find</span><span class="p">(|&&</span><span class="v">x</span><span class="p">| </span><span class="v">x</span><span class="p"> % </span><span class="n">2</span><span class="p"> == </span><span class="n">0</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">40</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">first_even</span><span class="p">, </span><span class="t">Some</span><span class="p">(&</span><span class="n">2</span><span class="p">));  </span><span class="cm">// &i32 반환</span></td></tr>
+      <tr><td class="ln">41</td><td class="cd"></td></tr>
+      <tr><td class="ln">42</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">pos</span><span class="p"> = </span><span class="v">v</span><span class="p">.</span><span class="f">iter</span><span class="p">().</span><span class="f">position</span><span class="p">(|&</span><span class="v">x</span><span class="p">| </span><span class="v">x</span><span class="p"> == </span><span class="n">3</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">43</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">pos</span><span class="p">, </span><span class="t">Some</span><span class="p">(</span><span class="n">2</span><span class="p">));  </span><span class="cm">// 인덱스 2</span></td></tr>
+      <tr><td class="ln">44</td><td class="cd"></td></tr>
+      <tr><td class="ln">45</td><td class="cd"><span class="cm">    // ── filter_map: Some(v)만 통과, None 제거 ──</span></td></tr>
+      <tr><td class="ln">46</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">parsed</span><span class="p">: </span><span class="t">Vec</span><span class="p"><</span><span class="t">i32</span><span class="p">> =</span></td></tr>
+      <tr><td class="ln">47</td><td class="cd"><span class="p">        [</span><span class="s">"1"</span><span class="p">, </span><span class="s">"two"</span><span class="p">, </span><span class="s">"3"</span><span class="p">, </span><span class="s">"four"</span><span class="p">, </span><span class="s">"5"</span><span class="p">].</span><span class="f">iter</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">48</td><td class="cd"><span class="p">        .</span><span class="f">filter_map</span><span class="p">(|</span><span class="v">s</span><span class="p">| </span><span class="v">s</span><span class="p">.</span><span class="f">parse</span><span class="p">::<</span><span class="t">i32</span><span class="p">>().</span><span class="f">ok</span><span class="p">)</span><span class="cm">  // Err → None → 제거</span></td></tr>
+      <tr><td class="ln">49</td><td class="cd"><span class="p">        .</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">50</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">parsed</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">, </span><span class="n">3</span><span class="p">, </span><span class="n">5</span><span class="p">]);  </span><span class="cm">// "two","four" 제거</span></td></tr>
+      <tr><td class="ln">51</td><td class="cd"><span class="p">}</span></td></tr>
+    </table></div>
+  </div>
+</section>
+<div class="divider"></div>
+<section class="section" id="s7">
+<div class="sec-num">Section 07 / 메서드</div>
+<div class="sec-h">chain · zip · flat_map · flatten</div>
+<div class="sec-p">
+  여러 이터레이터를 조합하거나 중첩 구조를 펼치는 어댑터들입니다.
+  <code>zip</code>은 짧은 쪽이 소진되면 자동 종료합니다.
+  <code>flat_map</code>은 공식 문서에 예시로 제공된 패턴입니다.
+</div>
+  <div class="vsc">
+    <div class="vsc-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="fname">chain_zip_flatmap.rs</span>
+    </div>
+    <div class="vsc-body"><table>
+      <tr><td class="ln">1</td><td class="cd"><span class="k">fn</span><span class="p"> </span><span class="f">main</span><span class="p">() {</span></td></tr>
+      <tr><td class="ln">2</td><td class="cd"><span class="cm">    // ── chain: 두 이터레이터 이어붙임 ──</span></td></tr>
+      <tr><td class="ln">3</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">a</span><span class="p"> = </span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">, </span><span class="n">2</span><span class="p">, </span><span class="n">3</span><span class="p">];</span></td></tr>
+      <tr><td class="ln">4</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">b</span><span class="p"> = </span><span class="mc">vec!</span><span class="p">[</span><span class="n">4</span><span class="p">, </span><span class="n">5</span><span class="p">, </span><span class="n">6</span><span class="p">];</span></td></tr>
+      <tr><td class="ln">5</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">chained</span><span class="p">: </span><span class="t">Vec</span><span class="p"><</span><span class="t">i32</span><span class="p">> = </span><span class="v">a</span><span class="p">.</span><span class="f">iter</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">6</td><td class="cd"><span class="p">        .</span><span class="f">chain</span><span class="p">(</span><span class="v">b</span><span class="p">.</span><span class="f">iter</span><span class="p">)</span><span class="cm">  // a 소진 후 b 시작</span></td></tr>
+      <tr><td class="ln">7</td><td class="cd"><span class="p">        .</span><span class="f">copied</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">8</td><td class="cd"><span class="p">        .</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">9</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">chained</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">,</span><span class="n">2</span><span class="p">,</span><span class="n">3</span><span class="p">,</span><span class="n">4</span><span class="p">,</span><span class="n">5</span><span class="p">,</span><span class="n">6</span><span class="p">]);</span></td></tr>
+      <tr><td class="ln">10</td><td class="cd"></td></tr>
+      <tr><td class="ln">11</td><td class="cd"><span class="cm">    // ── zip: 두 이터레이터를 (a,b) 쌍으로. 짧은 쪽 기준 종료 ──</span></td></tr>
+      <tr><td class="ln">12</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">names</span><span class="p">  = </span><span class="mc">vec!</span><span class="p">[</span><span class="s">"Alice"</span><span class="p">, </span><span class="s">"Bob"</span><span class="p">, </span><span class="s">"Carol"</span><span class="p">];</span></td></tr>
+      <tr><td class="ln">13</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">scores</span><span class="p"> = </span><span class="mc">vec!</span><span class="p">[</span><span class="n">95</span><span class="p">, </span><span class="n">87</span><span class="p">, </span><span class="n">92</span><span class="p">];</span></td></tr>
+      <tr><td class="ln">14</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">paired</span><span class="p">: </span><span class="t">Vec</span><span class="p"><_> = </span><span class="v">names</span><span class="p">.</span><span class="f">iter</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">15</td><td class="cd"><span class="p">        .</span><span class="f">zip</span><span class="p">(</span><span class="v">scores</span><span class="p">.</span><span class="f">iter</span><span class="p">)</span></td></tr>
+      <tr><td class="ln">16</td><td class="cd"><span class="p">        .</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">17</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">paired</span><span class="p">[</span><span class="n">0</span><span class="p">], (&</span><span class="s">"Alice"</span><span class="p">, &</span><span class="n">95</span><span class="p">));</span></td></tr>
+      <tr><td class="ln">18</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">paired</span><span class="p">[</span><span class="n">2</span><span class="p">], (&</span><span class="s">"Carol"</span><span class="p">, &</span><span class="n">92</span><span class="p">));</span></td></tr>
+      <tr><td class="ln">19</td><td class="cd"></td></tr>
+      <tr><td class="ln">20</td><td class="cd"><span class="cm">    // zip은 짧은 쪽에서 자동 종료 (무한 range도 안전)</span></td></tr>
+      <tr><td class="ln">21</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">indexed</span><span class="p">: </span><span class="t">Vec</span><span class="p"><_> = (</span><span class="n">1</span><span class="p">..)</span><span class="cm">  // 무한 range</span></td></tr>
+      <tr><td class="ln">22</td><td class="cd"><span class="p">        .</span><span class="f">zip</span><span class="p">([</span><span class="s">"a"</span><span class="p">, </span><span class="s">"b"</span><span class="p">, </span><span class="s">"c"</span><span class="p">].</span><span class="f">iter</span><span class="p">)</span><span class="cm">  // 길이 3에서 종료</span></td></tr>
+      <tr><td class="ln">23</td><td class="cd"><span class="p">        .</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">24</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">indexed</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[(</span><span class="n">1</span><span class="p">, &</span><span class="s">"a"</span><span class="p">), (</span><span class="n">2</span><span class="p">, &</span><span class="s">"b"</span><span class="p">), (</span><span class="n">3</span><span class="p">, &</span><span class="s">"c"</span><span class="p">)]);</span></td></tr>
+      <tr><td class="ln">25</td><td class="cd"></td></tr>
+      <tr><td class="ln">26</td><td class="cd"><span class="cm">    // ── flat_map: map 후 중첩 이터레이터를 한 층 펼침 ──</span></td></tr>
+      <tr><td class="ln">27</td><td class="cd"><span class="cm">    // 공식 문서 예시: "for such a small example, a for loop may be cleaner,</span></td></tr>
+      <tr><td class="ln">28</td><td class="cd"><span class="cm">    //  but flat_map might be preferable to keep a functional style"</span></td></tr>
+      <tr><td class="ln">29</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">sentences</span><span class="p"> = </span><span class="mc">vec!</span><span class="p">[</span><span class="s">"hello world"</span><span class="p">, </span><span class="s">"foo bar baz"</span><span class="p">];</span></td></tr>
+      <tr><td class="ln">30</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">words</span><span class="p">: </span><span class="t">Vec</span><span class="p"><&</span><span class="t">str</span><span class="p">> = </span><span class="v">sentences</span><span class="p">.</span><span class="f">iter</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">31</td><td class="cd"><span class="p">        .</span><span class="f">flat_map</span><span class="p">(|</span><span class="v">s</span><span class="p">| </span><span class="v">s</span><span class="p">.</span><span class="f">split_whitespace</span><span class="p">)</span></td></tr>
+      <tr><td class="ln">32</td><td class="cd"><span class="p">        .</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">33</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">words</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[</span><span class="s">"hello"</span><span class="p">, </span><span class="s">"world"</span><span class="p">, </span><span class="s">"foo"</span><span class="p">, </span><span class="s">"bar"</span><span class="p">, </span><span class="s">"baz"</span><span class="p">]);</span></td></tr>
+      <tr><td class="ln">34</td><td class="cd"></td></tr>
+      <tr><td class="ln">35</td><td class="cd"><span class="cm">    // 공식 문서 예시: flat_map으로 범위 연결</span></td></tr>
+      <tr><td class="ln">36</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">ranges</span><span class="p">: </span><span class="t">Vec</span><span class="p"><</span><span class="t">i32</span><span class="p">> = (</span><span class="n">0</span><span class="p">..</span><span class="n">3</span><span class="p">)</span></td></tr>
+      <tr><td class="ln">37</td><td class="cd"><span class="p">        .</span><span class="f">flat_map</span><span class="p">(|</span><span class="v">x</span><span class="p">| (</span><span class="v">x</span><span class="p"> * </span><span class="n">100</span><span class="p">)..(</span><span class="v">x</span><span class="p"> * </span><span class="n">100</span><span class="p"> + </span><span class="n">3</span><span class="p">))</span></td></tr>
+      <tr><td class="ln">38</td><td class="cd"><span class="p">        .</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">39</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">ranges</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[</span><span class="n">0</span><span class="p">,</span><span class="n">1</span><span class="p">,</span><span class="n">2</span><span class="p">, </span><span class="n">100</span><span class="p">,</span><span class="n">101</span><span class="p">,</span><span class="n">102</span><span class="p">, </span><span class="n">200</span><span class="p">,</span><span class="n">201</span><span class="p">,</span><span class="n">202</span><span class="p">]);</span></td></tr>
+      <tr><td class="ln">40</td><td class="cd"></td></tr>
+      <tr><td class="ln">41</td><td class="cd"><span class="cm">    // ── flatten: 중첩 Vec 한 층 펼침 ──</span></td></tr>
+      <tr><td class="ln">42</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">nested</span><span class="p"> = </span><span class="mc">vec!</span><span class="p">[</span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">,</span><span class="n">2</span><span class="p">], </span><span class="mc">vec!</span><span class="p">[</span><span class="n">3</span><span class="p">,</span><span class="n">4</span><span class="p">], </span><span class="mc">vec!</span><span class="p">[</span><span class="n">5</span><span class="p">]];</span></td></tr>
+      <tr><td class="ln">43</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">flat</span><span class="p">: </span><span class="t">Vec</span><span class="p"><</span><span class="t">i32</span><span class="p">> = </span><span class="v">nested</span><span class="p">.</span><span class="f">into_iter</span><span class="p">().</span><span class="f">flatten</span><span class="p">().</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">44</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">flat</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">,</span><span class="n">2</span><span class="p">,</span><span class="n">3</span><span class="p">,</span><span class="n">4</span><span class="p">,</span><span class="n">5</span><span class="p">]);</span></td></tr>
+      <tr><td class="ln">45</td><td class="cd"><span class="p">}</span></td></tr>
+    </table></div>
+  </div>
+</section>
+<div class="divider"></div>
+<section class="section" id="s8">
+<div class="sec-num">Section 08 / 메서드</div>
+<div class="sec-h">collect — 다양한 컬렉션 타입으로 수집</div>
+<div class="sec-p">
+  <code>collect()</code>는 <code>FromIterator</code>를 구현한 모든 타입으로 수집할 수 있습니다.
+  타입을 명시할 때 <code>::&lt;Type&gt;()</code> 형태의 <strong>터보피시(turbofish)</strong>를 사용합니다.
+  <code>Result&lt;Vec&lt;T&gt;, E&gt;</code>로 수집하면 하나라도 <code>Err</code>이면 전체 <code>Err</code>을 반환합니다.
+</div>
+  <div class="vsc">
+    <div class="vsc-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="fname">collect_types.rs</span>
+    </div>
+    <div class="vsc-body"><table>
+      <tr><td class="ln">1</td><td class="cd"><span class="k">use</span><span class="p"> </span><span class="t">std</span><span class="p">::</span><span class="t">collections</span><span class="p">::{</span><span class="t">HashMap</span><span class="p">, </span><span class="t">HashSet</span><span class="p">, </span><span class="t">BTreeSet</span><span class="p">};</span></td></tr>
+      <tr><td class="ln">2</td><td class="cd"></td></tr>
+      <tr><td class="ln">3</td><td class="cd"><span class="k">fn</span><span class="p"> </span><span class="f">main</span><span class="p">() {</span></td></tr>
+      <tr><td class="ln">4</td><td class="cd"><span class="cm">    // ── Vec<T> ──</span></td></tr>
+      <tr><td class="ln">5</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">v</span><span class="p">: </span><span class="t">Vec</span><span class="p"><</span><span class="t">i32</span><span class="p">> = (</span><span class="n">1</span><span class="p">..=</span><span class="n">5</span><span class="p">).</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">6</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">v</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">,</span><span class="n">2</span><span class="p">,</span><span class="n">3</span><span class="p">,</span><span class="n">4</span><span class="p">,</span><span class="n">5</span><span class="p">]);</span></td></tr>
+      <tr><td class="ln">7</td><td class="cd"></td></tr>
+      <tr><td class="ln">8</td><td class="cd"><span class="cm">    // ── HashSet<T> — 중복 자동 제거 ──</span></td></tr>
+      <tr><td class="ln">9</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">set</span><span class="p">: </span><span class="t">HashSet</span><span class="p"><</span><span class="t">i32</span><span class="p">> = </span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">,</span><span class="n">1</span><span class="p">,</span><span class="n">2</span><span class="p">,</span><span class="n">2</span><span class="p">,</span><span class="n">3</span><span class="p">]</span></td></tr>
+      <tr><td class="ln">10</td><td class="cd"><span class="p">        .</span><span class="f">into_iter</span><span class="p">().</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">11</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">set</span><span class="p">.</span><span class="f">len</span><span class="p">(), </span><span class="n">3</span><span class="p">);</span><span class="cm">  // 1,2,3 중복 제거</span></td></tr>
+      <tr><td class="ln">12</td><td class="cd"></td></tr>
+      <tr><td class="ln">13</td><td class="cd"><span class="cm">    // ── HashMap<K, V> ──</span></td></tr>
+      <tr><td class="ln">14</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">map</span><span class="p">: </span><span class="t">HashMap</span><span class="p"><&</span><span class="t">str</span><span class="p">, </span><span class="t">i32</span><span class="p">> =</span></td></tr>
+      <tr><td class="ln">15</td><td class="cd"><span class="p">        [(</span><span class="s">"one"</span><span class="p">, </span><span class="n">1</span><span class="p">), (</span><span class="s">"two"</span><span class="p">, </span><span class="n">2</span><span class="p">), (</span><span class="s">"three"</span><span class="p">, </span><span class="n">3</span><span class="p">)]</span></td></tr>
+      <tr><td class="ln">16</td><td class="cd"><span class="p">        .</span><span class="f">iter</span><span class="p">().</span><span class="f">copied</span><span class="p">().</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">17</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">map</span><span class="p">[</span><span class="s">"one"</span><span class="p">], </span><span class="n">1</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">18</td><td class="cd"></td></tr>
+      <tr><td class="ln">19</td><td class="cd"><span class="cm">    // ── String — char 이터레이터 수집 ──</span></td></tr>
+      <tr><td class="ln">20</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">s</span><span class="p">: </span><span class="t">String</span><span class="p"> = [</span><span class="s">'R'</span><span class="p">, </span><span class="s">'u'</span><span class="p">, </span><span class="s">'s'</span><span class="p">, </span><span class="s">'t'</span><span class="p">].</span><span class="f">iter</span><span class="p">().</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">21</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">s</span><span class="p">, </span><span class="s">"Rust"</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">22</td><td class="cd"></td></tr>
+      <tr><td class="ln">23</td><td class="cd"><span class="cm">    // ── 터보피시 ::<Type>() — 타입 어노테이션 대신 ──</span></td></tr>
+      <tr><td class="ln">24</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">v2</span><span class="p"> = (</span><span class="n">1</span><span class="p">..=</span><span class="n">5</span><span class="p">).</span><span class="f">collect</span><span class="p">::<</span><span class="t">Vec</span><span class="p"><</span><span class="t">i32</span><span class="p">>>(); </span><span class="cm">// ::<Vec<i32>> 터보피시</span></td></tr>
+      <tr><td class="ln">25</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">v2</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">,</span><span class="n">2</span><span class="p">,</span><span class="n">3</span><span class="p">,</span><span class="n">4</span><span class="p">,</span><span class="n">5</span><span class="p">]);</span></td></tr>
+      <tr><td class="ln">26</td><td class="cd"></td></tr>
+      <tr><td class="ln">27</td><td class="cd"><span class="cm">    // ── Result 수집 — 하나라도 Err이면 전체 Err ──</span></td></tr>
+      <tr><td class="ln">28</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">ok</span><span class="p">: </span><span class="t">Result</span><span class="p"><</span><span class="t">Vec</span><span class="p"><</span><span class="t">i32</span><span class="p">>, _> =</span></td></tr>
+      <tr><td class="ln">29</td><td class="cd"><span class="p">        [</span><span class="s">"1"</span><span class="p">, </span><span class="s">"2"</span><span class="p">, </span><span class="s">"3"</span><span class="p">].</span><span class="f">iter</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">30</td><td class="cd"><span class="p">        .</span><span class="f">map</span><span class="p">(|</span><span class="v">s</span><span class="p">| </span><span class="v">s</span><span class="p">.</span><span class="f">parse</span><span class="p">::<</span><span class="t">i32</span><span class="p">>())</span></td></tr>
+      <tr><td class="ln">31</td><td class="cd"><span class="p">        .</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">32</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">ok</span><span class="p">, </span><span class="t">Ok</span><span class="p">(</span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">, </span><span class="n">2</span><span class="p">, </span><span class="n">3</span><span class="p">]));</span></td></tr>
+      <tr><td class="ln">33</td><td class="cd"></td></tr>
+      <tr><td class="ln">34</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">err</span><span class="p">: </span><span class="t">Result</span><span class="p"><</span><span class="t">Vec</span><span class="p"><</span><span class="t">i32</span><span class="p">>, _> =</span></td></tr>
+      <tr><td class="ln">35</td><td class="cd"><span class="p">        [</span><span class="s">"1"</span><span class="p">, </span><span class="s">"two"</span><span class="p">, </span><span class="s">"3"</span><span class="p">].</span><span class="f">iter</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">36</td><td class="cd"><span class="p">        .</span><span class="f">map</span><span class="p">(|</span><span class="v">s</span><span class="p">| </span><span class="v">s</span><span class="p">.</span><span class="f">parse</span><span class="p">::<</span><span class="t">i32</span><span class="p">>())</span></td></tr>
+      <tr><td class="ln">37</td><td class="cd"><span class="p">        .</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">38</td><td class="cd"><span class="p">    </span><span class="mc">assert!</span><span class="p">(</span><span class="v">err</span><span class="p">.</span><span class="f">is_err</span><span class="p">());  </span><span class="cm">// "two" 파싱 실패 → 전체 Err</span></td></tr>
+      <tr><td class="ln">39</td><td class="cd"><span class="p">}</span></td></tr>
+    </table></div>
+  </div>
+</section>
+<div class="divider"></div>
+<section class="section" id="s9">
+<div class="sec-num">Section 09 / 심화</div>
+<div class="sec-h">for 루프 — iterator의 문법 설탕</div>
+<div class="sec-p">
+  공식 문서(<code>std::iter</code>)에 명시: "Rust's for loop syntax is actually sugar for iterators."
+  <code>for x in values</code>는 컴파일러가 <code>IntoIterator::into_iter()</code>와
+  <code>loop { match iter.next() { … } }</code>로 변환합니다.
+</div>
+<div class="qbox">"Rust's for loop syntax is actually sugar for iterators."
+<div class="qsrc">출처: doc.rust-lang.org/std/iter/</div></div>
+<div class="dsug">
+  <div>
+  <div class="vsc">
+    <div class="vsc-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="fname">sugar.rs</span>
+    </div>
+    <div class="vsc-body"><table>
+      <tr><td class="ln">1</td><td class="cd"><span class="cm">// 우리가 작성하는 코드</span></td></tr>
+      <tr><td class="ln">2</td><td class="cd"><span class="k">let</span><span class="p"> </span><span class="v">values</span><span class="p"> = </span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">, </span><span class="n">2</span><span class="p">, </span><span class="n">3</span><span class="p">];</span></td></tr>
+      <tr><td class="ln">3</td><td class="cd"></td></tr>
+      <tr><td class="ln">4</td><td class="cd"><span class="kc">for</span><span class="p"> </span><span class="v">x</span><span class="p"> </span><span class="kc">in</span><span class="p"> </span><span class="v">values</span><span class="p"> {</span></td></tr>
+      <tr><td class="ln">5</td><td class="cd"><span class="p">    </span><span class="mc">println!</span><span class="p">(</span><span class="s">"{x}"</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">6</td><td class="cd"><span class="p">}</span></td></tr>
+    </table></div>
+  </div>
+  </div>
+  <div class="dsug-arr">&#8594;</div>
+  <div>
+  <div class="vsc">
+    <div class="vsc-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="fname">desugared.rs</span>
+    </div>
+    <div class="vsc-body"><table>
+      <tr><td class="ln">1</td><td class="cd"><span class="cm">// 컴파일러가 변환한 코드 (공식 문서)</span></td></tr>
+      <tr><td class="ln">2</td><td class="cd"><span class="k">let</span><span class="p"> </span><span class="v">values</span><span class="p"> = </span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">, </span><span class="n">2</span><span class="p">, </span><span class="n">3</span><span class="p">];</span></td></tr>
+      <tr><td class="ln">3</td><td class="cd"><span class="p">{</span></td></tr>
+      <tr><td class="ln">4</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="k">mut</span><span class="p"> </span><span class="v">iter</span><span class="p"> =</span></td></tr>
+      <tr><td class="ln">5</td><td class="cd"><span class="p">        </span><span class="t">IntoIterator</span><span class="p">::</span><span class="f">into_iter</span><span class="p">(</span><span class="v">values</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">6</td><td class="cd"><span class="p">    </span><span class="kc">loop</span><span class="p"> {</span></td></tr>
+      <tr><td class="ln">7</td><td class="cd"><span class="p">        </span><span class="kc">match</span><span class="p"> </span><span class="v">iter</span><span class="p">.</span><span class="f">next</span><span class="p">() {</span></td></tr>
+      <tr><td class="ln">8</td><td class="cd"><span class="p">            </span><span class="t">Some</span><span class="p">(</span><span class="v">x</span><span class="p">) => {</span></td></tr>
+      <tr><td class="ln">9</td><td class="cd"><span class="p">                </span><span class="mc">println!</span><span class="p">(</span><span class="s">"{x}"</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">10</td><td class="cd"><span class="p">            }</span></td></tr>
+      <tr><td class="ln">11</td><td class="cd"><span class="p">            </span><span class="t">None</span><span class="p"> => </span><span class="kc">break</span><span class="p">,</span></td></tr>
+      <tr><td class="ln">12</td><td class="cd"><span class="p">        }</span></td></tr>
+      <tr><td class="ln">13</td><td class="cd"><span class="p">    }</span></td></tr>
+      <tr><td class="ln">14</td><td class="cd"><span class="p">}</span></td></tr>
+    </table></div>
+  </div>
+  </div>
+</div>
+<div class="grid g3">
+  <div class="card bl"><div class="ct">for x in v</div>
+    <div class="cb"><code>v.into_iter()</code> 호출.<br>소유권 이동. v는 이후 사용 불가.</div>
+  </div>
+  <div class="card tl"><div class="ct">for x in &amp;v</div>
+    <div class="cb"><code>v.iter()</code>와 동일.<br>불변 참조. v 유지.</div>
+  </div>
+  <div class="card gn"><div class="ct">for x in &amp;mut v</div>
+    <div class="cb"><code>v.iter_mut()</code>와 동일.<br>가변 참조. 원본 수정 가능.</div>
+  </div>
+</div>
+  <div class="vsc">
+    <div class="vsc-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="fname">for_variants.rs</span>
+    </div>
+    <div class="vsc-body"><table>
+      <tr><td class="ln">1</td><td class="cd"><span class="k">fn</span><span class="p"> </span><span class="f">main</span><span class="p">() {</span></td></tr>
+      <tr><td class="ln">2</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="k">mut</span><span class="p"> </span><span class="v">v</span><span class="p"> = </span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">, </span><span class="n">2</span><span class="p">, </span><span class="n">3</span><span class="p">];</span></td></tr>
+      <tr><td class="ln">3</td><td class="cd"></td></tr>
+      <tr><td class="ln">4</td><td class="cd"><span class="cm">    // 1. for x in &v  →  v.iter()  — x: &i32, v 유지</span></td></tr>
+      <tr><td class="ln">5</td><td class="cd"><span class="p">    </span><span class="kc">for</span><span class="p"> </span><span class="v">x</span><span class="p"> </span><span class="kc">in</span><span class="p"> &</span><span class="v">v</span><span class="p"> {</span></td></tr>
+      <tr><td class="ln">6</td><td class="cd"><span class="p">        </span><span class="mc">print!</span><span class="p">(</span><span class="s">"{x} "</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">7</td><td class="cd"><span class="p">    }</span><span class="cm">  // 출력: 1 2 3</span></td></tr>
+      <tr><td class="ln">8</td><td class="cd"><span class="p">    </span><span class="mc">println!</span><span class="p">(</span><span class="s">"{v:?}"</span><span class="p">);  </span><span class="cm">// [1, 2, 3] — v 유효</span></td></tr>
+      <tr><td class="ln">9</td><td class="cd"></td></tr>
+      <tr><td class="ln">10</td><td class="cd"><span class="cm">    // 2. for x in &mut v  →  v.iter_mut()  — x: &mut i32, 원본 수정</span></td></tr>
+      <tr><td class="ln">11</td><td class="cd"><span class="p">    </span><span class="kc">for</span><span class="p"> </span><span class="v">x</span><span class="p"> </span><span class="kc">in</span><span class="p"> &</span><span class="k">mut</span><span class="p"> </span><span class="v">v</span><span class="p"> {</span></td></tr>
+      <tr><td class="ln">12</td><td class="cd"><span class="p">        *</span><span class="v">x</span><span class="p"> *= </span><span class="n">10</span><span class="p">;</span></td></tr>
+      <tr><td class="ln">13</td><td class="cd"><span class="p">    }</span></td></tr>
+      <tr><td class="ln">14</td><td class="cd"><span class="p">    </span><span class="mc">println!</span><span class="p">(</span><span class="s">"{v:?}"</span><span class="p">);  </span><span class="cm">// [10, 20, 30] — 원본 수정</span></td></tr>
+      <tr><td class="ln">15</td><td class="cd"></td></tr>
+      <tr><td class="ln">16</td><td class="cd"><span class="cm">    // 3. for x in v  →  v.into_iter()  — x: String, v 소멸</span></td></tr>
+      <tr><td class="ln">17</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">v2</span><span class="p"> = </span><span class="mc">vec!</span><span class="p">[</span><span class="t">String</span><span class="p">::</span><span class="f">from</span><span class="p">(</span><span class="s">"hello"</span><span class="p">), </span><span class="t">String</span><span class="p">::</span><span class="f">from</span><span class="p">(</span><span class="s">"world"</span><span class="p">)];</span></td></tr>
+      <tr><td class="ln">18</td><td class="cd"><span class="p">    </span><span class="kc">for</span><span class="p"> </span><span class="v">s</span><span class="p"> </span><span class="kc">in</span><span class="p"> </span><span class="v">v2</span><span class="p"> {</span><span class="cm">  // s: String (소유권 이동)</span></td></tr>
+      <tr><td class="ln">19</td><td class="cd"><span class="p">        </span><span class="mc">println!</span><span class="p">(</span><span class="s">"{s}"</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">20</td><td class="cd"><span class="p">    }</span></td></tr>
+      <tr><td class="ln">21</td><td class="cd"><span class="cm">    // println!("{v2:?}");  ← 컴파일 에러!</span></td></tr>
+      <tr><td class="ln">22</td><td class="cd"><span class="cm">    //   error[E0382]: borrow of moved value: `v2`</span></td></tr>
+      <tr><td class="ln">23</td><td class="cd"><span class="p">}</span></td></tr>
+    </table></div>
+  </div>
+</section>
+<div class="divider"></div>
+<section class="section" id="s10">
+<div class="sec-num">Section 10 / 심화</div>
+<div class="sec-h">Lazy vs Eager — 정량 비교</div>
+<div class="sec-p">
+  Lazy 이터레이터는 중간 Vec을 생성하지 않습니다.
+  <code>take(3)</code>처럼 short-circuit 소비자와 결합하면
+  불필요한 연산을 완전히 제거합니다.
+  데이터가 클수록, 무한 이터레이터일수록 이점이 극적으로 커집니다.
+</div>
+<div class="cmp">
+  <div class="cc lz">
+    <div class="cc-t">Lazy — Rust iterator 실제 동작</div>
+    <div class="cc-r"><span>filter 호출</span><span class="cc-n">6회</span></div>
+    <div class="cc-r"><span>map 호출</span><span class="cc-n">3회</span></div>
+    <div class="cc-r"><span>중간 Vec</span><span class="cc-n">0개</span></div>
+    <div class="cc-r"><span>소스 접근</span><span class="cc-n">6번 (7~10 미접근)</span></div>
+  </div>
+  <div class="cc eg">
+    <div class="cc-t">Eager — 가상의 즉시 실행 방식</div>
+    <div class="cc-r"><span>filter 호출</span><span class="cc-n">10회</span></div>
+    <div class="cc-r"><span>map 호출</span><span class="cc-n">5회</span></div>
+    <div class="cc-r"><span>중간 Vec</span><span class="cc-n">2개</span></div>
+    <div class="cc-r"><span>소스 접근</span><span class="cc-n">10번 (전체)</span></div>
+  </div>
+</div>
+<table class="tbl">
+<thead><tr>
+  <th>데이터 크기</th><th>Lazy filter</th><th>Lazy map</th>
+  <th>Eager filter</th><th>Eager map</th><th>절약</th>
+</tr></thead>
+<tbody>
+  <tr><td class="src">10개</td><td class="pass">6회</td><td class="pass">3회</td><td class="fail">10회</td><td class="fail">5회</td><td class="tx">40% 절약</td></tr>
+  <tr><td class="src">100개</td><td class="pass">6회</td><td class="pass">3회</td><td class="fail">100회</td><td class="fail">50회</td><td class="tx">94% 절약</td></tr>
+  <tr><td class="src">10,000개</td><td class="pass">6회</td><td class="pass">3회</td><td class="fail">10,000회</td><td class="fail">5,000회</td><td class="tx">99.9% 절약</td></tr>
+  <tr><td class="src">무한 (0..)</td><td class="pass">6회</td><td class="pass">3회</td><td class="fail">&#8734; 루프</td><td class="fail">&#8734; 루프</td><td class="tx">가능 vs 불가</td></tr>
+</tbody>
+</table>
+</section>
+<div class="divider"></div>
+<section class="section" id="s11">
+<div class="sec-num">Section 11 / 심화</div>
+<div class="sec-h">무한 이터레이터</div>
+<div class="sec-p">
+  Lazy이기 때문에 무한 이터레이터가 가능합니다.
+  공식 문서: "Iterators do not have to be finite. As an example, an open-ended range
+  is an infinite iterator."<br>
+  단, <code>min()</code>처럼 전체를 소진해야 하는 소비자는 무한 루프가 됩니다.
+</div>
+  <div class="vsc">
+    <div class="vsc-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="fname">infinite_iterators.rs</span>
+    </div>
+    <div class="vsc-body"><table>
+      <tr><td class="ln">1</td><td class="cd"><span class="k">fn</span><span class="p"> </span><span class="f">main</span><span class="p">() {</span></td></tr>
+      <tr><td class="ln">2</td><td class="cd"><span class="cm">    // ── 공식 문서 예시: 무한 range ──</span></td></tr>
+      <tr><td class="ln">3</td><td class="cd"><span class="cm">    // "Iterators do not have to be finite."</span></td></tr>
+      <tr><td class="ln">4</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">numbers</span><span class="p"> = </span><span class="n">0</span><span class="p">..;</span><span class="cm">  // 0부터 무한히</span></td></tr>
+      <tr><td class="ln">5</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">five</span><span class="p">: </span><span class="t">Vec</span><span class="p"><</span><span class="t">i32</span><span class="p">> = </span><span class="v">numbers</span><span class="p">.</span><span class="f">take</span><span class="p">(</span><span class="n">5</span><span class="p">).</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">6</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">five</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[</span><span class="n">0</span><span class="p">,</span><span class="n">1</span><span class="p">,</span><span class="n">2</span><span class="p">,</span><span class="n">3</span><span class="p">,</span><span class="n">4</span><span class="p">]);</span></td></tr>
+      <tr><td class="ln">7</td><td class="cd"></td></tr>
+      <tr><td class="ln">8</td><td class="cd"><span class="cm">    // ⚠ 공식 문서 경고: 전체 소진 필요한 소비자 → 무한 루프!</span></td></tr>
+      <tr><td class="ln">9</td><td class="cd"><span class="cm">    // "methods such as min, which in the general case require traversing</span></td></tr>
+      <tr><td class="ln">10</td><td class="cd"><span class="cm">    //  every element in the iterator, are likely not to return successfully"</span></td></tr>
+      <tr><td class="ln">11</td><td class="cd"><span class="cm">    // let ones = std::iter::repeat(1);</span></td></tr>
+      <tr><td class="ln">12</td><td class="cd"><span class="cm">    // let least = ones.min().unwrap();  // Oh no! An infinite loop!</span></td></tr>
+      <tr><td class="ln">13</td><td class="cd"></td></tr>
+      <tr><td class="ln">14</td><td class="cd"><span class="cm">    // ── repeat + take ──</span></td></tr>
+      <tr><td class="ln">15</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">zeros</span><span class="p">: </span><span class="t">Vec</span><span class="p"><</span><span class="t">i32</span><span class="p">> = </span><span class="t">std</span><span class="p">::</span><span class="t">iter</span><span class="p">::</span><span class="f">repeat</span><span class="p">(</span><span class="n">0</span><span class="p">).</span><span class="f">take</span><span class="p">(</span><span class="n">5</span><span class="p">).</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">16</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">zeros</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[</span><span class="n">0</span><span class="p">,</span><span class="n">0</span><span class="p">,</span><span class="n">0</span><span class="p">,</span><span class="n">0</span><span class="p">,</span><span class="n">0</span><span class="p">]);</span></td></tr>
+      <tr><td class="ln">17</td><td class="cd"></td></tr>
+      <tr><td class="ln">18</td><td class="cd"><span class="cm">    // ── from_fn: 클로저로 무한 시퀀스 생성 ──</span></td></tr>
+      <tr><td class="ln">19</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="k">mut</span><span class="p"> </span><span class="v">state</span><span class="p"> = (</span><span class="n">0u64</span><span class="p">, </span><span class="n">1u64</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">20</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">fibs</span><span class="p">: </span><span class="t">Vec</span><span class="p"><</span><span class="t">u64</span><span class="p">> = </span><span class="t">std</span><span class="p">::</span><span class="t">iter</span><span class="p">::</span><span class="f">from_fn</span><span class="p">(</span><span class="kc">move</span><span class="p"> || {</span></td></tr>
+      <tr><td class="ln">21</td><td class="cd"><span class="p">        </span><span class="k">let</span><span class="p"> </span><span class="v">next</span><span class="p"> = </span><span class="v">state</span><span class="p">.</span><span class="n">0</span><span class="p"> + </span><span class="v">state</span><span class="p">.</span><span class="n">1</span><span class="p">;</span></td></tr>
+      <tr><td class="ln">22</td><td class="cd"><span class="p">        </span><span class="v">state</span><span class="p"> = (</span><span class="v">state</span><span class="p">.</span><span class="n">1</span><span class="p">, </span><span class="v">next</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">23</td><td class="cd"><span class="p">        </span><span class="t">Some</span><span class="p">(</span><span class="v">state</span><span class="p">.</span><span class="n">0</span><span class="p">)</span></td></tr>
+      <tr><td class="ln">24</td><td class="cd"><span class="p">    })</span></td></tr>
+      <tr><td class="ln">25</td><td class="cd"><span class="p">    .</span><span class="f">take</span><span class="p">(</span><span class="n">8</span><span class="p">)</span></td></tr>
+      <tr><td class="ln">26</td><td class="cd"><span class="p">    .</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">27</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">fibs</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">,</span><span class="n">1</span><span class="p">,</span><span class="n">2</span><span class="p">,</span><span class="n">3</span><span class="p">,</span><span class="n">5</span><span class="p">,</span><span class="n">8</span><span class="p">,</span><span class="n">13</span><span class="p">,</span><span class="n">21</span><span class="p">]);</span></td></tr>
+      <tr><td class="ln">28</td><td class="cd"></td></tr>
+      <tr><td class="ln">29</td><td class="cd"><span class="cm">    // ── successors: 이전 값 기반 시퀀스 ──</span></td></tr>
+      <tr><td class="ln">30</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">powers</span><span class="p">: </span><span class="t">Vec</span><span class="p"><</span><span class="t">u32</span><span class="p">> =</span></td></tr>
+      <tr><td class="ln">31</td><td class="cd"><span class="p">        </span><span class="t">std</span><span class="p">::</span><span class="t">iter</span><span class="p">::</span><span class="f">successors</span><span class="p">(</span><span class="t">Some</span><span class="p">(</span><span class="n">1u32</span><span class="p">), |&</span><span class="v">n</span><span class="p">| </span><span class="v">n</span><span class="p">.</span><span class="f">checked_mul</span><span class="p">(</span><span class="n">2</span><span class="p">))</span></td></tr>
+      <tr><td class="ln">32</td><td class="cd"><span class="p">        .</span><span class="f">take</span><span class="p">(</span><span class="n">8</span><span class="p">).</span><span class="f">collect</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">33</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">powers</span><span class="p">, </span><span class="mc">vec!</span><span class="p">[</span><span class="n">1</span><span class="p">,</span><span class="n">2</span><span class="p">,</span><span class="n">4</span><span class="p">,</span><span class="n">8</span><span class="p">,</span><span class="n">16</span><span class="p">,</span><span class="n">32</span><span class="p">,</span><span class="n">64</span><span class="p">,</span><span class="n">128</span><span class="p">]);</span></td></tr>
+      <tr><td class="ln">34</td><td class="cd"></td></tr>
+      <tr><td class="ln">35</td><td class="cd"><span class="cm">    // Lazy 덕분에 100만 개에서 첫 짝수 O(1)에 찾기</span></td></tr>
+      <tr><td class="ln">36</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">first_even</span><span class="p"> = (</span><span class="n">0</span><span class="p">..</span><span class="n">1_000_000</span><span class="p">)</span></td></tr>
+      <tr><td class="ln">37</td><td class="cd"><span class="p">        .</span><span class="f">filter</span><span class="p">(|</span><span class="v">x</span><span class="p">| </span><span class="v">x</span><span class="p"> % </span><span class="n">2</span><span class="p"> == </span><span class="n">0</span><span class="p">)</span><span class="cm">  // filter 단 1회만 호출!</span></td></tr>
+      <tr><td class="ln">38</td><td class="cd"><span class="p">        .</span><span class="f">next</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">39</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">first_even</span><span class="p">, </span><span class="t">Some</span><span class="p">(</span><span class="n">0</span><span class="p">));</span></td></tr>
+      <tr><td class="ln">40</td><td class="cd"><span class="p">}</span></td></tr>
+    </table></div>
+  </div>
+</section>
+<div class="divider"></div>
+<section class="section" id="s12">
+<div class="sec-num">Section 12 / 심화</div>
+<div class="sec-h">커스텀 Iterator 구현</div>
+<div class="sec-p">
+  <code>next()</code>만 구현하면 모든 이터레이터 메서드를 자동으로 사용할 수 있습니다.
+  Rust Book 13장의 <code>Counter</code> 예제를 기반으로, 커스텀 이터레이터에
+  <code>zip</code>, <code>map</code>, <code>filter</code>, <code>sum</code>을 조합한
+  실제 예제를 보여줍니다.
+</div>
+  <div class="vsc">
+    <div class="vsc-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="fname">custom_iterator.rs</span>
+    </div>
+    <div class="vsc-body"><table>
+      <tr><td class="ln">1</td><td class="cd"><span class="cm">// Rust Book 13장 공식 예제 — Counter 이터레이터</span></td></tr>
+      <tr><td class="ln">2</td><td class="cd"><span class="cm">// next()만 구현하면 zip, map, filter, sum 등 전부 무료</span></td></tr>
+      <tr><td class="ln">3</td><td class="cd"></td></tr>
+      <tr><td class="ln">4</td><td class="cd"><span class="k">struct</span><span class="p"> </span><span class="t">Counter</span><span class="p"> {</span></td></tr>
+      <tr><td class="ln">5</td><td class="cd"><span class="p">    </span><span class="v">count</span><span class="p">: </span><span class="t">u32</span><span class="p">,</span></td></tr>
+      <tr><td class="ln">6</td><td class="cd"><span class="p">}</span></td></tr>
+      <tr><td class="ln">7</td><td class="cd"></td></tr>
+      <tr><td class="ln">8</td><td class="cd"><span class="k">impl</span><span class="p"> </span><span class="t">Counter</span><span class="p"> {</span></td></tr>
+      <tr><td class="ln">9</td><td class="cd"><span class="p">    </span><span class="k">fn</span><span class="p"> </span><span class="f">new</span><span class="p">() -> </span><span class="t">Counter</span><span class="p"> {</span></td></tr>
+      <tr><td class="ln">10</td><td class="cd"><span class="p">        </span><span class="t">Counter</span><span class="p"> { </span><span class="v">count</span><span class="p">: </span><span class="n">0</span><span class="p"> }</span></td></tr>
+      <tr><td class="ln">11</td><td class="cd"><span class="p">    }</span></td></tr>
+      <tr><td class="ln">12</td><td class="cd"><span class="p">}</span></td></tr>
+      <tr><td class="ln">13</td><td class="cd"></td></tr>
+      <tr><td class="ln">14</td><td class="cd"><span class="k">impl</span><span class="p"> </span><span class="t">Iterator</span><span class="p"> </span><span class="k">for</span><span class="p"> </span><span class="t">Counter</span><span class="p"> {</span></td></tr>
+      <tr><td class="ln">15</td><td class="cd"><span class="p">    </span><span class="k">type</span><span class="p"> </span><span class="t">Item</span><span class="p"> = </span><span class="t">u32</span><span class="p">;</span></td></tr>
+      <tr><td class="ln">16</td><td class="cd"></td></tr>
+      <tr><td class="ln">17</td><td class="cd"><span class="cm">    // ─── 이것만 구현! 나머지는 전부 자동 ───</span></td></tr>
+      <tr><td class="ln">18</td><td class="cd"><span class="p">    </span><span class="k">fn</span><span class="p"> </span><span class="f">next</span><span class="p">(&</span><span class="k">mut</span><span class="p"> </span><span class="k">self</span><span class="p">) -> </span><span class="t">Option</span><span class="p"><</span><span class="k">Self</span><span class="p">::</span><span class="t">Item</span><span class="p">> {</span></td></tr>
+      <tr><td class="ln">19</td><td class="cd"><span class="p">        </span><span class="kc">if</span><span class="p"> </span><span class="k">self</span><span class="p">.</span><span class="v">count</span><span class="p"> < </span><span class="n">5</span><span class="p"> {</span></td></tr>
+      <tr><td class="ln">20</td><td class="cd"><span class="p">            </span><span class="k">self</span><span class="p">.</span><span class="v">count</span><span class="p"> += </span><span class="n">1</span><span class="p">;</span></td></tr>
+      <tr><td class="ln">21</td><td class="cd"><span class="p">            </span><span class="t">Some</span><span class="p">(</span><span class="k">self</span><span class="p">.</span><span class="v">count</span><span class="p">)</span></td></tr>
+      <tr><td class="ln">22</td><td class="cd"><span class="p">        } </span><span class="kc">else</span><span class="p"> {</span></td></tr>
+      <tr><td class="ln">23</td><td class="cd"><span class="p">            </span><span class="t">None</span></td></tr>
+      <tr><td class="ln">24</td><td class="cd"><span class="p">        }</span></td></tr>
+      <tr><td class="ln">25</td><td class="cd"><span class="p">    }</span></td></tr>
+      <tr><td class="ln">26</td><td class="cd"><span class="p">}</span></td></tr>
+      <tr><td class="ln">27</td><td class="cd"></td></tr>
+      <tr><td class="ln">28</td><td class="cd"><span class="k">fn</span><span class="p"> </span><span class="f">main</span><span class="p">() {</span></td></tr>
+      <tr><td class="ln">29</td><td class="cd"><span class="cm">    // next() 직접 호출</span></td></tr>
+      <tr><td class="ln">30</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="k">mut</span><span class="p"> </span><span class="v">c</span><span class="p"> = </span><span class="t">Counter</span><span class="p">::</span><span class="f">new</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">31</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">c</span><span class="p">.</span><span class="f">next</span><span class="p">(), </span><span class="t">Some</span><span class="p">(</span><span class="n">1</span><span class="p">));</span></td></tr>
+      <tr><td class="ln">32</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">c</span><span class="p">.</span><span class="f">next</span><span class="p">(), </span><span class="t">Some</span><span class="p">(</span><span class="n">2</span><span class="p">));</span></td></tr>
+      <tr><td class="ln">33</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">c</span><span class="p">.</span><span class="f">next</span><span class="p">(), </span><span class="t">Some</span><span class="p">(</span><span class="n">3</span><span class="p">));</span></td></tr>
+      <tr><td class="ln">34</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">c</span><span class="p">.</span><span class="f">next</span><span class="p">(), </span><span class="t">Some</span><span class="p">(</span><span class="n">4</span><span class="p">));</span></td></tr>
+      <tr><td class="ln">35</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">c</span><span class="p">.</span><span class="f">next</span><span class="p">(), </span><span class="t">Some</span><span class="p">(</span><span class="n">5</span><span class="p">));</span></td></tr>
+      <tr><td class="ln">36</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">c</span><span class="p">.</span><span class="f">next</span><span class="p">(), </span><span class="t">None</span><span class="p">);</span><span class="cm">    // 5 이후 None</span></td></tr>
+      <tr><td class="ln">37</td><td class="cd"></td></tr>
+      <tr><td class="ln">38</td><td class="cd"><span class="cm">    // next()만 구현했는데 모든 Iterator 메서드 자동 사용!</span></td></tr>
+      <tr><td class="ln">39</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">sum</span><span class="p">: </span><span class="t">u32</span><span class="p"> = </span><span class="t">Counter</span><span class="p">::</span><span class="f">new</span><span class="p">().</span><span class="f">sum</span><span class="p">();</span></td></tr>
+      <tr><td class="ln">40</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">sum</span><span class="p">, </span><span class="n">15</span><span class="p">);  </span><span class="cm">// 1+2+3+4+5</span></td></tr>
+      <tr><td class="ln">41</td><td class="cd"></td></tr>
+      <tr><td class="ln">42</td><td class="cd"><span class="cm">    // zip + map + filter + sum 조합 (Rust Book 13장 공식 예제)</span></td></tr>
+      <tr><td class="ln">43</td><td class="cd"><span class="p">    </span><span class="k">let</span><span class="p"> </span><span class="v">result</span><span class="p">: </span><span class="t">u32</span><span class="p"> = </span><span class="t">Counter</span><span class="p">::</span><span class="f">new</span><span class="p">()</span></td></tr>
+      <tr><td class="ln">44</td><td class="cd"><span class="p">        .</span><span class="f">zip</span><span class="p">(</span><span class="t">Counter</span><span class="p">::</span><span class="f">new</span><span class="p">().</span><span class="f">skip</span><span class="p">(</span><span class="n">1</span><span class="p">))</span><span class="cm">  // (1,2),(2,3),(3,4),(4,5)</span></td></tr>
+      <tr><td class="ln">45</td><td class="cd"><span class="p">        .</span><span class="f">map</span><span class="p">(|(</span><span class="v">a</span><span class="p">, </span><span class="v">b</span><span class="p">)| </span><span class="v">a</span><span class="p"> * </span><span class="v">b</span><span class="p">)</span><span class="cm">          // 2,6,12,20</span></td></tr>
+      <tr><td class="ln">46</td><td class="cd"><span class="p">        .</span><span class="f">filter</span><span class="p">(|</span><span class="v">x</span><span class="p">| </span><span class="v">x</span><span class="p"> % </span><span class="n">3</span><span class="p"> == </span><span class="n">0</span><span class="p">)</span><span class="cm">      // 6,12</span></td></tr>
+      <tr><td class="ln">47</td><td class="cd"><span class="p">        .</span><span class="f">sum</span><span class="p">();</span><span class="cm">                          // 18</span></td></tr>
+      <tr><td class="ln">48</td><td class="cd"><span class="p">    </span><span class="mc">assert_eq!</span><span class="p">(</span><span class="v">result</span><span class="p">, </span><span class="n">18</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">49</td><td class="cd"></td></tr>
+      <tr><td class="ln">50</td><td class="cd"><span class="cm">    // for 루프도 당연히 됨</span></td></tr>
+      <tr><td class="ln">51</td><td class="cd"><span class="p">    </span><span class="kc">for</span><span class="p"> </span><span class="v">n</span><span class="p"> </span><span class="kc">in</span><span class="p"> </span><span class="t">Counter</span><span class="p">::</span><span class="f">new</span><span class="p">() {</span></td></tr>
+      <tr><td class="ln">52</td><td class="cd"><span class="p">        </span><span class="mc">print!</span><span class="p">(</span><span class="s">"{n} "</span><span class="p">);</span></td></tr>
+      <tr><td class="ln">53</td><td class="cd"><span class="p">    }</span><span class="cm">  // 출력: 1 2 3 4 5</span></td></tr>
+      <tr><td class="ln">54</td><td class="cd"><span class="p">}</span></td></tr>
+    </table></div>
+  </div>
+</section>
+</main>
+<script>
+const DARK_KEY = 'rust-iter-guide-dark';
+
+function toggleTheme() {
+  const dark = !document.body.classList.contains('dark');
+  applyTheme(dark);
+}
+
+function applyTheme(dark) {
+  document.body.classList.toggle('dark', dark);
+  document.getElementById('tbtn').textContent =
+    dark ? '☀ Light' : '🌙 Dark';
+  localStorage.setItem(DARK_KEY, dark ? '1' : '0');
+}
+
+(function() {
+  const saved = localStorage.getItem(DARK_KEY);
+  const prefer = window.matchMedia('(prefers-color-scheme:dark)').matches;
+  applyTheme(saved !== null ? saved === '1' : prefer);
+})();
+
+// ── scroll spy ──
+const secs = Array.from(document.querySelectorAll('.section'));
+const links = Array.from(document.querySelectorAll('.sb-a'));
+
+function onScroll() {
+  const y = window.scrollY + 100;
+  let cur = secs[0];
+  for (const s of secs) { if (s.offsetTop <= y) cur = s; }
+  links.forEach(a => {
+    a.classList.toggle('on', a.getAttribute('href') === '#' + cur.id);
+  });
+}
+window.addEventListener('scroll', onScroll, { passive: true });
+onScroll();
+</script>
+</body>
+</html>
