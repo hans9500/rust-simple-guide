@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Rust 문자열 파싱 — parse · Result · 터보피시</title>
+<style>
+
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap');
+
+/* ═══════════════════════════════════════════
+   THEME TOKENS
+═══════════════════════════════════════════ */
+:root {
+  --fn-c: #4ec9b0;
+  --fnmut-c: #fbbf24;
+  --fnonce-c: #f87171;
+  --kw: #569cd6;
+  --ty: #4ec9b0;
+  --fn-name: #dcdcaa;
+  --str: #ce9178;
+  --num: #b5cea8;
+  --cmt: #6a9955;
+  --mac: #dcdcaa;
+  --op: #d4d4d4;
+  --lf: #9cdcfe;
+}
+[data-theme="dark"] {
+  --bg:       #1e1e1e;
+  --bg2:      #252526;
+  --bg3:      #2d2d30;
+  --bg4:      #333337;
+  --border:   #3e3e42;
+  --border2:  #555558;
+  --text:     #d4d4d4;
+  --text2:    #9d9d9d;
+  --text3:    #6a6a6a;
+  --code-bg:  #1e1e1e;
+  --code-ln:  #3a3a3a;
+  --tag-bg:   #2a2d2e;
+  --tag-bd:   #444444;
+  --link:     #4fc1ff;
+  --accent:   #007acc;
+  --hdr-bg:   #1a1a2e;
+  --hdr-grad: linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
+  --card-bg:  #252526;
+  --card-bd:  #3e3e42;
+  --tbl-hd:   #2d2d30;
+  --tbl-row:  #252526;
+  --tbl-alt:  #2a2a2e;
+  --info-bg:  #2d2d30;
+  --warn-bg:  #332b00;
+  --warn-bd:  #7a5c00;
+  --err-bg:   #3a1515;
+  --err-bd:   #7a2a2a;
+  --ok-bg:    #1a3a1a;
+  --ok-bd:    #2a6a2a;
+  --tip-bg:   #1a2a3a;
+  --tip-bd:   #2a4a6a;
+}
+[data-theme="light"] {
+  --bg:       #ffffff;
+  --bg2:      #f3f3f3;
+  --bg3:      #ebebeb;
+  --bg4:      #e0e0e0;
+  --border:   #d0d0d0;
+  --border2:  #b0b0b0;
+  --text:     #1e1e1e;
+  --text2:    #555555;
+  --text3:    #888888;
+  --code-bg:  #f8f8f8;
+  --code-ln:  #e8e8e8;
+  --tag-bg:   #f0f0f0;
+  --tag-bd:   #d0d0d0;
+  --link:     #0066cc;
+  --accent:   #007acc;
+  --hdr-bg:   #f0f4ff;
+  --hdr-grad: linear-gradient(135deg,#e8f0fe 0%,#f0e8ff 50%,#e8f4ff 100%);
+  --card-bg:  #ffffff;
+  --card-bd:  #d0d0d0;
+  --tbl-hd:   #f0f0f0;
+  --tbl-row:  #ffffff;
+  --tbl-alt:  #f9f9f9;
+  --info-bg:  #f0f0f0;
+  --warn-bg:  #fff8e1;
+  --warn-bd:  #f0c000;
+  --err-bg:   #fff0f0;
+  --err-bd:   #ffaaaa;
+  --ok-bg:    #f0fff0;
+  --ok-bd:    #88cc88;
+  --tip-bg:   #f0f8ff;
+  --tip-bd:   #88aacc;
+  --kw:       #0000ff;
+  --ty:       #267f99;
+  --fn-name:  #795e26;
+  --str:      #a31515;
+  --num:      #098658;
+  --cmt:      #008000;
+  --mac:      #795e26;
+  --op:       #1e1e1e;
+  --lf:       #0070c1;
+}
+
+/* ═══════════════════════════════════════════
+   BASE
+═══════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.75;
+  font-size: 15px;
+  transition: background .25s, color .25s;
+}
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+::-webkit-scrollbar { width: 7px; height: 7px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+/* ═══════════════════════════════════════════
+   THEME TOGGLE
+═══════════════════════════════════════════ */
+.theme-btn {
+  position: fixed; top: 18px; right: 20px; z-index: 999;
+  display: flex; align-items: center; gap: 7px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 20px; padding: 6px 14px;
+  font-size: 12px; color: var(--text2); cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif;
+  transition: background .2s, border-color .2s;
+}
+.theme-btn:hover { background: var(--bg4); border-color: var(--border2); }
+.theme-icon { font-size: 14px; }
+
+/* ═══════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════ */
+.site-header {
+  background: var(--hdr-grad);
+  border-bottom: 1px solid var(--border);
+  padding: 64px 40px 52px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+[data-theme="dark"] .site-header::before {
+  content: '';
+  position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
+  width: 700px; height: 400px;
+  background: radial-gradient(ellipse, rgba(0,122,204,0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+.lang-badge {
+  display: inline-block;
+  background: rgba(86,156,214,0.15);
+  border: 1px solid rgba(86,156,214,0.45);
+  color: #569cd6;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 3px;
+  padding: 5px 16px; border-radius: 20px; margin-bottom: 20px;
+}
+[data-theme="light"] .lang-badge {
+  background: rgba(0,102,204,0.08); border-color: rgba(0,102,204,0.35); color: #0066cc;
+}
+.site-header h1 {
+  font-size: clamp(26px, 5vw, 44px);
+  font-weight: 700; letter-spacing: -0.5px;
+  color: var(--text); margin-bottom: 14px;
+}
+.site-header h1 .hl { color: #569cd6; }
+.site-header .sub {
+  font-size: 15px; color: var(--text2); max-width: 600px; margin: 0 auto 22px;
+}
+.src-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--ok-bg); border: 1px solid var(--ok-bd);
+  color: #4ec9b0; font-size: 12px; padding: 4px 12px; border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+}
+[data-theme="light"] .src-badge { color: #267f99; }
+
+/* ═══════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════ */
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+
+/* ═══════════════════════════════════════════
+   TOC
+═══════════════════════════════════════════ */
+.toc {
+  background: var(--card-bg); border: 1px solid var(--card-bd);
+  border-radius: 10px; padding: 24px 28px; margin: 40px 0 52px;
+}
+.toc-title {
+  font-size: 11px; letter-spacing: 2px; color: var(--text3);
+  font-weight: 500; margin-bottom: 14px; text-transform: uppercase;
+}
+.toc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 32px; }
+.toc-grid a {
+  font-size: 14px; color: var(--text2); padding: 2px 0;
+  display: block; border-bottom: 1px solid transparent;
+  transition: color .15s;
+}
+.toc-grid a:hover { color: var(--link); text-decoration: none; }
+.toc-num { font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text3); margin-right: 6px; }
+@media (max-width: 600px) { .toc-grid { grid-template-columns: 1fr; } }
+
+/* ═══════════════════════════════════════════
+   SECTION
+═══════════════════════════════════════════ */
+.sec { margin-bottom: 72px; }
+.sec-hdr {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 20px; padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.sec-num {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text3); background: var(--bg3);
+  border: 1px solid var(--border); padding: 2px 9px; border-radius: 4px;
+}
+.sec-hdr h2 { font-size: 22px; font-weight: 700; color: var(--text); }
+.sec-hdr h3 { font-size: 18px; font-weight: 600; color: var(--text); }
+.lead { font-size: 15px; color: var(--text2); margin-bottom: 22px; max-width: 820px; line-height: 1.8; }
+
+/* ═══════════════════════════════════════════
+   CALLOUT BOXES
+═══════════════════════════════════════════ */
+.callout {
+  border-radius: 8px; padding: 14px 18px; margin: 18px 0;
+  border-left: 3px solid; font-size: 14px; line-height: 1.7;
+}
+.callout-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.callout.info  { background: var(--tip-bg); border-color: var(--tip-bd); color: var(--text2); }
+.callout.warn  { background: var(--warn-bg); border-color: var(--warn-bd); color: var(--text2); }
+.callout.err   { background: var(--err-bg); border-color: var(--err-bd); color: var(--text2); }
+.callout.ok    { background: var(--ok-bg); border-color: var(--ok-bd); color: var(--text2); }
+.callout.info  .callout-title { color: #4fc1ff; }
+[data-theme="light"] .callout.info .callout-title { color: #0066cc; }
+.callout.warn  .callout-title { color: var(--fnmut-c); }
+.callout.err   .callout-title { color: var(--fnonce-c); }
+.callout.ok    .callout-title { color: var(--fn-c); }
+
+/* ═══════════════════════════════════════════
+   INFO CARDS GRID
+═══════════════════════════════════════════ */
+.igrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 12px; margin: 20px 0; }
+.icard {
+  background: var(--card-bg); border: 1px solid var(--card-bd);
+  border-radius: 8px; padding: 16px 18px;
+}
+.icard-lbl { font-size: 10px; letter-spacing: 1.5px; font-weight: 600;
+  text-transform: uppercase; margin-bottom: 6px; }
+.icard-val { font-size: 14px; color: var(--text); font-weight: 500; }
+.icard-sub { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+/* ═══════════════════════════════════════════
+   SVG DIAGRAM CARD
+═══════════════════════════════════════════ */
+.diag-card {
+  background: var(--card-bg); border: 1px solid var(--card-bd);
+  border-radius: 10px; padding: 24px; margin: 22px 0; overflow-x: auto;
+}
+.diag-card svg { display: block; max-width: 100%; height: auto; }
+.diag-cap {
+  font-size: 12px; color: var(--text3); text-align: center;
+  margin-top: 10px; font-family: 'JetBrains Mono', monospace;
+}
+
+/* ═══════════════════════════════════════════
+   TRAIT HEADERS
+═══════════════════════════════════════════ */
+.th {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+  padding: 14px 18px; border-radius: 8px; margin: 32px 0 14px;
+  border: 1px solid;
+}
+.th-name { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700; }
+.th-desc { font-size: 13px; flex: 1; min-width: 200px; }
+.th-tag {
+  margin-left: auto; font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; padding: 3px 10px; border-radius: 20px; font-weight: 600;
+  white-space: nowrap;
+}
+.th-fn   { background: rgba(78,201,176,0.07); border-color: rgba(78,201,176,0.3); }
+.th-fn   .th-name { color: var(--fn-c); }
+.th-fn   .th-desc { color: #a8e6d8; }
+.th-fn   .th-tag  { background: rgba(78,201,176,0.15); color: var(--fn-c); }
+[data-theme="light"] .th-fn   .th-desc { color: #267f99; }
+.th-fnmut { background: rgba(251,191,36,0.07); border-color: rgba(251,191,36,0.3); }
+.th-fnmut .th-name { color: var(--fnmut-c); }
+.th-fnmut .th-desc { color: #fde68a; }
+.th-fnmut .th-tag  { background: rgba(251,191,36,0.15); color: var(--fnmut-c); }
+[data-theme="light"] .th-fnmut .th-desc { color: #8a6a00; }
+.th-fnonce { background: rgba(248,113,113,0.07); border-color: rgba(248,113,113,0.3); }
+.th-fnonce .th-name { color: var(--fnonce-c); }
+.th-fnonce .th-desc { color: #fca5a5; }
+.th-fnonce .th-tag  { background: rgba(248,113,113,0.15); color: var(--fnonce-c); }
+[data-theme="light"] .th-fnonce .th-desc { color: #c0392b; }
+
+/* ═══════════════════════════════════════════
+   CODE BLOCK  (VS Code Dark Modern style)
+═══════════════════════════════════════════ */
+.cb { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin: 12px 0 22px; }
+.cb-hdr {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; background: var(--bg3); border-bottom: 1px solid var(--border);
+}
+.cb-title { font-size: 12px; color: var(--text2); font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+.cb-badge {
+  margin-left: auto; font-size: 10px; padding: 2px 9px;
+  border-radius: 20px; font-family: 'JetBrains Mono', monospace; font-weight: 700;
+}
+.cb-fn    { background: rgba(78,201,176,0.15); color: var(--fn-c); }
+.cb-fnmut { background: rgba(251,191,36,0.15); color: var(--fnmut-c); }
+.cb-fnonce{ background: rgba(248,113,113,0.15); color: var(--fnonce-c); }
+.cb-basic { background: rgba(86,156,214,0.15); color: #569cd6; }
+.cb-err   { background: rgba(248,113,113,0.12); color: var(--fnonce-c); }
+
+.cb pre {
+  margin: 0; padding: 18px 20px;
+  font-family: 'JetBrains Mono', monospace; font-size: 13px;
+  line-height: 1.8; overflow-x: auto; white-space: pre;
+  background: var(--code-bg); color: var(--op);
+  tab-size: 4;
+}
+/* syntax tokens — dark modern */
+.kw  { color: var(--kw); font-weight: 500; }
+.ty  { color: var(--ty); }
+.fn  { color: var(--fn-name); }
+.st  { color: var(--str); }
+.nm  { color: var(--num); }
+.cm  { color: var(--cmt); font-style: italic; }
+.lf  { color: var(--lf); }
+.op2 { color: var(--op); }
+.mac { color: var(--mac); }
+.ok-c  { color: #4ec9b0; font-weight: 500; }
+.err-c { color: #f87171; font-weight: 500; }
+
+/* ═══════════════════════════════════════════
+   INLINE CODE
+═══════════════════════════════════════════ */
+code {
+  font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
+  background: var(--bg3); border: 1px solid var(--border);
+  padding: 1px 6px; border-radius: 4px; color: var(--ty);
+}
+
+/* ═══════════════════════════════════════════
+   TABLE
+═══════════════════════════════════════════ */
+.tbl-wrap { overflow-x: auto; margin: 20px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th {
+  background: var(--tbl-hd); padding: 11px 14px;
+  text-align: left; font-weight: 600; font-size: 12px;
+  color: var(--text2); border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: var(--tbl-alt); }
+tr:hover td { background: var(--bg3); }
+.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+/* ═══════════════════════════════════════════
+   DIVIDER
+═══════════════════════════════════════════ */
+.divider { height: 1px; background: var(--border); margin: 56px 0; }
+
+/* ═══════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════ */
+footer {
+  border-top: 1px solid var(--border); padding: 28px 40px;
+  text-align: center; color: var(--text3); font-size: 13px;
+}
+
+/* ═══════════════════════════════════════════
+   LABEL CHIPS
+═══════════════════════════════════════════ */
+.chip {
+  display: inline-block; font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; padding: 2px 8px; border-radius: 4px;
+  font-weight: 600; border: 1px solid;
+}
+.chip-fn    { background: rgba(78,201,176,0.12); border-color: rgba(78,201,176,0.4); color: var(--fn-c); }
+.chip-fnmut { background: rgba(251,191,36,0.12); border-color: rgba(251,191,36,0.4); color: var(--fnmut-c); }
+.chip-fnonce{ background: rgba(248,113,113,0.12); border-color: rgba(248,113,113,0.4); color: var(--fnonce-c); }
+
+/* two-col layout for concept pairs */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+@media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+
+/* ── 우리 코드블록/사이드바 스타일 ── */
+.sb{
+  width:236px;min-width:236px;
+  background:var(--bg2);border-right:1px solid var(--border);
+  position:fixed;top:0;left:0;height:100vh;overflow-y:auto;
+  z-index:200;padding-bottom:40px;
+}
+.sb-header{padding:16px 12px 8px;border-bottom:1px solid var(--border)}
+.sb-logo{font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px}
+.sb-nav-group{padding:8px 0}
+.sb-a{
+  display:block;padding:7px 16px;font-size:12px;
+  color:var(--text2);text-decoration:none;line-height:1.4;
+  border-left:3px solid transparent;transition:all .15s;
+}
+.sb-a small{display:block;font-size:10px;color:var(--text3);margin-top:1px}
+.sb-a:hover{color:var(--text);background:var(--bg3);border-left-color:var(--accent)}
+.sb-a.active{color:var(--accent);background:var(--bg3);border-left-color:var(--accent);font-weight:600}
+.theme-btn-top{
+  background:var(--bg3);border:1px solid var(--border);
+  color:var(--text);border-radius:6px;padding:6px 10px;
+  cursor:pointer;font-size:12px;transition:background .15s;
+}
+.theme-btn-top:hover{background:var(--bg4)}
+main{margin-left:236px;padding:40px 44px 100px;max-width:1140px}
+.eb{margin:10px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.et{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 10px;background:var(--bg3);
+  border-bottom:1px solid var(--border);
+}
+.ec,.run-btn{
+  padding:3px 10px;font-size:11px;border-radius:4px;
+  border:1px solid var(--border);cursor:pointer;
+  background:var(--bg4);color:var(--text2);transition:all .15s;
+}
+.run-btn{color:#4ade80;border-color:#4ade80}
+.ec:hover{background:var(--bg3);color:var(--text)}
+.run-btn:hover{background:#052e16;color:#4ade80}
+.run-btn:disabled{opacity:.5;cursor:wait}
+.vp{
+  margin:0;padding:12px 16px;
+  font-family:'Consolas','Courier New',monospace;
+  font-size:13px;line-height:1.6;
+  background:var(--code-bg);color:var(--text);
+  overflow-x:auto;tab-size:4;
+}
+.ln{color:var(--code-ln);user-select:none;padding-right:12px;
+     display:inline-block;min-width:2em;text-align:right;
+     border-right:1px solid var(--border);margin-right:10px}
+.run-output{
+  display:none;padding:10px 16px;
+  font-family:'Consolas',monospace;font-size:12px;
+  background:var(--bg3);color:var(--text2);
+  border-top:1px solid var(--border);white-space:pre-wrap;
+}
+.run-output.show{display:block}
+.run-output.error{color:#f48771}
+.run-output.loading{color:var(--text3)}
+/* 토큰 — 우리 하이라이터 출력과 매핑 */
+[data-theme="dark"] .kw{color:#569cd6;font-weight:600}
+[data-theme="dark"] .tp{color:#4ec9b0}
+[data-theme="dark"] .fn{color:#dcdcaa}
+[data-theme="dark"] .st{color:#ce9178}
+[data-theme="dark"] .cm{color:#6a9955;font-style:italic}
+[data-theme="dark"] .nm{color:#b5cea8}
+[data-theme="dark"] .id{color:#9cdcfe}
+[data-theme="light"] .kw{color:#0000ff;font-weight:600}
+[data-theme="light"] .tp{color:#267f99}
+[data-theme="light"] .fn{color:#795e26}
+[data-theme="light"] .st{color:#a31515}
+[data-theme="light"] .cm{color:#008000;font-style:italic}
+[data-theme="light"] .nm{color:#098658}
+[data-theme="light"] .id{color:#001080}
+
+.sec{margin-bottom:40px}
+.sec-hdr{margin-bottom:16px}
+.sec-hdr h2{font-size:1.25rem;font-weight:700;color:var(--text);margin:0;display:inline}
+.sec-num{font-size:11px;font-weight:700;background:var(--tag-bg);color:var(--accent);padding:2px 8px;border-radius:10px;margin-right:8px;font-family:"Consolas",monospace}
+</style>
+</head>
+<body>
+<nav class="sb" id="sidebar">
+<div class="sb-header">
+  <div class="sb-logo">Rust 문자열 파싱</div>
+  <button class="theme-btn-top" onclick="toggleTheme()" style="margin-top:8px;width:100%">
+    <span id="themeIcon">🌙</span> <span id="themeLabel">다크 모드</span>
+  </button>
+</div>
+<div class="sb-nav-group" style="display:block">
+<a href="#s1" class="sb-a">① parse() 기본<small>Result 반환 이유</small></a>
+<a href="#s2" class="sb-a">② 터보피시 ::<T><small>타입 명시 방법</small></a>
+<a href="#s3" class="sb-a">③ Result<T,E> 구조<small>Ok/Err 메모리</small></a>
+<a href="#s4" class="sb-a">④ 숫자 파싱<small>i32 · u8 · f64</small></a>
+<a href="#s5" class="sb-a">⑤ 실패 케이스<small>공백 · 범위초과</small></a>
+<a href="#s6" class="sb-a">⑥ match 처리<small>가장 명시적</small></a>
+<a href="#s7" class="sb-a">⑦ unwrap · expect<small>간편 처리 메서드</small></a>
+<a href="#s8" class="sb-a">⑧ if let · while let<small>간결한 패턴</small></a>
+<a href="#s9" class="sb-a">⑨ ? 연산자<small>에러 전파</small></a>
+<a href="#s10" class="sb-a">⑩ map · and_then<small>함수형 체이닝</small></a>
+<a href="#s11" class="sb-a">⑪ ok() · ok_or()<small>Option 전환</small></a>
+<a href="#s12" class="sb-a">⑫ 여러 필드 파싱<small>struct 복원</small></a>
+<a href="#s13" class="sb-a">⑬ impl FromStr<small>커스텀 파싱</small></a>
+<a href="#s14" class="sb-a">⑭ 에러 타입 변환<small>From 트레이트</small></a>
+<a href="#s15" class="sb-a">⑮ 비교표<small>상황별 최선</small></a>
+
+</div>
+</nav>
+<main style="margin-left:236px;padding:40px 44px 100px;max-width:1140px">
+<header class="site-header">
+  <div class="lang-badge">RUST · PARSE · 완전 정복</div>
+  <h1>Rust <span class="hl">문자열 파싱</span></h1>
+  <p class="sub">parse() · Result · 터보피시 · ? 연산자 · FromStr<br>
+  숫자 파싱부터 커스텀 타입까지 — 실패 케이스 완전 정리</p>
+  <div class="src-badge">✓ The Rust Book · std::str::FromStr · std::num::ParseIntError 기반</div>
+</header>
+<div class="wrap">
+<section class="sec" id="s1"><div class="sec-hdr"><span class="sec-num">§ 01</span><h2>parse() — 문자열에서 값을 꺼내는 법</h2></div><p class="lead"><code>parse()</code>는 <code>&amp;str</code>을 다른 타입으로 변환하는 메서드입니다. 핵심은 항상 <code>Result&lt;T, E&gt;</code>를 반환한다는 것 — 파싱이 실패할 수 있기 때문입니다.</p><svg width="100%" viewBox="0 0 680 300" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:14px 0">
+<defs><marker id="pa1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="var(--text2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+<marker id="pa2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#059669" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+<marker id="pa3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<text x="340" y="24" text-anchor="middle" font-size="14" font-weight="600" fill="var(--text)">parse() — 항상 Result 반환</text>
+<rect x="20" y="48" width="120" height="34" rx="6" fill="var(--bg2)" stroke="var(--border)" stroke-width="0.5"/><text x="80" y="69" text-anchor="middle" font-size="12" fill="var(--text2)">"42"</text>
+<rect x="20" y="98" width="120" height="34" rx="6" fill="var(--bg2)" stroke="var(--border)" stroke-width="0.5"/><text x="80" y="119" text-anchor="middle" font-size="12" fill="var(--text2)">"3.14"</text>
+<rect x="20" y="148" width="120" height="34" rx="6" fill="var(--bg2)" stroke="var(--border)" stroke-width="0.5"/><text x="80" y="169" text-anchor="middle" font-size="12" fill="var(--text2)">"abc"</text>
+<rect x="20" y="198" width="120" height="34" rx="6" fill="var(--bg2)" stroke="var(--border)" stroke-width="0.5"/><text x="80" y="219" text-anchor="middle" font-size="12" fill="var(--text2)">"256" (u8 초과)</text>
+<text x="80" y="36" text-anchor="middle" font-size="11" fill="var(--text2)">&amp;str 입력</text>
+<line x1="140" y1="65" x2="218" y2="130" stroke="var(--text2)" stroke-width="1" marker-end="url(#pa1)" fill="none"/>
+<line x1="140" y1="115" x2="218" y2="138" stroke="var(--text2)" stroke-width="1" marker-end="url(#pa1)" fill="none"/>
+<line x1="140" y1="165" x2="218" y2="152" stroke="var(--text2)" stroke-width="1" marker-end="url(#pa1)" fill="none"/>
+<line x1="140" y1="215" x2="218" y2="158" stroke="var(--text2)" stroke-width="1" marker-end="url(#pa1)" fill="none"/>
+<rect x="218" y="116" width="124" height="56" rx="8" fill="#1e1b4b" stroke="#7c3aed" stroke-width="0.5"/><text x="280" y="138" text-anchor="middle" font-size="12" font-weight="600" fill="#c4b5fd">.parse::&lt;T&gt;()</text><text x="280" y="156" text-anchor="middle" font-size="11" fill="#a78bfa">FromStr 트레이트</text>
+<text x="280" y="104" text-anchor="middle" font-size="11" fill="var(--text2)">타입을 지정해야 함</text>
+<line x1="342" y1="130" x2="420" y2="88" stroke="#059669" stroke-width="1.5" marker-end="url(#pa2)" fill="none"/>
+<line x1="342" y1="158" x2="420" y2="198" stroke="#dc2626" stroke-width="1.5" marker-end="url(#pa3)" fill="none"/>
+<text x="385" y="108" text-anchor="middle" font-size="11" fill="#059669">Ok</text>
+<text x="385" y="188" text-anchor="middle" font-size="11" fill="#dc2626">Err</text>
+<rect x="420" y="56" width="220" height="74" rx="8" fill="#064e3b" stroke="#059669" stroke-width="0.5"/><text x="530" y="82" text-anchor="middle" font-size="13" font-weight="600" fill="#6ee7b7">Ok(T)</text><text x="530" y="100" text-anchor="middle" font-size="11" fill="#34d399">파싱 성공 — 값 포함</text><text x="530" y="118" text-anchor="middle" font-size="11" fill="#34d399">Ok(42), Ok(3.14f64)</text>
+<rect x="420" y="168" width="220" height="74" rx="8" fill="#450a0a" stroke="#dc2626" stroke-width="0.5"/><text x="530" y="194" text-anchor="middle" font-size="13" font-weight="600" fill="#fca5a5">Err(E)</text><text x="530" y="212" text-anchor="middle" font-size="11" fill="#f87171">파싱 실패 — 에러 포함</text><text x="530" y="230" text-anchor="middle" font-size="11" fill="#f87171">ParseIntError, ParseFloatError</text>
+<line x1="40" y1="262" x2="640" y2="262" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3 3"/>
+<text x="340" y="280" text-anchor="middle" font-size="11" fill="var(--text2)">컴파일러가 Ok/Err 두 경우 모두 처리하도록 강제 — 런타임 예외 없음</text>
+</svg><div class="eb"><div class="et"><span class="el"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:4px;fill:#CE422B" xmlns="http://www.w3.org/2000/svg"><path d="M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00-.2278-.1873l.0415-1.1845a.3442.3442 0 00-.49-.328l-1.076.491c-.0872-.0476-.1742-.0952-.2623-.1407l-.1903-1.1673A.3483.3483 0 0016.256.955l-.9597.6905a8.4867 8.4867 0 00-.2855-.086l-.414-1.1066a.3483.3483 0 00-.5781-.1154l-.8069.8666a9.2936 9.2936 0 00-.2936-.0284L12.2946.1683a.3462.3462 0 00-.5892 0l-.6236 1.0073a13.7383 13.7383 0 00-.2936.0284L9.9803.3374a.3462.3462 0 00-.578.1154l-.4141 1.1065c-.0962.0274-.1903.0567-.2855.086L7.744.955a.3483.3483 0 00-.5447.2258L7.009 2.348a9.3574 9.3574 0 00-.2622.1407l-1.0762-.491a.3462.3462 0 00-.49.328l.0416 1.1845a7.9826 7.9826 0 00-.2278.1873L3.8413 3.425a.3472.3472 0 00-.4171.4171l.2713 1.1531c-.0628.075-.1255.1509-.1863.2268l-1.1845-.0415a.3462.3462 0 00-.328.49l.491 1.0761a9.167 9.167 0 00-.1407.2622l-1.1662.1894a.3483.3483 0 00-.2258.5446l.6904.9587a13.303 13.303 0 00-.087.2855l-1.1065.414a.3483.3483 0 00-.1155.5781l.8656.807a9.2936 9.2936 0 00-.0283.2935l-1.0073.6236a.3442.3442 0 000 .5892l1.0073.6236c.008.0982.0182.1964.0283.2936l-.8656.8079a.3462.3462 0 00.1155.578l1.1065.4141c.0273.0962.0567.1914.087.2855l-.6904.9587a.3452.3452 0 00.2268.5447l1.1662.1893c.0456.088.0922.1751.1408.2622l-.491 1.0762a.3462.3462 0 00.328.49l1.1834-.0415c.0618.0769.1235.1528.1873.2277l-.2713 1.1541a.3462.3462 0 00.4171.4161l1.153-.2713c.075.0638.151.1255.2279.1863l-.0415 1.1845a.3442.3442 0 00.49.327l1.0761-.49c.087.0486.1741.0951.2622.1407l.1903 1.1662a.3483.3483 0 00.5447.2268l.9587-.6904a9.299 9.299 0 00.2855.087l.414 1.1066a.3452.3452 0 00.5781.1154l.8079-.8656c.0972.0111.1954.0203.2936.0294l.6236 1.0073a.3472.3472 0 00.5892 0l.6236-1.0073c.0982-.0091.1964-.0183.2936-.0294l.8069.8656a.3483.3483 0 00.578-.1154l.4141-1.1066a8.4626 8.4626 0 00.2855-.087l.9587.6904a.3452.3452 0 00.5447-.2268l.1903-1.1662c.088-.0456.1751-.0931.2622-.1407l1.0762.49a.3472.3472 0 00.49-.327l-.0415-1.1845a6.7267 6.7267 0 00.2267-.1863l1.1531.2713a.3472.3472 0 00.4171-.416l-.2713-1.1542c.0628-.0749.1255-.1508.1863-.2278l1.1845.0415a.3442.3442 0 00.328-.49l-.49-1.076c.0475-.0872.0951-.1742.1407-.2623l1.1662-.1893a.3483.3483 0 00.2258-.5447l-.6904-.9587.087-.2855 1.1066-.414a.3462.3462 0 00.1154-.5781l-.8656-.8079c.0101-.0972.0202-.1954.0283-.2936l1.0073-.6236a.3442.3442 0 000-.5892zm-6.7413 8.3551a.7138.7138 0 01.2986-1.396.714.714 0 11-.2997 1.396zm-.3422-2.3142a.649.649 0 00-.7715.5l-.3573 1.6685c-1.1035.501-2.3285.7795-3.6193.7795a8.7368 8.7368 0 01-3.6951-.814l-.3574-1.6684a.648.648 0 00-.7714-.499l-1.473.3158a8.7216 8.7216 0 01-.7613-.898h7.1676c.081 0 .1356-.0141.1356-.088v-2.536c0-.074-.0536-.0881-.1356-.0881h-2.0966v-1.6077h2.2677c.2065 0 1.1065.0587 1.394 1.2088.0901.3533.2875 1.5044.4232 1.8729.1346.413.6833 1.2381 1.2685 1.2381h3.5716a.7492.7492 0 00.1296-.0131 8.7874 8.7874 0 01-.8119.9526zM6.8369 20.024a.714.714 0 11-.2997-1.396.714.714 0 01.2997 1.396zM4.1177 8.9972a.7137.7137 0 11-1.304.5791.7137.7137 0 011.304-.579zm-.8352 1.9813l1.5347-.6824a.65.65 0 00.33-.8585l-.3158-.7147h1.2432v5.6025H3.5669a8.7753 8.7753 0 01-.2834-3.348zm6.7343-.5437V8.7836h2.9601c.153 0 1.0792.1772 1.0792.8697 0 .575-.7107.7815-1.2948.7815zm10.7574 1.4862c0 .2187-.008.4363-.0243.651h-.9c-.09 0-.1265.0586-.1265.1477v.413c0 .973-.5487 1.1846-1.0296 1.2382-.4576.0517-.9648-.1913-1.0275-.4717-.2704-1.5186-.7198-1.8436-1.4305-2.4034.8817-.5599 1.799-1.386 1.799-2.4915 0-1.1936-.819-1.9458-1.3769-2.3153-.7825-.5163-1.6491-.6195-1.883-.6195H5.4682a8.7651 8.7651 0 014.907-2.7699l1.0974 1.151a.648.648 0 00.9182.0213l1.227-1.1743a8.7753 8.7753 0 016.0044 4.2762l-.8403 1.8982a.652.652 0 00.33.8585l1.6178.7188c.0283.2875.0425.577.0425.8717zm-9.3006-9.5993a.7128.7128 0 11.984 1.0316.7137.7137 0 01-.984-1.0316zm8.3389 6.71a.7107.7107 0 01.9395-.3625.7137.7137 0 11-.9405.3635z"/></svg> Rust</span><button class="ec" onclick="cp('p01')">복사</button><button class="run-btn" onclick="runCode('p01','rust')">&#9655; 실행</button></div><pre class="vp" id="p01"><span class="ln"> 1</span><span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="ln"> 2</span>    <span class="cm">// &amp;str → i32 파싱</span>
+<span class="ln"> 3</span>    <span class="kw">let</span> n: <span class="tp">i32</span> = <span class="st">&quot;42&quot;</span>.<span class="fn">parse</span>().<span class="fn">unwrap</span>();
+<span class="ln"> 4</span>    <span class="fn">println!</span>(<span class="st">&quot;{}&quot;</span>, n); <span class="cm">// 42</span>
+<span class="ln"> 5</span>
+<span class="ln"> 6</span>    <span class="cm">// 터보피시로 타입 명시</span>
+<span class="ln"> 7</span>    <span class="kw">let</span> m = <span class="st">&quot;100&quot;</span>.parse::&lt;<span class="tp">i32</span>&gt;().<span class="fn">unwrap</span>();
+<span class="ln"> 8</span>    <span class="fn">println!</span>(<span class="st">&quot;{}&quot;</span>, m); <span class="cm">// 100</span>
+<span class="ln"> 9</span>
+<span class="ln">10</span>    <span class="cm">// Result로 처리</span>
+<span class="ln">11</span>    <span class="kw">let</span> r: Result&lt;<span class="tp">i32</span>, _&gt; = <span class="st">&quot;abc&quot;</span>.<span class="fn">parse</span>();
+<span class="ln">12</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, r);
+<span class="ln">13</span>    <span class="cm">// Err(ParseIntError { kind: InvalidDigit })</span>
+<span class="ln">14</span>}
+</pre><div class="run-output" id="out_p01"></div></div><div class="callout info"><div class="callout-title">📌 왜 Result를 반환하나</div>문자열은 어떤 내용이든 담을 수 있습니다. <code>"abc"</code>를 <code>i32</code>로 바꾸는 것은 불가능하므로 실패 가능성을 타입으로 표현합니다. 이것이 Rust가 런타임 예외 대신 <code>Result</code>를 사용하는 이유입니다.</div><div class="callout info"><div class="callout-title">📌 FromStr 트레이트</div><code>parse()</code>는 <code>FromStr</code> 트레이트를 구현한 타입이면 모두 사용 가능합니다. 표준 라이브러리의 <code>i32</code>, <code>f64</code>, <code>bool</code>, <code>char</code>, <code>String</code> 등이 모두 구현되어 있고, 직접 구현할 수도 있습니다.</div></section><div class="divider"></div>
+<section class="sec" id="s2"><div class="sec-hdr"><span class="sec-num">§ 02</span><h2>터보피시 ::<T> — 타입을 명시하는 법</h2></div><p class="lead"><code>parse()</code>는 어떤 타입으로 변환할지 알아야 합니다. <code>::&lt;T&gt;</code> 문법(터보피시)으로 직접 명시하거나, 변수 타입 선언으로 컴파일러가 추론하게 할 수 있습니다.</p><svg width="100%" viewBox="0 0 680 290" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:14px 0">
+<defs><marker id="pb1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="var(--text2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<text x="340" y="24" text-anchor="middle" font-size="14" font-weight="600" fill="var(--text)">터보피시(Turbofish) — ::</text>
+<rect x="60" y="38" width="560" height="48" rx="8" fill="var(--bg2)" stroke="var(--border)" stroke-width="0.5"/>
+<text font-family="Consolas,monospace" font-size="17" font-weight="600" x="340" y="67" text-anchor="middle" fill="var(--text)">"42" . parse :: &lt;i32&gt; ()</text>
+<line x1="115" y1="86" x2="115" y2="110" stroke="var(--text2)" stroke-width="1" marker-end="url(#pb1)" fill="none"/>
+<line x1="224" y1="86" x2="224" y2="110" stroke="var(--text2)" stroke-width="1" marker-end="url(#pb1)" fill="none"/>
+<line x1="314" y1="86" x2="314" y2="110" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#pb1)" fill="none"/>
+<line x1="404" y1="86" x2="404" y2="110" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#pb1)" fill="none"/>
+<line x1="494" y1="86" x2="494" y2="110" stroke="var(--text2)" stroke-width="1" marker-end="url(#pb1)" fill="none"/>
+<rect x="58" y="110" width="114" height="46" rx="6" fill="var(--bg2)" stroke="var(--border)" stroke-width="0.5"/><text x="115" y="128" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">"42"</text><text x="115" y="146" text-anchor="middle" font-size="11" fill="var(--text2)">&amp;str 입력</text>
+<rect x="168" y="110" width="112" height="46" rx="6" fill="var(--bg2)" stroke="var(--border)" stroke-width="0.5"/><text x="224" y="128" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">parse</text><text x="224" y="146" text-anchor="middle" font-size="11" fill="var(--text2)">FromStr 메서드</text>
+<rect x="258" y="110" width="112" height="46" rx="6" fill="#451a03" stroke="#f59e0b" stroke-width="0.5"/><text x="314" y="128" text-anchor="middle" font-size="12" font-weight="600" fill="#fbbf24">::</text><text x="314" y="146" text-anchor="middle" font-size="11" fill="#f59e0b">터보피시 구분자</text>
+<rect x="348" y="110" width="112" height="46" rx="6" fill="#1e1b4b" stroke="#7c3aed" stroke-width="0.5"/><text x="404" y="128" text-anchor="middle" font-size="12" font-weight="600" fill="#c4b5fd">&lt;i32&gt;</text><text x="404" y="146" text-anchor="middle" font-size="11" fill="#a78bfa">목표 타입 명시</text>
+<rect x="438" y="110" width="112" height="46" rx="6" fill="var(--bg2)" stroke="var(--border)" stroke-width="0.5"/><text x="494" y="128" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">()</text><text x="494" y="146" text-anchor="middle" font-size="11" fill="var(--text2)">인자 없음</text>
+<line x1="40" y1="178" x2="640" y2="178" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3 3"/>
+<text x="340" y="196" text-anchor="middle" font-size="12" fill="var(--text2)">언제 터보피시가 필요한가</text>
+<rect x="40" y="208" width="284" height="54" rx="6" fill="#064e3b" stroke="#059669" stroke-width="0.5"/><text x="182" y="228" text-anchor="middle" font-size="12" font-weight="600" fill="#6ee7b7">타입 추론 가능 — 생략 OK</text><text x="182" y="248" text-anchor="middle" font-size="11" fill="#34d399" font-family="Consolas,monospace">let n: i32 = "42".parse().unwrap();</text>
+<rect x="356" y="208" width="284" height="54" rx="6" fill="#450a0a" stroke="#dc2626" stroke-width="0.5"/><text x="498" y="228" text-anchor="middle" font-size="12" font-weight="600" fill="#fca5a5">추론 불가 — 터보피시 필수</text><text x="498" y="248" text-anchor="middle" font-size="11" fill="#f87171" font-family="Consolas,monospace">"42".parse::&lt;i32&gt;().unwrap();</text>
+</svg><div class="eb"><div class="et"><span class="el"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:4px;fill:#CE422B" xmlns="http://www.w3.org/2000/svg"><path d="M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00-.2278-.1873l.0415-1.1845a.3442.3442 0 00-.49-.328l-1.076.491c-.0872-.0476-.1742-.0952-.2623-.1407l-.1903-1.1673A.3483.3483 0 0016.256.955l-.9597.6905a8.4867 8.4867 0 00-.2855-.086l-.414-1.1066a.3483.3483 0 00-.5781-.1154l-.8069.8666a9.2936 9.2936 0 00-.2936-.0284L12.2946.1683a.3462.3462 0 00-.5892 0l-.6236 1.0073a13.7383 13.7383 0 00-.2936.0284L9.9803.3374a.3462.3462 0 00-.578.1154l-.4141 1.1065c-.0962.0274-.1903.0567-.2855.086L7.744.955a.3483.3483 0 00-.5447.2258L7.009 2.348a9.3574 9.3574 0 00-.2622.1407l-1.0762-.491a.3462.3462 0 00-.49.328l.0416 1.1845a7.9826 7.9826 0 00-.2278.1873L3.8413 3.425a.3472.3472 0 00-.4171.4171l.2713 1.1531c-.0628.075-.1255.1509-.1863.2268l-1.1845-.0415a.3462.3462 0 00-.328.49l.491 1.0761a9.167 9.167 0 00-.1407.2622l-1.1662.1894a.3483.3483 0 00-.2258.5446l.6904.9587a13.303 13.303 0 00-.087.2855l-1.1065.414a.3483.3483 0 00-.1155.5781l.8656.807a9.2936 9.2936 0 00-.0283.2935l-1.0073.6236a.3442.3442 0 000 .5892l1.0073.6236c.008.0982.0182.1964.0283.2936l-.8656.8079a.3462.3462 0 00.1155.578l1.1065.4141c.0273.0962.0567.1914.087.2855l-.6904.9587a.3452.3452 0 00.2268.5447l1.1662.1893c.0456.088.0922.1751.1408.2622l-.491 1.0762a.3462.3462 0 00.328.49l1.1834-.0415c.0618.0769.1235.1528.1873.2277l-.2713 1.1541a.3462.3462 0 00.4171.4161l1.153-.2713c.075.0638.151.1255.2279.1863l-.0415 1.1845a.3442.3442 0 00.49.327l1.0761-.49c.087.0486.1741.0951.2622.1407l.1903 1.1662a.3483.3483 0 00.5447.2268l.9587-.6904a9.299 9.299 0 00.2855.087l.414 1.1066a.3452.3452 0 00.5781.1154l.8079-.8656c.0972.0111.1954.0203.2936.0294l.6236 1.0073a.3472.3472 0 00.5892 0l.6236-1.0073c.0982-.0091.1964-.0183.2936-.0294l.8069.8656a.3483.3483 0 00.578-.1154l.4141-1.1066a8.4626 8.4626 0 00.2855-.087l.9587.6904a.3452.3452 0 00.5447-.2268l.1903-1.1662c.088-.0456.1751-.0931.2622-.1407l1.0762.49a.3472.3472 0 00.49-.327l-.0415-1.1845a6.7267 6.7267 0 00.2267-.1863l1.1531.2713a.3472.3472 0 00.4171-.416l-.2713-1.1542c.0628-.0749.1255-.1508.1863-.2278l1.1845.0415a.3442.3442 0 00.328-.49l-.49-1.076c.0475-.0872.0951-.1742.1407-.2623l1.1662-.1893a.3483.3483 0 00.2258-.5447l-.6904-.9587.087-.2855 1.1066-.414a.3462.3462 0 00.1154-.5781l-.8656-.8079c.0101-.0972.0202-.1954.0283-.2936l1.0073-.6236a.3442.3442 0 000-.5892zm-6.7413 8.3551a.7138.7138 0 01.2986-1.396.714.714 0 11-.2997 1.396zm-.3422-2.3142a.649.649 0 00-.7715.5l-.3573 1.6685c-1.1035.501-2.3285.7795-3.6193.7795a8.7368 8.7368 0 01-3.6951-.814l-.3574-1.6684a.648.648 0 00-.7714-.499l-1.473.3158a8.7216 8.7216 0 01-.7613-.898h7.1676c.081 0 .1356-.0141.1356-.088v-2.536c0-.074-.0536-.0881-.1356-.0881h-2.0966v-1.6077h2.2677c.2065 0 1.1065.0587 1.394 1.2088.0901.3533.2875 1.5044.4232 1.8729.1346.413.6833 1.2381 1.2685 1.2381h3.5716a.7492.7492 0 00.1296-.0131 8.7874 8.7874 0 01-.8119.9526zM6.8369 20.024a.714.714 0 11-.2997-1.396.714.714 0 01.2997 1.396zM4.1177 8.9972a.7137.7137 0 11-1.304.5791.7137.7137 0 011.304-.579zm-.8352 1.9813l1.5347-.6824a.65.65 0 00.33-.8585l-.3158-.7147h1.2432v5.6025H3.5669a8.7753 8.7753 0 01-.2834-3.348zm6.7343-.5437V8.7836h2.9601c.153 0 1.0792.1772 1.0792.8697 0 .575-.7107.7815-1.2948.7815zm10.7574 1.4862c0 .2187-.008.4363-.0243.651h-.9c-.09 0-.1265.0586-.1265.1477v.413c0 .973-.5487 1.1846-1.0296 1.2382-.4576.0517-.9648-.1913-1.0275-.4717-.2704-1.5186-.7198-1.8436-1.4305-2.4034.8817-.5599 1.799-1.386 1.799-2.4915 0-1.1936-.819-1.9458-1.3769-2.3153-.7825-.5163-1.6491-.6195-1.883-.6195H5.4682a8.7651 8.7651 0 014.907-2.7699l1.0974 1.151a.648.648 0 00.9182.0213l1.227-1.1743a8.7753 8.7753 0 016.0044 4.2762l-.8403 1.8982a.652.652 0 00.33.8585l1.6178.7188c.0283.2875.0425.577.0425.8717zm-9.3006-9.5993a.7128.7128 0 11.984 1.0316.7137.7137 0 01-.984-1.0316zm8.3389 6.71a.7107.7107 0 01.9395-.3625.7137.7137 0 11-.9405.3635z"/></svg> Rust</span><button class="ec" onclick="cp('p02')">복사</button><button class="run-btn" onclick="runCode('p02','rust')">&#9655; 실행</button></div><pre class="vp" id="p02"><span class="ln"> 1</span><span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="ln"> 2</span>    <span class="cm">// 터보피시 필수 — 타입 추론 불가</span>
+<span class="ln"> 3</span>    <span class="kw">let</span> v = <span class="st">&quot;42&quot;</span>.parse::&lt;<span class="tp">i32</span>&gt;().<span class="fn">unwrap</span>();
+<span class="ln"> 4</span>    <span class="fn">println!</span>(<span class="st">&quot;{}&quot;</span>, v);
+<span class="ln"> 5</span>
+<span class="ln"> 6</span>    <span class="cm">// 타입 추론 가능 — 터보피시 생략</span>
+<span class="ln"> 7</span>    <span class="kw">let</span> n: <span class="tp">i32</span> = <span class="st">&quot;42&quot;</span>.<span class="fn">parse</span>().<span class="fn">unwrap</span>();
+<span class="ln"> 8</span>    <span class="fn">println!</span>(<span class="st">&quot;{}&quot;</span>, n);
+<span class="ln"> 9</span>
+<span class="ln">10</span>    <span class="cm">// 벡터에 넣을 때 — 추론 가능</span>
+<span class="ln">11</span>    <span class="kw">let</span> nums: <span class="kw">Vec</span>&lt;<span class="tp">i32</span>&gt; = <span class="fn">vec!</span>[<span class="st">&quot;1&quot;</span>,<span class="st">&quot;2&quot;</span>,<span class="st">&quot;3&quot;</span>]
+<span class="ln">12</span>        .<span class="fn">iter</span>()
+<span class="ln">13</span>        .<span class="fn">map</span>(|s| s.<span class="fn">parse</span>().<span class="fn">unwrap</span>())
+<span class="ln">14</span>        .<span class="fn">collect</span>();
+<span class="ln">15</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, nums); <span class="cm">// [1, 2, 3]</span>
+<span class="ln">16</span>}
+</pre><div class="run-output" id="out_p02"></div></div><div class="callout info"><div class="callout-title">📌 터보피시라는 이름의 유래</div><code>::&lt;&gt;</code> 모양이 물고기처럼 생겼다고 해서 "turbofish"라는 별명이 붙었습니다. Rust 커뮤니티에서 공식적으로 사용되는 용어입니다.</div><div class="callout warn"><div class="callout-title">⚠ 추론이 불가한 경우</div><code>let v = "42".parse().unwrap();</code>처럼 타입 컨텍스트가 없으면 컴파일 에러가 납니다. 이럴 때 터보피시 <code>.parse::&lt;i32&gt;()</code> 또는 변수에 타입 명시 <code>let v: i32 = ...</code> 중 하나를 선택합니다.</div></section><div class="divider"></div>
+<section class="sec" id="s3"><div class="sec-hdr"><span class="sec-num">§ 03</span><h2>Result<T, E> — 성공과 실패를 담는 타입</h2></div><p class="lead"><code>Result&lt;T, E&gt;</code>는 두 가지 상태만 가집니다: <code>Ok(T)</code> 성공값, <code>Err(E)</code> 에러값. C언어의 에러 코드나 Java의 예외와 달리, 타입 시스템이 처리를 강제합니다.</p><svg width="100%" viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:14px 0">
+<text x="340" y="24" text-anchor="middle" font-size="14" font-weight="600" fill="var(--text)">Result&lt;T, E&gt; 메모리 구조</text>
+<text x="340" y="42" text-anchor="middle" font-size="11" fill="var(--text2)">두 variant 중 하나만 존재 — 컴파일러가 크기 결정</text>
+<text x="170" y="62" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text)">Ok(T)</text>
+<rect x="40" y="70" width="260" height="38" rx="4" fill="#064e3b" stroke="#059669" stroke-width="0.5"/><text x="170" y="94" text-anchor="middle" font-size="12" font-weight="600" fill="#6ee7b7">discriminant = 0</text>
+<rect x="40" y="112" width="260" height="58" rx="4" fill="#064e3b" stroke="#059669" stroke-width="0.5"/><text x="170" y="134" text-anchor="middle" font-size="12" font-weight="600" fill="#6ee7b7">T 값 (파싱 결과)</text><text x="170" y="156" text-anchor="middle" font-size="11" fill="#34d399">예: i32 → 42</text>
+<rect x="40" y="174" width="260" height="28" rx="4" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="4 3" fill="none"/><text x="170" y="192" text-anchor="middle" font-size="11" fill="var(--text2)">padding (필요 시)</text>
+<text x="380" y="62" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text)">Err(E)</text>
+<rect x="380" y="70" width="260" height="38" rx="4" fill="#450a0a" stroke="#dc2626" stroke-width="0.5"/><text x="510" y="94" text-anchor="middle" font-size="12" font-weight="600" fill="#fca5a5">discriminant = 1</text>
+<rect x="380" y="112" width="260" height="58" rx="4" fill="#450a0a" stroke="#dc2626" stroke-width="0.5"/><text x="510" y="134" text-anchor="middle" font-size="12" font-weight="600" fill="#fca5a5">E 값 (에러 정보)</text><text x="510" y="156" text-anchor="middle" font-size="11" fill="#f87171">예: ParseIntError</text>
+<rect x="380" y="174" width="260" height="28" rx="4" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="4 3" fill="none"/><text x="510" y="192" text-anchor="middle" font-size="11" fill="var(--text2)">padding (필요 시)</text>
+<line x1="40" y1="224" x2="640" y2="224" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3 3"/>
+<text x="340" y="242" text-anchor="middle" font-size="12" fill="var(--text2)">컴파일러 보장 3가지</text>
+<rect x="40" y="254" width="178" height="48" rx="6" fill="var(--bg2)" stroke="var(--border)" stroke-width="0.5"/><text x="129" y="272" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">소유권</text><text x="129" y="290" text-anchor="middle" font-size="11" fill="var(--text2)">Ok/Err 중 하나만 유효</text>
+<rect x="251" y="254" width="178" height="48" rx="6" fill="var(--bg2)" stroke="var(--border)" stroke-width="0.5"/><text x="340" y="272" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">강제 처리</text><text x="340" y="290" text-anchor="middle" font-size="11" fill="var(--text2)">Err 무시 시 경고</text>
+<rect x="462" y="254" width="178" height="48" rx="6" fill="var(--bg2)" stroke="var(--border)" stroke-width="0.5"/><text x="551" y="272" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">제로 비용</text><text x="551" y="290" text-anchor="middle" font-size="11" fill="var(--text2)">런타임 오버헤드 없음</text>
+</svg><div class="eb"><div class="et"><span class="el"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:4px;fill:#CE422B" xmlns="http://www.w3.org/2000/svg"><path d="M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00-.2278-.1873l.0415-1.1845a.3442.3442 0 00-.49-.328l-1.076.491c-.0872-.0476-.1742-.0952-.2623-.1407l-.1903-1.1673A.3483.3483 0 0016.256.955l-.9597.6905a8.4867 8.4867 0 00-.2855-.086l-.414-1.1066a.3483.3483 0 00-.5781-.1154l-.8069.8666a9.2936 9.2936 0 00-.2936-.0284L12.2946.1683a.3462.3462 0 00-.5892 0l-.6236 1.0073a13.7383 13.7383 0 00-.2936.0284L9.9803.3374a.3462.3462 0 00-.578.1154l-.4141 1.1065c-.0962.0274-.1903.0567-.2855.086L7.744.955a.3483.3483 0 00-.5447.2258L7.009 2.348a9.3574 9.3574 0 00-.2622.1407l-1.0762-.491a.3462.3462 0 00-.49.328l.0416 1.1845a7.9826 7.9826 0 00-.2278.1873L3.8413 3.425a.3472.3472 0 00-.4171.4171l.2713 1.1531c-.0628.075-.1255.1509-.1863.2268l-1.1845-.0415a.3462.3462 0 00-.328.49l.491 1.0761a9.167 9.167 0 00-.1407.2622l-1.1662.1894a.3483.3483 0 00-.2258.5446l.6904.9587a13.303 13.303 0 00-.087.2855l-1.1065.414a.3483.3483 0 00-.1155.5781l.8656.807a9.2936 9.2936 0 00-.0283.2935l-1.0073.6236a.3442.3442 0 000 .5892l1.0073.6236c.008.0982.0182.1964.0283.2936l-.8656.8079a.3462.3462 0 00.1155.578l1.1065.4141c.0273.0962.0567.1914.087.2855l-.6904.9587a.3452.3452 0 00.2268.5447l1.1662.1893c.0456.088.0922.1751.1408.2622l-.491 1.0762a.3462.3462 0 00.328.49l1.1834-.0415c.0618.0769.1235.1528.1873.2277l-.2713 1.1541a.3462.3462 0 00.4171.4161l1.153-.2713c.075.0638.151.1255.2279.1863l-.0415 1.1845a.3442.3442 0 00.49.327l1.0761-.49c.087.0486.1741.0951.2622.1407l.1903 1.1662a.3483.3483 0 00.5447.2268l.9587-.6904a9.299 9.299 0 00.2855.087l.414 1.1066a.3452.3452 0 00.5781.1154l.8079-.8656c.0972.0111.1954.0203.2936.0294l.6236 1.0073a.3472.3472 0 00.5892 0l.6236-1.0073c.0982-.0091.1964-.0183.2936-.0294l.8069.8656a.3483.3483 0 00.578-.1154l.4141-1.1066a8.4626 8.4626 0 00.2855-.087l.9587.6904a.3452.3452 0 00.5447-.2268l.1903-1.1662c.088-.0456.1751-.0931.2622-.1407l1.0762.49a.3472.3472 0 00.49-.327l-.0415-1.1845a6.7267 6.7267 0 00.2267-.1863l1.1531.2713a.3472.3472 0 00.4171-.416l-.2713-1.1542c.0628-.0749.1255-.1508.1863-.2278l1.1845.0415a.3442.3442 0 00.328-.49l-.49-1.076c.0475-.0872.0951-.1742.1407-.2623l1.1662-.1893a.3483.3483 0 00.2258-.5447l-.6904-.9587.087-.2855 1.1066-.414a.3462.3462 0 00.1154-.5781l-.8656-.8079c.0101-.0972.0202-.1954.0283-.2936l1.0073-.6236a.3442.3442 0 000-.5892zm-6.7413 8.3551a.7138.7138 0 01.2986-1.396.714.714 0 11-.2997 1.396zm-.3422-2.3142a.649.649 0 00-.7715.5l-.3573 1.6685c-1.1035.501-2.3285.7795-3.6193.7795a8.7368 8.7368 0 01-3.6951-.814l-.3574-1.6684a.648.648 0 00-.7714-.499l-1.473.3158a8.7216 8.7216 0 01-.7613-.898h7.1676c.081 0 .1356-.0141.1356-.088v-2.536c0-.074-.0536-.0881-.1356-.0881h-2.0966v-1.6077h2.2677c.2065 0 1.1065.0587 1.394 1.2088.0901.3533.2875 1.5044.4232 1.8729.1346.413.6833 1.2381 1.2685 1.2381h3.5716a.7492.7492 0 00.1296-.0131 8.7874 8.7874 0 01-.8119.9526zM6.8369 20.024a.714.714 0 11-.2997-1.396.714.714 0 01.2997 1.396zM4.1177 8.9972a.7137.7137 0 11-1.304.5791.7137.7137 0 011.304-.579zm-.8352 1.9813l1.5347-.6824a.65.65 0 00.33-.8585l-.3158-.7147h1.2432v5.6025H3.5669a8.7753 8.7753 0 01-.2834-3.348zm6.7343-.5437V8.7836h2.9601c.153 0 1.0792.1772 1.0792.8697 0 .575-.7107.7815-1.2948.7815zm10.7574 1.4862c0 .2187-.008.4363-.0243.651h-.9c-.09 0-.1265.0586-.1265.1477v.413c0 .973-.5487 1.1846-1.0296 1.2382-.4576.0517-.9648-.1913-1.0275-.4717-.2704-1.5186-.7198-1.8436-1.4305-2.4034.8817-.5599 1.799-1.386 1.799-2.4915 0-1.1936-.819-1.9458-1.3769-2.3153-.7825-.5163-1.6491-.6195-1.883-.6195H5.4682a8.7651 8.7651 0 014.907-2.7699l1.0974 1.151a.648.648 0 00.9182.0213l1.227-1.1743a8.7753 8.7753 0 016.0044 4.2762l-.8403 1.8982a.652.652 0 00.33.8585l1.6178.7188c.0283.2875.0425.577.0425.8717zm-9.3006-9.5993a.7128.7128 0 11.984 1.0316.7137.7137 0 01-.984-1.0316zm8.3389 6.71a.7107.7107 0 01.9395-.3625.7137.7137 0 11-.9405.3635z"/></svg> Rust</span><button class="ec" onclick="cp('p03')">복사</button><button class="run-btn" onclick="runCode('p03','rust')">&#9655; 실행</button></div><pre class="vp" id="p03"><span class="ln"> 1</span><span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="ln"> 2</span>    <span class="cm">// Ok — 성공</span>
+<span class="ln"> 3</span>    <span class="kw">let</span> ok: Result&lt;<span class="tp">i32</span>, _&gt; = <span class="st">&quot;42&quot;</span>.<span class="fn">parse</span>();
+<span class="ln"> 4</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, ok); <span class="cm">// Ok(42)</span>
+<span class="ln"> 5</span>
+<span class="ln"> 6</span>    <span class="cm">// Err — 실패</span>
+<span class="ln"> 7</span>    <span class="kw">let</span> err: Result&lt;<span class="tp">i32</span>, _&gt; = <span class="st">&quot;abc&quot;</span>.<span class="fn">parse</span>();
+<span class="ln"> 8</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, err);
+<span class="ln"> 9</span>    <span class="cm">// Err(ParseIntError { kind: InvalidDigit })</span>
+<span class="ln">10</span>
+<span class="ln">11</span>    <span class="cm">// is_ok / is_err</span>
+<span class="ln">12</span>    <span class="fn">println!</span>(<span class="st">&quot;{}&quot;</span>, ok.<span class="fn">is_ok</span>());  <span class="cm">// true</span>
+<span class="ln">13</span>    <span class="fn">println!</span>(<span class="st">&quot;{}&quot;</span>, err.<span class="fn">is_err</span>()); <span class="cm">// true</span>
+<span class="ln">14</span>}
+</pre><div class="run-output" id="out_p03"></div></div><div class="callout info"><div class="callout-title">📌 Result는 값이다</div>Java의 <code>try/catch</code>와 달리 <code>Result</code>는 일반 값입니다. 함수 인자로 전달하고, 벡터에 저장하고, 변환하고, 반환할 수 있습니다. 에러 처리가 제어 흐름이 아닌 데이터 흐름의 일부가 됩니다.</div><div class="callout info"><div class="callout-title">📌 Err를 무시하면 경고</div><code>let _ = "abc".parse::&lt;i32&gt;();</code>처럼 Result를 사용하지 않으면 컴파일러가 <code>unused Result that must be used</code> 경고를 냅니다. 실수로 에러를 무시하는 것을 방지합니다.</div></section><div class="divider"></div>
+<section class="sec" id="s4"><div class="sec-hdr"><span class="sec-num">§ 04</span><h2>숫자 파싱 — i32, u8, f64 타입별 차이</h2></div><p class="lead">Rust의 숫자 타입은 각각 허용 범위가 다릅니다. 같은 문자열이라도 목표 타입에 따라 파싱 성공 여부가 달라집니다.</p><div class="eb"><div class="et"><span class="el"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:4px;fill:#CE422B" xmlns="http://www.w3.org/2000/svg"><path d="M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00-.2278-.1873l.0415-1.1845a.3442.3442 0 00-.49-.328l-1.076.491c-.0872-.0476-.1742-.0952-.2623-.1407l-.1903-1.1673A.3483.3483 0 0016.256.955l-.9597.6905a8.4867 8.4867 0 00-.2855-.086l-.414-1.1066a.3483.3483 0 00-.5781-.1154l-.8069.8666a9.2936 9.2936 0 00-.2936-.0284L12.2946.1683a.3462.3462 0 00-.5892 0l-.6236 1.0073a13.7383 13.7383 0 00-.2936.0284L9.9803.3374a.3462.3462 0 00-.578.1154l-.4141 1.1065c-.0962.0274-.1903.0567-.2855.086L7.744.955a.3483.3483 0 00-.5447.2258L7.009 2.348a9.3574 9.3574 0 00-.2622.1407l-1.0762-.491a.3462.3462 0 00-.49.328l.0416 1.1845a7.9826 7.9826 0 00-.2278.1873L3.8413 3.425a.3472.3472 0 00-.4171.4171l.2713 1.1531c-.0628.075-.1255.1509-.1863.2268l-1.1845-.0415a.3462.3462 0 00-.328.49l.491 1.0761a9.167 9.167 0 00-.1407.2622l-1.1662.1894a.3483.3483 0 00-.2258.5446l.6904.9587a13.303 13.303 0 00-.087.2855l-1.1065.414a.3483.3483 0 00-.1155.5781l.8656.807a9.2936 9.2936 0 00-.0283.2935l-1.0073.6236a.3442.3442 0 000 .5892l1.0073.6236c.008.0982.0182.1964.0283.2936l-.8656.8079a.3462.3462 0 00.1155.578l1.1065.4141c.0273.0962.0567.1914.087.2855l-.6904.9587a.3452.3452 0 00.2268.5447l1.1662.1893c.0456.088.0922.1751.1408.2622l-.491 1.0762a.3462.3462 0 00.328.49l1.1834-.0415c.0618.0769.1235.1528.1873.2277l-.2713 1.1541a.3462.3462 0 00.4171.4161l1.153-.2713c.075.0638.151.1255.2279.1863l-.0415 1.1845a.3442.3442 0 00.49.327l1.0761-.49c.087.0486.1741.0951.2622.1407l.1903 1.1662a.3483.3483 0 00.5447.2268l.9587-.6904a9.299 9.299 0 00.2855.087l.414 1.1066a.3452.3452 0 00.5781.1154l.8079-.8656c.0972.0111.1954.0203.2936.0294l.6236 1.0073a.3472.3472 0 00.5892 0l.6236-1.0073c.0982-.0091.1964-.0183.2936-.0294l.8069.8656a.3483.3483 0 00.578-.1154l.4141-1.1066a8.4626 8.4626 0 00.2855-.087l.9587.6904a.3452.3452 0 00.5447-.2268l.1903-1.1662c.088-.0456.1751-.0931.2622-.1407l1.0762.49a.3472.3472 0 00.49-.327l-.0415-1.1845a6.7267 6.7267 0 00.2267-.1863l1.1531.2713a.3472.3472 0 00.4171-.416l-.2713-1.1542c.0628-.0749.1255-.1508.1863-.2278l1.1845.0415a.3442.3442 0 00.328-.49l-.49-1.076c.0475-.0872.0951-.1742.1407-.2623l1.1662-.1893a.3483.3483 0 00.2258-.5447l-.6904-.9587.087-.2855 1.1066-.414a.3462.3462 0 00.1154-.5781l-.8656-.8079c.0101-.0972.0202-.1954.0283-.2936l1.0073-.6236a.3442.3442 0 000-.5892zm-6.7413 8.3551a.7138.7138 0 01.2986-1.396.714.714 0 11-.2997 1.396zm-.3422-2.3142a.649.649 0 00-.7715.5l-.3573 1.6685c-1.1035.501-2.3285.7795-3.6193.7795a8.7368 8.7368 0 01-3.6951-.814l-.3574-1.6684a.648.648 0 00-.7714-.499l-1.473.3158a8.7216 8.7216 0 01-.7613-.898h7.1676c.081 0 .1356-.0141.1356-.088v-2.536c0-.074-.0536-.0881-.1356-.0881h-2.0966v-1.6077h2.2677c.2065 0 1.1065.0587 1.394 1.2088.0901.3533.2875 1.5044.4232 1.8729.1346.413.6833 1.2381 1.2685 1.2381h3.5716a.7492.7492 0 00.1296-.0131 8.7874 8.7874 0 01-.8119.9526zM6.8369 20.024a.714.714 0 11-.2997-1.396.714.714 0 01.2997 1.396zM4.1177 8.9972a.7137.7137 0 11-1.304.5791.7137.7137 0 011.304-.579zm-.8352 1.9813l1.5347-.6824a.65.65 0 00.33-.8585l-.3158-.7147h1.2432v5.6025H3.5669a8.7753 8.7753 0 01-.2834-3.348zm6.7343-.5437V8.7836h2.9601c.153 0 1.0792.1772 1.0792.8697 0 .575-.7107.7815-1.2948.7815zm10.7574 1.4862c0 .2187-.008.4363-.0243.651h-.9c-.09 0-.1265.0586-.1265.1477v.413c0 .973-.5487 1.1846-1.0296 1.2382-.4576.0517-.9648-.1913-1.0275-.4717-.2704-1.5186-.7198-1.8436-1.4305-2.4034.8817-.5599 1.799-1.386 1.799-2.4915 0-1.1936-.819-1.9458-1.3769-2.3153-.7825-.5163-1.6491-.6195-1.883-.6195H5.4682a8.7651 8.7651 0 014.907-2.7699l1.0974 1.151a.648.648 0 00.9182.0213l1.227-1.1743a8.7753 8.7753 0 016.0044 4.2762l-.8403 1.8982a.652.652 0 00.33.8585l1.6178.7188c.0283.2875.0425.577.0425.8717zm-9.3006-9.5993a.7128.7128 0 11.984 1.0316.7137.7137 0 01-.984-1.0316zm8.3389 6.71a.7107.7107 0 01.9395-.3625.7137.7137 0 11-.9405.3635z"/></svg> Rust</span><button class="ec" onclick="cp('p04')">복사</button><button class="run-btn" onclick="runCode('p04','rust')">&#9655; 실행</button></div><pre class="vp" id="p04"><span class="ln"> 1</span><span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="ln"> 2</span>    <span class="cm">// i32: -2147483648 ~ 2147483647</span>
+<span class="ln"> 3</span>    <span class="kw">let</span> a = <span class="st">&quot;2147483647&quot;</span>.parse::&lt;<span class="tp">i32</span>&gt;();
+<span class="ln"> 4</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, a); <span class="cm">// Ok(2147483647)</span>
+<span class="ln"> 5</span>
+<span class="ln"> 6</span>    <span class="cm">// u8: 0 ~ 255</span>
+<span class="ln"> 7</span>    <span class="kw">let</span> b = <span class="st">&quot;255&quot;</span>.parse::&lt;u8&gt;();
+<span class="ln"> 8</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, b); <span class="cm">// Ok(255)</span>
+<span class="ln"> 9</span>
+<span class="ln">10</span>    <span class="cm">// f64: 소수점 OK</span>
+<span class="ln">11</span>    <span class="kw">let</span> c = <span class="st">&quot;3.14&quot;</span>.parse::&lt;<span class="tp">f64</span>&gt;();
+<span class="ln">12</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, c); <span class="cm">// Ok(3.14)</span>
+<span class="ln">13</span>
+<span class="ln">14</span>    <span class="cm">// bool</span>
+<span class="ln">15</span>    <span class="kw">let</span> d = <span class="st">&quot;true&quot;</span>.parse::&lt;<span class="tp">bool</span>&gt;();
+<span class="ln">16</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, d); <span class="cm">// Ok(true)</span>
+<span class="ln">17</span>}
+</pre><div class="run-output" id="out_p04"></div></div><div class="callout info"><div class="callout-title">📌 타입별 허용 범위</div><code>i8</code> -128~127 · <code>i32</code> -2147483648~2147483647 · <code>u8</code> 0~255 · <code>u32</code> 0~4294967295 · <code>f32/f64</code> 소수점 OK · <code>bool</code> "true"/"false"만 허용</div><div class="callout warn"><div class="callout-title">⚠ 정수와 소수점</div><code>"3.14".parse::&lt;i32&gt;()</code>는 실패합니다 — 정수 파서는 소수점을 이해하지 못합니다. 소수점이 있으면 <code>f64</code>로, 정수면 <code>i32/i64</code>로 파싱해야 합니다.</div><div class="eb"><div class="et"><span class="el"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:4px;fill:#CE422B" xmlns="http://www.w3.org/2000/svg"><path d="M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00-.2278-.1873l.0415-1.1845a.3442.3442 0 00-.49-.328l-1.076.491c-.0872-.0476-.1742-.0952-.2623-.1407l-.1903-1.1673A.3483.3483 0 0016.256.955l-.9597.6905a8.4867 8.4867 0 00-.2855-.086l-.414-1.1066a.3483.3483 0 00-.5781-.1154l-.8069.8666a9.2936 9.2936 0 00-.2936-.0284L12.2946.1683a.3462.3462 0 00-.5892 0l-.6236 1.0073a13.7383 13.7383 0 00-.2936.0284L9.9803.3374a.3462.3462 0 00-.578.1154l-.4141 1.1065c-.0962.0274-.1903.0567-.2855.086L7.744.955a.3483.3483 0 00-.5447.2258L7.009 2.348a9.3574 9.3574 0 00-.2622.1407l-1.0762-.491a.3462.3462 0 00-.49.328l.0416 1.1845a7.9826 7.9826 0 00-.2278.1873L3.8413 3.425a.3472.3472 0 00-.4171.4171l.2713 1.1531c-.0628.075-.1255.1509-.1863.2268l-1.1845-.0415a.3462.3462 0 00-.328.49l.491 1.0761a9.167 9.167 0 00-.1407.2622l-1.1662.1894a.3483.3483 0 00-.2258.5446l.6904.9587a13.303 13.303 0 00-.087.2855l-1.1065.414a.3483.3483 0 00-.1155.5781l.8656.807a9.2936 9.2936 0 00-.0283.2935l-1.0073.6236a.3442.3442 0 000 .5892l1.0073.6236c.008.0982.0182.1964.0283.2936l-.8656.8079a.3462.3462 0 00.1155.578l1.1065.4141c.0273.0962.0567.1914.087.2855l-.6904.9587a.3452.3452 0 00.2268.5447l1.1662.1893c.0456.088.0922.1751.1408.2622l-.491 1.0762a.3462.3462 0 00.328.49l1.1834-.0415c.0618.0769.1235.1528.1873.2277l-.2713 1.1541a.3462.3462 0 00.4171.4161l1.153-.2713c.075.0638.151.1255.2279.1863l-.0415 1.1845a.3442.3442 0 00.49.327l1.0761-.49c.087.0486.1741.0951.2622.1407l.1903 1.1662a.3483.3483 0 00.5447.2268l.9587-.6904a9.299 9.299 0 00.2855.087l.414 1.1066a.3452.3452 0 00.5781.1154l.8079-.8656c.0972.0111.1954.0203.2936.0294l.6236 1.0073a.3472.3472 0 00.5892 0l.6236-1.0073c.0982-.0091.1964-.0183.2936-.0294l.8069.8656a.3483.3483 0 00.578-.1154l.4141-1.1066a8.4626 8.4626 0 00.2855-.087l.9587.6904a.3452.3452 0 00.5447-.2268l.1903-1.1662c.088-.0456.1751-.0931.2622-.1407l1.0762.49a.3472.3472 0 00.49-.327l-.0415-1.1845a6.7267 6.7267 0 00.2267-.1863l1.1531.2713a.3472.3472 0 00.4171-.416l-.2713-1.1542c.0628-.0749.1255-.1508.1863-.2278l1.1845.0415a.3442.3442 0 00.328-.49l-.49-1.076c.0475-.0872.0951-.1742.1407-.2623l1.1662-.1893a.3483.3483 0 00.2258-.5447l-.6904-.9587.087-.2855 1.1066-.414a.3462.3462 0 00.1154-.5781l-.8656-.8079c.0101-.0972.0202-.1954.0283-.2936l1.0073-.6236a.3442.3442 0 000-.5892zm-6.7413 8.3551a.7138.7138 0 01.2986-1.396.714.714 0 11-.2997 1.396zm-.3422-2.3142a.649.649 0 00-.7715.5l-.3573 1.6685c-1.1035.501-2.3285.7795-3.6193.7795a8.7368 8.7368 0 01-3.6951-.814l-.3574-1.6684a.648.648 0 00-.7714-.499l-1.473.3158a8.7216 8.7216 0 01-.7613-.898h7.1676c.081 0 .1356-.0141.1356-.088v-2.536c0-.074-.0536-.0881-.1356-.0881h-2.0966v-1.6077h2.2677c.2065 0 1.1065.0587 1.394 1.2088.0901.3533.2875 1.5044.4232 1.8729.1346.413.6833 1.2381 1.2685 1.2381h3.5716a.7492.7492 0 00.1296-.0131 8.7874 8.7874 0 01-.8119.9526zM6.8369 20.024a.714.714 0 11-.2997-1.396.714.714 0 01.2997 1.396zM4.1177 8.9972a.7137.7137 0 11-1.304.5791.7137.7137 0 011.304-.579zm-.8352 1.9813l1.5347-.6824a.65.65 0 00.33-.8585l-.3158-.7147h1.2432v5.6025H3.5669a8.7753 8.7753 0 01-.2834-3.348zm6.7343-.5437V8.7836h2.9601c.153 0 1.0792.1772 1.0792.8697 0 .575-.7107.7815-1.2948.7815zm10.7574 1.4862c0 .2187-.008.4363-.0243.651h-.9c-.09 0-.1265.0586-.1265.1477v.413c0 .973-.5487 1.1846-1.0296 1.2382-.4576.0517-.9648-.1913-1.0275-.4717-.2704-1.5186-.7198-1.8436-1.4305-2.4034.8817-.5599 1.799-1.386 1.799-2.4915 0-1.1936-.819-1.9458-1.3769-2.3153-.7825-.5163-1.6491-.6195-1.883-.6195H5.4682a8.7651 8.7651 0 014.907-2.7699l1.0974 1.151a.648.648 0 00.9182.0213l1.227-1.1743a8.7753 8.7753 0 016.0044 4.2762l-.8403 1.8982a.652.652 0 00.33.8585l1.6178.7188c.0283.2875.0425.577.0425.8717zm-9.3006-9.5993a.7128.7128 0 11.984 1.0316.7137.7137 0 01-.984-1.0316zm8.3389 6.71a.7107.7107 0 01.9395-.3625.7137.7137 0 11-.9405.3635z"/></svg> Rust</span><button class="ec" onclick="cp('p05')">복사</button><button class="run-btn" onclick="runCode('p05','rust')">&#9655; 실행</button></div><pre class="vp" id="p05"><span class="ln"> 1</span><span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="ln"> 2</span>    <span class="cm">// 범위 초과 (u8 max=255)</span>
+<span class="ln"> 3</span>    <span class="kw">let</span> over = <span class="st">&quot;256&quot;</span>.parse::&lt;u8&gt;();
+<span class="ln"> 4</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, over);
+<span class="ln"> 5</span>    <span class="cm">// Err(ParseIntError { kind: PosOverflow })</span>
+<span class="ln"> 6</span>
+<span class="ln"> 7</span>    <span class="cm">// 음수를 부호 없는 타입으로</span>
+<span class="ln"> 8</span>    <span class="kw">let</span> neg = <span class="st">&quot;-1&quot;</span>.parse::&lt;u8&gt;();
+<span class="ln"> 9</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, neg);
+<span class="ln">10</span>    <span class="cm">// Err(ParseIntError { kind: InvalidDigit })</span>
+<span class="ln">11</span>
+<span class="ln">12</span>    <span class="cm">// f64에 정수 파서 사용</span>
+<span class="ln">13</span>    <span class="kw">let</span> float = <span class="st">&quot;3.14&quot;</span>.parse::&lt;<span class="tp">i32</span>&gt;();
+<span class="ln">14</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, float);
+<span class="ln">15</span>    <span class="cm">// Err(ParseIntError { kind: InvalidDigit })</span>
+<span class="ln">16</span>}
+</pre><div class="run-output" id="out_p05"></div></div></section><div class="divider"></div>
+<section class="sec" id="s5"><div class="sec-hdr"><span class="sec-num">§ 05</span><h2>파싱 실패 케이스 완전 정리</h2></div><p class="lead">파싱이 실패하는 경우는 크게 4가지입니다: 빈 문자열, 공백 포함, 허용 범위 초과, 잘못된 문자. 각각 다른 <code>IntErrorKind</code>를 반환합니다.</p><div class="eb"><div class="et"><span class="el"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:4px;fill:#CE422B" xmlns="http://www.w3.org/2000/svg"><path d="M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00-.2278-.1873l.0415-1.1845a.3442.3442 0 00-.49-.328l-1.076.491c-.0872-.0476-.1742-.0952-.2623-.1407l-.1903-1.1673A.3483.3483 0 0016.256.955l-.9597.6905a8.4867 8.4867 0 00-.2855-.086l-.414-1.1066a.3483.3483 0 00-.5781-.1154l-.8069.8666a9.2936 9.2936 0 00-.2936-.0284L12.2946.1683a.3462.3462 0 00-.5892 0l-.6236 1.0073a13.7383 13.7383 0 00-.2936.0284L9.9803.3374a.3462.3462 0 00-.578.1154l-.4141 1.1065c-.0962.0274-.1903.0567-.2855.086L7.744.955a.3483.3483 0 00-.5447.2258L7.009 2.348a9.3574 9.3574 0 00-.2622.1407l-1.0762-.491a.3462.3462 0 00-.49.328l.0416 1.1845a7.9826 7.9826 0 00-.2278.1873L3.8413 3.425a.3472.3472 0 00-.4171.4171l.2713 1.1531c-.0628.075-.1255.1509-.1863.2268l-1.1845-.0415a.3462.3462 0 00-.328.49l.491 1.0761a9.167 9.167 0 00-.1407.2622l-1.1662.1894a.3483.3483 0 00-.2258.5446l.6904.9587a13.303 13.303 0 00-.087.2855l-1.1065.414a.3483.3483 0 00-.1155.5781l.8656.807a9.2936 9.2936 0 00-.0283.2935l-1.0073.6236a.3442.3442 0 000 .5892l1.0073.6236c.008.0982.0182.1964.0283.2936l-.8656.8079a.3462.3462 0 00.1155.578l1.1065.4141c.0273.0962.0567.1914.087.2855l-.6904.9587a.3452.3452 0 00.2268.5447l1.1662.1893c.0456.088.0922.1751.1408.2622l-.491 1.0762a.3462.3462 0 00.328.49l1.1834-.0415c.0618.0769.1235.1528.1873.2277l-.2713 1.1541a.3462.3462 0 00.4171.4161l1.153-.2713c.075.0638.151.1255.2279.1863l-.0415 1.1845a.3442.3442 0 00.49.327l1.0761-.49c.087.0486.1741.0951.2622.1407l.1903 1.1662a.3483.3483 0 00.5447.2268l.9587-.6904a9.299 9.299 0 00.2855.087l.414 1.1066a.3452.3452 0 00.5781.1154l.8079-.8656c.0972.0111.1954.0203.2936.0294l.6236 1.0073a.3472.3472 0 00.5892 0l.6236-1.0073c.0982-.0091.1964-.0183.2936-.0294l.8069.8656a.3483.3483 0 00.578-.1154l.4141-1.1066a8.4626 8.4626 0 00.2855-.087l.9587.6904a.3452.3452 0 00.5447-.2268l.1903-1.1662c.088-.0456.1751-.0931.2622-.1407l1.0762.49a.3472.3472 0 00.49-.327l-.0415-1.1845a6.7267 6.7267 0 00.2267-.1863l1.1531.2713a.3472.3472 0 00.4171-.416l-.2713-1.1542c.0628-.0749.1255-.1508.1863-.2278l1.1845.0415a.3442.3442 0 00.328-.49l-.49-1.076c.0475-.0872.0951-.1742.1407-.2623l1.1662-.1893a.3483.3483 0 00.2258-.5447l-.6904-.9587.087-.2855 1.1066-.414a.3462.3462 0 00.1154-.5781l-.8656-.8079c.0101-.0972.0202-.1954.0283-.2936l1.0073-.6236a.3442.3442 0 000-.5892zm-6.7413 8.3551a.7138.7138 0 01.2986-1.396.714.714 0 11-.2997 1.396zm-.3422-2.3142a.649.649 0 00-.7715.5l-.3573 1.6685c-1.1035.501-2.3285.7795-3.6193.7795a8.7368 8.7368 0 01-3.6951-.814l-.3574-1.6684a.648.648 0 00-.7714-.499l-1.473.3158a8.7216 8.7216 0 01-.7613-.898h7.1676c.081 0 .1356-.0141.1356-.088v-2.536c0-.074-.0536-.0881-.1356-.0881h-2.0966v-1.6077h2.2677c.2065 0 1.1065.0587 1.394 1.2088.0901.3533.2875 1.5044.4232 1.8729.1346.413.6833 1.2381 1.2685 1.2381h3.5716a.7492.7492 0 00.1296-.0131 8.7874 8.7874 0 01-.8119.9526zM6.8369 20.024a.714.714 0 11-.2997-1.396.714.714 0 01.2997 1.396zM4.1177 8.9972a.7137.7137 0 11-1.304.5791.7137.7137 0 011.304-.579zm-.8352 1.9813l1.5347-.6824a.65.65 0 00.33-.8585l-.3158-.7147h1.2432v5.6025H3.5669a8.7753 8.7753 0 01-.2834-3.348zm6.7343-.5437V8.7836h2.9601c.153 0 1.0792.1772 1.0792.8697 0 .575-.7107.7815-1.2948.7815zm10.7574 1.4862c0 .2187-.008.4363-.0243.651h-.9c-.09 0-.1265.0586-.1265.1477v.413c0 .973-.5487 1.1846-1.0296 1.2382-.4576.0517-.9648-.1913-1.0275-.4717-.2704-1.5186-.7198-1.8436-1.4305-2.4034.8817-.5599 1.799-1.386 1.799-2.4915 0-1.1936-.819-1.9458-1.3769-2.3153-.7825-.5163-1.6491-.6195-1.883-.6195H5.4682a8.7651 8.7651 0 014.907-2.7699l1.0974 1.151a.648.648 0 00.9182.0213l1.227-1.1743a8.7753 8.7753 0 016.0044 4.2762l-.8403 1.8982a.652.652 0 00.33.8585l1.6178.7188c.0283.2875.0425.577.0425.8717zm-9.3006-9.5993a.7128.7128 0 11.984 1.0316.7137.7137 0 01-.984-1.0316zm8.3389 6.71a.7107.7107 0 01.9395-.3625.7137.7137 0 11-.9405.3635z"/></svg> Rust</span><button class="ec" onclick="cp('p06')">복사</button><button class="run-btn" onclick="runCode('p06','rust')">&#9655; 실행</button></div><pre class="vp" id="p06"><span class="ln"> 1</span><span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="ln"> 2</span>    <span class="cm">// 빈 문자열</span>
+<span class="ln"> 3</span>    <span class="kw">let</span> e1 = <span class="st">&quot;&quot;</span>.parse::&lt;<span class="tp">i32</span>&gt;();
+<span class="ln"> 4</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, e1);
+<span class="ln"> 5</span>    <span class="cm">// Err(ParseIntError { kind: Empty })</span>
+<span class="ln"> 6</span>
+<span class="ln"> 7</span>    <span class="cm">// 공백 포함</span>
+<span class="ln"> 8</span>    <span class="kw">let</span> e2 = <span class="st">&quot; 42&quot;</span>.parse::&lt;<span class="tp">i32</span>&gt;();
+<span class="ln"> 9</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, e2);
+<span class="ln">10</span>    <span class="cm">// Err(ParseIntError { kind: InvalidDigit })</span>
+<span class="ln">11</span>
+<span class="ln">12</span>    <span class="cm">// trim 후 파싱 — 공백 제거</span>
+<span class="ln">13</span>    <span class="kw">let</span> e3 = <span class="st">&quot; 42 &quot;</span>.<span class="fn">trim</span>().parse::&lt;<span class="tp">i32</span>&gt;();
+<span class="ln">14</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, e3); <span class="cm">// Ok(42)</span>
+<span class="ln">15</span>
+<span class="ln">16</span>    <span class="cm">// 문자 섞임</span>
+<span class="ln">17</span>    <span class="kw">let</span> e4 = <span class="st">&quot;42px&quot;</span>.parse::&lt;<span class="tp">i32</span>&gt;();
+<span class="ln">18</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, e4);
+<span class="ln">19</span>    <span class="cm">// Err(ParseIntError { kind: InvalidDigit })</span>
+<span class="ln">20</span>}
+</pre><div class="run-output" id="out_p06"></div></div><div class="callout warn"><div class="callout-title">⚠ 공백은 자동으로 처리되지 않는다</div><code>" 42"</code>, <code>"42 "</code>처럼 앞뒤 공백이 있으면 파싱이 실패합니다. 사용자 입력을 파싱할 때는 반드시 <code>.trim()</code>을 먼저 호출하세요.</div><div class="callout info"><div class="callout-title">📌 에러 종류 확인</div><code>ParseIntError::kind()</code>로 에러 원인을 구분할 수 있습니다: <code>Empty</code>(빈 문자열), <code>InvalidDigit</code>(잘못된 문자), <code>PosOverflow</code>/<code>NegOverflow</code>(범위 초과).</div><div class="callout err"><div class="callout-title">✗ 흔한 실수</div><code>"42".parse::&lt;i32&gt;()</code>는 성공하지만 <code>"42
+".parse::&lt;i32&gt;()</code>는 실패합니다. 파일에서 읽은 줄에는 개행문자가 붙어 있으므로 반드시 <code>.trim()</code> 처리를 해야 합니다.</div></section><div class="divider"></div>
+<section class="sec" id="s6"><div class="sec-hdr"><span class="sec-num">§ 06</span><h2>match로 Ok/Err 처리 — 가장 명시적인 방법</h2></div><p class="lead"><code>match</code>는 Ok와 Err 두 케이스를 모두 명시적으로 처리합니다. 에러 종류까지 세분화해 처리해야 할 때 가장 적합합니다.</p><div class="eb"><div class="et"><span class="el"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:4px;fill:#CE422B" xmlns="http://www.w3.org/2000/svg"><path d="M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00-.2278-.1873l.0415-1.1845a.3442.3442 0 00-.49-.328l-1.076.491c-.0872-.0476-.1742-.0952-.2623-.1407l-.1903-1.1673A.3483.3483 0 0016.256.955l-.9597.6905a8.4867 8.4867 0 00-.2855-.086l-.414-1.1066a.3483.3483 0 00-.5781-.1154l-.8069.8666a9.2936 9.2936 0 00-.2936-.0284L12.2946.1683a.3462.3462 0 00-.5892 0l-.6236 1.0073a13.7383 13.7383 0 00-.2936.0284L9.9803.3374a.3462.3462 0 00-.578.1154l-.4141 1.1065c-.0962.0274-.1903.0567-.2855.086L7.744.955a.3483.3483 0 00-.5447.2258L7.009 2.348a9.3574 9.3574 0 00-.2622.1407l-1.0762-.491a.3462.3462 0 00-.49.328l.0416 1.1845a7.9826 7.9826 0 00-.2278.1873L3.8413 3.425a.3472.3472 0 00-.4171.4171l.2713 1.1531c-.0628.075-.1255.1509-.1863.2268l-1.1845-.0415a.3462.3462 0 00-.328.49l.491 1.0761a9.167 9.167 0 00-.1407.2622l-1.1662.1894a.3483.3483 0 00-.2258.5446l.6904.9587a13.303 13.303 0 00-.087.2855l-1.1065.414a.3483.3483 0 00-.1155.5781l.8656.807a9.2936 9.2936 0 00-.0283.2935l-1.0073.6236a.3442.3442 0 000 .5892l1.0073.6236c.008.0982.0182.1964.0283.2936l-.8656.8079a.3462.3462 0 00.1155.578l1.1065.4141c.0273.0962.0567.1914.087.2855l-.6904.9587a.3452.3452 0 00.2268.5447l1.1662.1893c.0456.088.0922.1751.1408.2622l-.491 1.0762a.3462.3462 0 00.328.49l1.1834-.0415c.0618.0769.1235.1528.1873.2277l-.2713 1.1541a.3462.3462 0 00.4171.4161l1.153-.2713c.075.0638.151.1255.2279.1863l-.0415 1.1845a.3442.3442 0 00.49.327l1.0761-.49c.087.0486.1741.0951.2622.1407l.1903 1.1662a.3483.3483 0 00.5447.2268l.9587-.6904a9.299 9.299 0 00.2855.087l.414 1.1066a.3452.3452 0 00.5781.1154l.8079-.8656c.0972.0111.1954.0203.2936.0294l.6236 1.0073a.3472.3472 0 00.5892 0l.6236-1.0073c.0982-.0091.1964-.0183.2936-.0294l.8069.8656a.3483.3483 0 00.578-.1154l.4141-1.1066a8.4626 8.4626 0 00.2855-.087l.9587.6904a.3452.3452 0 00.5447-.2268l.1903-1.1662c.088-.0456.1751-.0931.2622-.1407l1.0762.49a.3472.3472 0 00.49-.327l-.0415-1.1845a6.7267 6.7267 0 00.2267-.1863l1.1531.2713a.3472.3472 0 00.4171-.416l-.2713-1.1542c.0628-.0749.1255-.1508.1863-.2278l1.1845.0415a.3442.3442 0 00.328-.49l-.49-1.076c.0475-.0872.0951-.1742.1407-.2623l1.1662-.1893a.3483.3483 0 00.2258-.5447l-.6904-.9587.087-.2855 1.1066-.414a.3462.3462 0 00.1154-.5781l-.8656-.8079c.0101-.0972.0202-.1954.0283-.2936l1.0073-.6236a.3442.3442 0 000-.5892zm-6.7413 8.3551a.7138.7138 0 01.2986-1.396.714.714 0 11-.2997 1.396zm-.3422-2.3142a.649.649 0 00-.7715.5l-.3573 1.6685c-1.1035.501-2.3285.7795-3.6193.7795a8.7368 8.7368 0 01-3.6951-.814l-.3574-1.6684a.648.648 0 00-.7714-.499l-1.473.3158a8.7216 8.7216 0 01-.7613-.898h7.1676c.081 0 .1356-.0141.1356-.088v-2.536c0-.074-.0536-.0881-.1356-.0881h-2.0966v-1.6077h2.2677c.2065 0 1.1065.0587 1.394 1.2088.0901.3533.2875 1.5044.4232 1.8729.1346.413.6833 1.2381 1.2685 1.2381h3.5716a.7492.7492 0 00.1296-.0131 8.7874 8.7874 0 01-.8119.9526zM6.8369 20.024a.714.714 0 11-.2997-1.396.714.714 0 01.2997 1.396zM4.1177 8.9972a.7137.7137 0 11-1.304.5791.7137.7137 0 011.304-.579zm-.8352 1.9813l1.5347-.6824a.65.65 0 00.33-.8585l-.3158-.7147h1.2432v5.6025H3.5669a8.7753 8.7753 0 01-.2834-3.348zm6.7343-.5437V8.7836h2.9601c.153 0 1.0792.1772 1.0792.8697 0 .575-.7107.7815-1.2948.7815zm10.7574 1.4862c0 .2187-.008.4363-.0243.651h-.9c-.09 0-.1265.0586-.1265.1477v.413c0 .973-.5487 1.1846-1.0296 1.2382-.4576.0517-.9648-.1913-1.0275-.4717-.2704-1.5186-.7198-1.8436-1.4305-2.4034.8817-.5599 1.799-1.386 1.799-2.4915 0-1.1936-.819-1.9458-1.3769-2.3153-.7825-.5163-1.6491-.6195-1.883-.6195H5.4682a8.7651 8.7651 0 014.907-2.7699l1.0974 1.151a.648.648 0 00.9182.0213l1.227-1.1743a8.7753 8.7753 0 016.0044 4.2762l-.8403 1.8982a.652.652 0 00.33.8585l1.6178.7188c.0283.2875.0425.577.0425.8717zm-9.3006-9.5993a.7128.7128 0 11.984 1.0316.7137.7137 0 01-.984-1.0316zm8.3389 6.71a.7107.7107 0 01.9395-.3625.7137.7137 0 11-.9405.3635z"/></svg> Rust</span><button class="ec" onclick="cp('p07')">복사</button><button class="run-btn" onclick="runCode('p07','rust')">&#9655; 실행</button></div><pre class="vp" id="p07"><span class="ln"> 1</span><span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="ln"> 2</span>    <span class="kw">let</span> input = <span class="st">&quot;42&quot;</span>;
+<span class="ln"> 3</span>
+<span class="ln"> 4</span>    <span class="cm">// match — 가장 명시적</span>
+<span class="ln"> 5</span>    <span class="kw">match</span> input.parse::&lt;<span class="tp">i32</span>&gt;() {
+<span class="ln"> 6</span>        <span class="kw">Ok</span>(n)  =&gt; <span class="fn">println!</span>(<span class="st">&quot;파싱 성공: {}&quot;</span>, n),
+<span class="ln"> 7</span>        <span class="kw">Err</span>(e) =&gt; <span class="fn">println!</span>(<span class="st">&quot;파싱 실패: {}&quot;</span>, e),
+<span class="ln"> 8</span>    }
+<span class="ln"> 9</span>
+<span class="ln">10</span>    <span class="cm">// 에러 종류 구분</span>
+<span class="ln">11</span>    <span class="kw">match</span> <span class="st">&quot;abc&quot;</span>.parse::&lt;<span class="tp">i32</span>&gt;() {
+<span class="ln">12</span>        <span class="kw">Ok</span>(n) =&gt; <span class="fn">println!</span>(<span class="st">&quot;{}&quot;</span>, n),
+<span class="ln">13</span>        <span class="kw">Err</span>(e) =&gt; {
+<span class="ln">14</span>            <span class="fn">println!</span>(<span class="st">&quot;에러 종류: {:?}&quot;</span>, e.<span class="fn">kind</span>());
+<span class="ln">15</span>            <span class="cm">// InvalidDigit</span>
+<span class="ln">16</span>        }
+<span class="ln">17</span>    }
+<span class="ln">18</span>}
+</pre><div class="run-output" id="out_p07"></div></div><div class="callout info"><div class="callout-title">📌 match는 완전해야 한다</div>Rust의 <code>match</code>는 모든 경우를 반드시 처리해야 컴파일됩니다. <code>Ok</code>만 쓰고 <code>Err</code>를 생략하면 컴파일 에러가 납니다. 이것이 에러를 놓치는 실수를 원천 차단합니다.</div><div class="eb"><div class="et"><span class="el"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:4px;fill:#CE422B" xmlns="http://www.w3.org/2000/svg"><path d="M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00-.2278-.1873l.0415-1.1845a.3442.3442 0 00-.49-.328l-1.076.491c-.0872-.0476-.1742-.0952-.2623-.1407l-.1903-1.1673A.3483.3483 0 0016.256.955l-.9597.6905a8.4867 8.4867 0 00-.2855-.086l-.414-1.1066a.3483.3483 0 00-.5781-.1154l-.8069.8666a9.2936 9.2936 0 00-.2936-.0284L12.2946.1683a.3462.3462 0 00-.5892 0l-.6236 1.0073a13.7383 13.7383 0 00-.2936.0284L9.9803.3374a.3462.3462 0 00-.578.1154l-.4141 1.1065c-.0962.0274-.1903.0567-.2855.086L7.744.955a.3483.3483 0 00-.5447.2258L7.009 2.348a9.3574 9.3574 0 00-.2622.1407l-1.0762-.491a.3462.3462 0 00-.49.328l.0416 1.1845a7.9826 7.9826 0 00-.2278.1873L3.8413 3.425a.3472.3472 0 00-.4171.4171l.2713 1.1531c-.0628.075-.1255.1509-.1863.2268l-1.1845-.0415a.3462.3462 0 00-.328.49l.491 1.0761a9.167 9.167 0 00-.1407.2622l-1.1662.1894a.3483.3483 0 00-.2258.5446l.6904.9587a13.303 13.303 0 00-.087.2855l-1.1065.414a.3483.3483 0 00-.1155.5781l.8656.807a9.2936 9.2936 0 00-.0283.2935l-1.0073.6236a.3442.3442 0 000 .5892l1.0073.6236c.008.0982.0182.1964.0283.2936l-.8656.8079a.3462.3462 0 00.1155.578l1.1065.4141c.0273.0962.0567.1914.087.2855l-.6904.9587a.3452.3452 0 00.2268.5447l1.1662.1893c.0456.088.0922.1751.1408.2622l-.491 1.0762a.3462.3462 0 00.328.49l1.1834-.0415c.0618.0769.1235.1528.1873.2277l-.2713 1.1541a.3462.3462 0 00.4171.4161l1.153-.2713c.075.0638.151.1255.2279.1863l-.0415 1.1845a.3442.3442 0 00.49.327l1.0761-.49c.087.0486.1741.0951.2622.1407l.1903 1.1662a.3483.3483 0 00.5447.2268l.9587-.6904a9.299 9.299 0 00.2855.087l.414 1.1066a.3452.3452 0 00.5781.1154l.8079-.8656c.0972.0111.1954.0203.2936.0294l.6236 1.0073a.3472.3472 0 00.5892 0l.6236-1.0073c.0982-.0091.1964-.0183.2936-.0294l.8069.8656a.3483.3483 0 00.578-.1154l.4141-1.1066a8.4626 8.4626 0 00.2855-.087l.9587.6904a.3452.3452 0 00.5447-.2268l.1903-1.1662c.088-.0456.1751-.0931.2622-.1407l1.0762.49a.3472.3472 0 00.49-.327l-.0415-1.1845a6.7267 6.7267 0 00.2267-.1863l1.1531.2713a.3472.3472 0 00.4171-.416l-.2713-1.1542c.0628-.0749.1255-.1508.1863-.2278l1.1845.0415a.3442.3442 0 00.328-.49l-.49-1.076c.0475-.0872.0951-.1742.1407-.2623l1.1662-.1893a.3483.3483 0 00.2258-.5447l-.6904-.9587.087-.2855 1.1066-.414a.3462.3462 0 00.1154-.5781l-.8656-.8079c.0101-.0972.0202-.1954.0283-.2936l1.0073-.6236a.3442.3442 0 000-.5892zm-6.7413 8.3551a.7138.7138 0 01.2986-1.396.714.714 0 11-.2997 1.396zm-.3422-2.3142a.649.649 0 00-.7715.5l-.3573 1.6685c-1.1035.501-2.3285.7795-3.6193.7795a8.7368 8.7368 0 01-3.6951-.814l-.3574-1.6684a.648.648 0 00-.7714-.499l-1.473.3158a8.7216 8.7216 0 01-.7613-.898h7.1676c.081 0 .1356-.0141.1356-.088v-2.536c0-.074-.0536-.0881-.1356-.0881h-2.0966v-1.6077h2.2677c.2065 0 1.1065.0587 1.394 1.2088.0901.3533.2875 1.5044.4232 1.8729.1346.413.6833 1.2381 1.2685 1.2381h3.5716a.7492.7492 0 00.1296-.0131 8.7874 8.7874 0 01-.8119.9526zM6.8369 20.024a.714.714 0 11-.2997-1.396.714.714 0 01.2997 1.396zM4.1177 8.9972a.7137.7137 0 11-1.304.5791.7137.7137 0 011.304-.579zm-.8352 1.9813l1.5347-.6824a.65.65 0 00.33-.8585l-.3158-.7147h1.2432v5.6025H3.5669a8.7753 8.7753 0 01-.2834-3.348zm6.7343-.5437V8.7836h2.9601c.153 0 1.0792.1772 1.0792.8697 0 .575-.7107.7815-1.2948.7815zm10.7574 1.4862c0 .2187-.008.4363-.0243.651h-.9c-.09 0-.1265.0586-.1265.1477v.413c0 .973-.5487 1.1846-1.0296 1.2382-.4576.0517-.9648-.1913-1.0275-.4717-.2704-1.5186-.7198-1.8436-1.4305-2.4034.8817-.5599 1.799-1.386 1.799-2.4915 0-1.1936-.819-1.9458-1.3769-2.3153-.7825-.5163-1.6491-.6195-1.883-.6195H5.4682a8.7651 8.7651 0 014.907-2.7699l1.0974 1.151a.648.648 0 00.9182.0213l1.227-1.1743a8.7753 8.7753 0 016.0044 4.2762l-.8403 1.8982a.652.652 0 00.33.8585l1.6178.7188c.0283.2875.0425.577.0425.8717zm-9.3006-9.5993a.7128.7128 0 11.984 1.0316.7137.7137 0 01-.984-1.0316zm8.3389 6.71a.7107.7107 0 01.9395-.3625.7137.7137 0 11-.9405.3635z"/></svg> Rust</span><button class="ec" onclick="cp('p08')">복사</button><button class="run-btn" onclick="runCode('p08','rust')">&#9655; 실행</button></div><pre class="vp" id="p08"><span class="ln"> 1</span><span class="kw">use</span> std::num::IntErrorKind;
+<span class="ln"> 2</span><span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="ln"> 3</span>    <span class="kw">let</span> inputs = [<span class="st">&quot;42&quot;</span>, <span class="st">&quot;&quot;</span>, <span class="st">&quot;999&quot;</span>, <span class="st">&quot;abc&quot;</span>];
+<span class="ln"> 4</span>    <span class="kw">for</span> s <span class="kw">in</span> &amp;inputs {
+<span class="ln"> 5</span>        <span class="kw">match</span> s.parse::&lt;u8&gt;() {
+<span class="ln"> 6</span>            <span class="kw">Ok</span>(n) =&gt; <span class="fn">println!</span>(<span class="st">&quot;{} → {}&quot;</span>, s, n),
+<span class="ln"> 7</span>            <span class="kw">Err</span>(e) =&gt; <span class="kw">match</span> e.<span class="fn">kind</span>() {
+<span class="ln"> 8</span>                IntErrorKind::Empty =&gt;
+<span class="ln"> 9</span>                    <span class="fn">println!</span>(<span class="st">&quot;{} → 빈 문자열&quot;</span>, s),
+<span class="ln">10</span>                IntErrorKind::PosOverflow =&gt;
+<span class="ln">11</span>                    <span class="fn">println!</span>(<span class="st">&quot;{} → 범위 초과&quot;</span>, s),
+<span class="ln">12</span>                _ =&gt;
+<span class="ln">13</span>                    <span class="fn">println!</span>(<span class="st">&quot;{} → 잘못된 형식&quot;</span>, s),
+<span class="ln">14</span>            }
+<span class="ln">15</span>        }
+<span class="ln">16</span>    }
+<span class="ln">17</span>}
+</pre><div class="run-output" id="out_p08"></div></div><div class="callout info"><div class="callout-title">📌 IntErrorKind로 에러 분류</div><code>e.kind()</code>로 에러 원인을 분기할 수 있습니다. 사용자에게 구체적인 에러 메시지를 보여줄 때 유용합니다: 빈 입력인지, 숫자 범위 초과인지, 형식이 잘못됐는지.</div></section><div class="divider"></div>
+<section class="sec" id="s7"><div class="sec-hdr"><span class="sec-num">§ 07</span><h2>unwrap · expect · unwrap_or — 간편 처리 메서드</h2></div><p class="lead">매번 <code>match</code>를 쓰기 번거로울 때 사용하는 메서드들입니다. 각각 트레이드오프가 다릅니다.</p><div class="eb"><div class="et"><span class="el"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:4px;fill:#CE422B" xmlns="http://www.w3.org/2000/svg"><path d="M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00-.2278-.1873l.0415-1.1845a.3442.3442 0 00-.49-.328l-1.076.491c-.0872-.0476-.1742-.0952-.2623-.1407l-.1903-1.1673A.3483.3483 0 0016.256.955l-.9597.6905a8.4867 8.4867 0 00-.2855-.086l-.414-1.1066a.3483.3483 0 00-.5781-.1154l-.8069.8666a9.2936 9.2936 0 00-.2936-.0284L12.2946.1683a.3462.3462 0 00-.5892 0l-.6236 1.0073a13.7383 13.7383 0 00-.2936.0284L9.9803.3374a.3462.3462 0 00-.578.1154l-.4141 1.1065c-.0962.0274-.1903.0567-.2855.086L7.744.955a.3483.3483 0 00-.5447.2258L7.009 2.348a9.3574 9.3574 0 00-.2622.1407l-1.0762-.491a.3462.3462 0 00-.49.328l.0416 1.1845a7.9826 7.9826 0 00-.2278.1873L3.8413 3.425a.3472.3472 0 00-.4171.4171l.2713 1.1531c-.0628.075-.1255.1509-.1863.2268l-1.1845-.0415a.3462.3462 0 00-.328.49l.491 1.0761a9.167 9.167 0 00-.1407.2622l-1.1662.1894a.3483.3483 0 00-.2258.5446l.6904.9587a13.303 13.303 0 00-.087.2855l-1.1065.414a.3483.3483 0 00-.1155.5781l.8656.807a9.2936 9.2936 0 00-.0283.2935l-1.0073.6236a.3442.3442 0 000 .5892l1.0073.6236c.008.0982.0182.1964.0283.2936l-.8656.8079a.3462.3462 0 00.1155.578l1.1065.4141c.0273.0962.0567.1914.087.2855l-.6904.9587a.3452.3452 0 00.2268.5447l1.1662.1893c.0456.088.0922.1751.1408.2622l-.491 1.0762a.3462.3462 0 00.328.49l1.1834-.0415c.0618.0769.1235.1528.1873.2277l-.2713 1.1541a.3462.3462 0 00.4171.4161l1.153-.2713c.075.0638.151.1255.2279.1863l-.0415 1.1845a.3442.3442 0 00.49.327l1.0761-.49c.087.0486.1741.0951.2622.1407l.1903 1.1662a.3483.3483 0 00.5447.2268l.9587-.6904a9.299 9.299 0 00.2855.087l.414 1.1066a.3452.3452 0 00.5781.1154l.8079-.8656c.0972.0111.1954.0203.2936.0294l.6236 1.0073a.3472.3472 0 00.5892 0l.6236-1.0073c.0982-.0091.1964-.0183.2936-.0294l.8069.8656a.3483.3483 0 00.578-.1154l.4141-1.1066a8.4626 8.4626 0 00.2855-.087l.9587.6904a.3452.3452 0 00.5447-.2268l.1903-1.1662c.088-.0456.1751-.0931.2622-.1407l1.0762.49a.3472.3472 0 00.49-.327l-.0415-1.1845a6.7267 6.7267 0 00.2267-.1863l1.1531.2713a.3472.3472 0 00.4171-.416l-.2713-1.1542c.0628-.0749.1255-.1508.1863-.2278l1.1845.0415a.3442.3442 0 00.328-.49l-.49-1.076c.0475-.0872.0951-.1742.1407-.2623l1.1662-.1893a.3483.3483 0 00.2258-.5447l-.6904-.9587.087-.2855 1.1066-.414a.3462.3462 0 00.1154-.5781l-.8656-.8079c.0101-.0972.0202-.1954.0283-.2936l1.0073-.6236a.3442.3442 0 000-.5892zm-6.7413 8.3551a.7138.7138 0 01.2986-1.396.714.714 0 11-.2997 1.396zm-.3422-2.3142a.649.649 0 00-.7715.5l-.3573 1.6685c-1.1035.501-2.3285.7795-3.6193.7795a8.7368 8.7368 0 01-3.6951-.814l-.3574-1.6684a.648.648 0 00-.7714-.499l-1.473.3158a8.7216 8.7216 0 01-.7613-.898h7.1676c.081 0 .1356-.0141.1356-.088v-2.536c0-.074-.0536-.0881-.1356-.0881h-2.0966v-1.6077h2.2677c.2065 0 1.1065.0587 1.394 1.2088.0901.3533.2875 1.5044.4232 1.8729.1346.413.6833 1.2381 1.2685 1.2381h3.5716a.7492.7492 0 00.1296-.0131 8.7874 8.7874 0 01-.8119.9526zM6.8369 20.024a.714.714 0 11-.2997-1.396.714.714 0 01.2997 1.396zM4.1177 8.9972a.7137.7137 0 11-1.304.5791.7137.7137 0 011.304-.579zm-.8352 1.9813l1.5347-.6824a.65.65 0 00.33-.8585l-.3158-.7147h1.2432v5.6025H3.5669a8.7753 8.7753 0 01-.2834-3.348zm6.7343-.5437V8.7836h2.9601c.153 0 1.0792.1772 1.0792.8697 0 .575-.7107.7815-1.2948.7815zm10.7574 1.4862c0 .2187-.008.4363-.0243.651h-.9c-.09 0-.1265.0586-.1265.1477v.413c0 .973-.5487 1.1846-1.0296 1.2382-.4576.0517-.9648-.1913-1.0275-.4717-.2704-1.5186-.7198-1.8436-1.4305-2.4034.8817-.5599 1.799-1.386 1.799-2.4915 0-1.1936-.819-1.9458-1.3769-2.3153-.7825-.5163-1.6491-.6195-1.883-.6195H5.4682a8.7651 8.7651 0 014.907-2.7699l1.0974 1.151a.648.648 0 00.9182.0213l1.227-1.1743a8.7753 8.7753 0 016.0044 4.2762l-.8403 1.8982a.652.652 0 00.33.8585l1.6178.7188c.0283.2875.0425.577.0425.8717zm-9.3006-9.5993a.7128.7128 0 11.984 1.0316.7137.7137 0 01-.984-1.0316zm8.3389 6.71a.7107.7107 0 01.9395-.3625.7137.7137 0 11-.9405.3635z"/></svg> Rust</span><button class="ec" onclick="cp('p09')">복사</button><button class="run-btn" onclick="runCode('p09','rust')">&#9655; 실행</button></div><pre class="vp" id="p09"><span class="ln"> 1</span><span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="ln"> 2</span>    <span class="cm">// unwrap — Err면 패닉</span>
+<span class="ln"> 3</span>    <span class="kw">let</span> n = <span class="st">&quot;42&quot;</span>.parse::&lt;<span class="tp">i32</span>&gt;().<span class="fn">unwrap</span>();
+<span class="ln"> 4</span>    <span class="fn">println!</span>(<span class="st">&quot;{}&quot;</span>, n); <span class="cm">// 42</span>
+<span class="ln"> 5</span>
+<span class="ln"> 6</span>    <span class="cm">// expect — 패닉 메시지 지정</span>
+<span class="ln"> 7</span>    <span class="kw">let</span> m = <span class="st">&quot;42&quot;</span>.parse::&lt;<span class="tp">i32</span>&gt;()
+<span class="ln"> 8</span>        .<span class="fn">expect</span>(<span class="st">&quot;숫자여야 합니다&quot;</span>);
+<span class="ln"> 9</span>    <span class="fn">println!</span>(<span class="st">&quot;{}&quot;</span>, m); <span class="cm">// 42</span>
+<span class="ln">10</span>
+<span class="ln">11</span>    <span class="cm">// unwrap_or — 기본값</span>
+<span class="ln">12</span>    <span class="kw">let</span> a = <span class="st">&quot;abc&quot;</span>.parse::&lt;<span class="tp">i32</span>&gt;().<span class="fn">unwrap_or</span>(<span class="nm">0</span>);
+<span class="ln">13</span>    <span class="fn">println!</span>(<span class="st">&quot;{}&quot;</span>, a); <span class="cm">// 0</span>
+<span class="ln">14</span>
+<span class="ln">15</span>    <span class="cm">// unwrap_or_else — 클로저로 기본값</span>
+<span class="ln">16</span>    <span class="kw">let</span> b = <span class="st">&quot;abc&quot;</span>.parse::&lt;<span class="tp">i32</span>&gt;()
+<span class="ln">17</span>        .<span class="fn">unwrap_or_else</span>(|_| -<span class="nm">1</span>);
+<span class="ln">18</span>    <span class="fn">println!</span>(<span class="st">&quot;{}&quot;</span>, b); <span class="cm">// -1</span>
+<span class="ln">19</span>}
+</pre><div class="run-output" id="out_p09"></div></div><div class="callout warn"><div class="callout-title">⚠ unwrap은 프로덕션에서 자제</div><code>unwrap()</code>은 <code>Err</code>일 때 즉시 패닉(프로그램 종료)을 일으킵니다. 프로토타입이나 테스트 코드에서는 편하지만, 실제 서비스 코드에서는 <code>?</code> 연산자나 <code>match</code>를 사용하세요.</div><div class="callout info"><div class="callout-title">📌 expect로 디버깅 향상</div><code>unwrap()</code> 대신 <code>expect("설명")</code>을 사용하면 패닉 메시지에 컨텍스트가 추가됩니다. 어느 파싱에서 실패했는지 즉시 알 수 있어 디버깅이 쉬워집니다.</div><div class="callout ok"><div class="callout-title">✓ unwrap_or_else 활용</div>기본값이 비용이 큰 경우(힙 할당, I/O 등) <code>unwrap_or</code> 대신 <code>unwrap_or_else(|| ...)</code>를 사용하세요. 클로저는 Err일 때만 실행됩니다.</div></section><div class="divider"></div>
+<section class="sec" id="s8"><div class="sec-hdr"><span class="sec-num">§ 08</span><h2>if let · while let — 간결한 패턴</h2></div><p class="lead">Ok인 경우만 처리하거나, 루프 안에서 파싱할 때 <code>if let</code>과 <code>while let</code>을 사용하면 코드가 훨씬 간결해집니다.</p><div class="eb"><div class="et"><span class="el"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:4px;fill:#CE422B" xmlns="http://www.w3.org/2000/svg"><path d="M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00-.2278-.1873l.0415-1.1845a.3442.3442 0 00-.49-.328l-1.076.491c-.0872-.0476-.1742-.0952-.2623-.1407l-.1903-1.1673A.3483.3483 0 0016.256.955l-.9597.6905a8.4867 8.4867 0 00-.2855-.086l-.414-1.1066a.3483.3483 0 00-.5781-.1154l-.8069.8666a9.2936 9.2936 0 00-.2936-.0284L12.2946.1683a.3462.3462 0 00-.5892 0l-.6236 1.0073a13.7383 13.7383 0 00-.2936.0284L9.9803.3374a.3462.3462 0 00-.578.1154l-.4141 1.1065c-.0962.0274-.1903.0567-.2855.086L7.744.955a.3483.3483 0 00-.5447.2258L7.009 2.348a9.3574 9.3574 0 00-.2622.1407l-1.0762-.491a.3462.3462 0 00-.49.328l.0416 1.1845a7.9826 7.9826 0 00-.2278.1873L3.8413 3.425a.3472.3472 0 00-.4171.4171l.2713 1.1531c-.0628.075-.1255.1509-.1863.2268l-1.1845-.0415a.3462.3462 0 00-.328.49l.491 1.0761a9.167 9.167 0 00-.1407.2622l-1.1662.1894a.3483.3483 0 00-.2258.5446l.6904.9587a13.303 13.303 0 00-.087.2855l-1.1065.414a.3483.3483 0 00-.1155.5781l.8656.807a9.2936 9.2936 0 00-.0283.2935l-1.0073.6236a.3442.3442 0 000 .5892l1.0073.6236c.008.0982.0182.1964.0283.2936l-.8656.8079a.3462.3462 0 00.1155.578l1.1065.4141c.0273.0962.0567.1914.087.2855l-.6904.9587a.3452.3452 0 00.2268.5447l1.1662.1893c.0456.088.0922.1751.1408.2622l-.491 1.0762a.3462.3462 0 00.328.49l1.1834-.0415c.0618.0769.1235.1528.1873.2277l-.2713 1.1541a.3462.3462 0 00.4171.4161l1.153-.2713c.075.0638.151.1255.2279.1863l-.0415 1.1845a.3442.3442 0 00.49.327l1.0761-.49c.087.0486.1741.0951.2622.1407l.1903 1.1662a.3483.3483 0 00.5447.2268l.9587-.6904a9.299 9.299 0 00.2855.087l.414 1.1066a.3452.3452 0 00.5781.1154l.8079-.8656c.0972.0111.1954.0203.2936.0294l.6236 1.0073a.3472.3472 0 00.5892 0l.6236-1.0073c.0982-.0091.1964-.0183.2936-.0294l.8069.8656a.3483.3483 0 00.578-.1154l.4141-1.1066a8.4626 8.4626 0 00.2855-.087l.9587.6904a.3452.3452 0 00.5447-.2268l.1903-1.1662c.088-.0456.1751-.0931.2622-.1407l1.0762.49a.3472.3472 0 00.49-.327l-.0415-1.1845a6.7267 6.7267 0 00.2267-.1863l1.1531.2713a.3472.3472 0 00.4171-.416l-.2713-1.1542c.0628-.0749.1255-.1508.1863-.2278l1.1845.0415a.3442.3442 0 00.328-.49l-.49-1.076c.0475-.0872.0951-.1742.1407-.2623l1.1662-.1893a.3483.3483 0 00.2258-.5447l-.6904-.9587.087-.2855 1.1066-.414a.3462.3462 0 00.1154-.5781l-.8656-.8079c.0101-.0972.0202-.1954.0283-.2936l1.0073-.6236a.3442.3442 0 000-.5892zm-6.7413 8.3551a.7138.7138 0 01.2986-1.396.714.714 0 11-.2997 1.396zm-.3422-2.3142a.649.649 0 00-.7715.5l-.3573 1.6685c-1.1035.501-2.3285.7795-3.6193.7795a8.7368 8.7368 0 01-3.6951-.814l-.3574-1.6684a.648.648 0 00-.7714-.499l-1.473.3158a8.7216 8.7216 0 01-.7613-.898h7.1676c.081 0 .1356-.0141.1356-.088v-2.536c0-.074-.0536-.0881-.1356-.0881h-2.0966v-1.6077h2.2677c.2065 0 1.1065.0587 1.394 1.2088.0901.3533.2875 1.5044.4232 1.8729.1346.413.6833 1.2381 1.2685 1.2381h3.5716a.7492.7492 0 00.1296-.0131 8.7874 8.7874 0 01-.8119.9526zM6.8369 20.024a.714.714 0 11-.2997-1.396.714.714 0 01.2997 1.396zM4.1177 8.9972a.7137.7137 0 11-1.304.5791.7137.7137 0 011.304-.579zm-.8352 1.9813l1.5347-.6824a.65.65 0 00.33-.8585l-.3158-.7147h1.2432v5.6025H3.5669a8.7753 8.7753 0 01-.2834-3.348zm6.7343-.5437V8.7836h2.9601c.153 0 1.0792.1772 1.0792.8697 0 .575-.7107.7815-1.2948.7815zm10.7574 1.4862c0 .2187-.008.4363-.0243.651h-.9c-.09 0-.1265.0586-.1265.1477v.413c0 .973-.5487 1.1846-1.0296 1.2382-.4576.0517-.9648-.1913-1.0275-.4717-.2704-1.5186-.7198-1.8436-1.4305-2.4034.8817-.5599 1.799-1.386 1.799-2.4915 0-1.1936-.819-1.9458-1.3769-2.3153-.7825-.5163-1.6491-.6195-1.883-.6195H5.4682a8.7651 8.7651 0 014.907-2.7699l1.0974 1.151a.648.648 0 00.9182.0213l1.227-1.1743a8.7753 8.7753 0 016.0044 4.2762l-.8403 1.8982a.652.652 0 00.33.8585l1.6178.7188c.0283.2875.0425.577.0425.8717zm-9.3006-9.5993a.7128.7128 0 11.984 1.0316.7137.7137 0 01-.984-1.0316zm8.3389 6.71a.7107.7107 0 01.9395-.3625.7137.7137 0 11-.9405.3635z"/></svg> Rust</span><button class="ec" onclick="cp('p10')">복사</button><button class="run-btn" onclick="runCode('p10','rust')">&#9655; 실행</button></div><pre class="vp" id="p10"><span class="ln"> 1</span><span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="ln"> 2</span>    <span class="kw">let</span> input = <span class="st">&quot;42&quot;</span>;
+<span class="ln"> 3</span>
+<span class="ln"> 4</span>    <span class="cm">// if let — Ok만 처리</span>
+<span class="ln"> 5</span>    <span class="kw">if</span> <span class="kw">let</span> <span class="kw">Ok</span>(n) = input.parse::&lt;<span class="tp">i32</span>&gt;() {
+<span class="ln"> 6</span>        <span class="fn">println!</span>(<span class="st">&quot;파싱됨: {}&quot;</span>, n);
+<span class="ln"> 7</span>    }
+<span class="ln"> 8</span>
+<span class="ln"> 9</span>    <span class="cm">// if let else — Ok/Err 모두</span>
+<span class="ln">10</span>    <span class="kw">if</span> <span class="kw">let</span> <span class="kw">Ok</span>(n) = input.parse::&lt;<span class="tp">i32</span>&gt;() {
+<span class="ln">11</span>        <span class="fn">println!</span>(<span class="st">&quot;성공: {}&quot;</span>, n);
+<span class="ln">12</span>    } <span class="kw">else</span> {
+<span class="ln">13</span>        <span class="fn">println!</span>(<span class="st">&quot;실패&quot;</span>);
+<span class="ln">14</span>    }
+<span class="ln">15</span>
+<span class="ln">16</span>    <span class="cm">// while let — 루프에서 파싱</span>
+<span class="ln">17</span>    <span class="kw">let</span> <span class="kw">mut</span> items = <span class="fn">vec!</span>[<span class="st">&quot;1&quot;</span>,<span class="st">&quot;x&quot;</span>,<span class="st">&quot;2&quot;</span>,<span class="st">&quot;3&quot;</span>];
+<span class="ln">18</span>    items.<span class="fn">reverse</span>();
+<span class="ln">19</span>    <span class="kw">while</span> <span class="kw">let</span> <span class="kw">Some</span>(s) = items.<span class="fn">pop</span>() {
+<span class="ln">20</span>        <span class="kw">if</span> <span class="kw">let</span> <span class="kw">Ok</span>(n) = s.parse::&lt;<span class="tp">i32</span>&gt;() {
+<span class="ln">21</span>            <span class="fn">println!</span>(<span class="st">&quot;숫자: {}&quot;</span>, n);
+<span class="ln">22</span>        }
+<span class="ln">23</span>    }
+<span class="ln">24</span>}
+</pre><div class="run-output" id="out_p10"></div></div><div class="callout info"><div class="callout-title">📌 if let vs match</div><code>if let Ok(n) = ...</code>은 Ok인 경우만 처리하고 Err는 조용히 무시합니다. 에러를 정말 무시해도 괜찮을 때만 사용하고, 에러 처리가 필요하면 <code>else</code> 분기를 추가하거나 <code>match</code>를 사용합니다.</div><div class="callout warn"><div class="callout-title">⚠ Err 무시 주의</div><code>if let Ok(n) = input.parse::&lt;i32&gt;() { ... }</code>에서 파싱이 실패하면 블록이 조용히 실행되지 않습니다. 의도한 동작인지 항상 확인하세요.</div></section><div class="divider"></div>
+<section class="sec" id="s9"><div class="sec-hdr"><span class="sec-num">§ 09</span><h2>? 연산자 — 에러를 호출자에게 전파</h2></div><p class="lead">함수 안에서 파싱 결과를 처리하다가 실패하면 즉시 함수를 종료하고 싶을 때 <code>?</code>를 사용합니다. <code>match</code>의 축약형입니다.</p><svg width="100%" viewBox="0 0 680 260" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:14px 0">
+<defs><marker id="pc1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#059669" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+<marker id="pc2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<text x="340" y="24" text-anchor="middle" font-size="14" font-weight="600" fill="var(--text)">? 연산자 — 에러 자동 전파</text>
+<rect x="40" y="40" width="140" height="48" rx="8" fill="var(--bg2)" stroke="var(--border)" stroke-width="0.5"/><text x="110" y="60" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">expr?</text><text x="110" y="78" text-anchor="middle" font-size="11" fill="var(--text2)">Result 표현식</text>
+<line x1="180" y1="64" x2="240" y2="64" stroke="var(--text2)" stroke-width="1" fill="none"/>
+<rect x="240" y="40" width="130" height="48" rx="6" fill="#1e1b4b" stroke="#7c3aed" stroke-width="0.5"/><text x="305" y="60" text-anchor="middle" font-size="12" font-weight="600" fill="#c4b5fd">Ok(v)이면</text><text x="305" y="78" text-anchor="middle" font-size="11" fill="#a78bfa">v 값 추출 후 계속</text>
+<line x1="370" y1="60" x2="430" y2="60" stroke="#059669" stroke-width="1.5" marker-end="url(#pc1)" fill="none"/>
+<rect x="430" y="40" width="210" height="48" rx="6" fill="#064e3b" stroke="#059669" stroke-width="0.5"/><text x="535" y="60" text-anchor="middle" font-size="12" font-weight="600" fill="#6ee7b7">다음 코드 실행</text><text x="535" y="78" text-anchor="middle" font-size="11" fill="#34d399">정상 흐름 계속</text>
+<line x1="305" y1="88" x2="305" y2="118" stroke="#dc2626" stroke-width="1.5" marker-end="url(#pc2)" fill="none"/>
+<rect x="240" y="118" width="130" height="48" rx="6" fill="#450a0a" stroke="#dc2626" stroke-width="0.5"/><text x="305" y="138" text-anchor="middle" font-size="12" font-weight="600" fill="#fca5a5">Err(e)이면</text><text x="305" y="156" text-anchor="middle" font-size="11" fill="#f87171">함수에서 즉시 return</text>
+<line x1="370" y1="142" x2="430" y2="142" stroke="#dc2626" stroke-width="1.5" marker-end="url(#pc2)" fill="none"/>
+<rect x="430" y="118" width="210" height="48" rx="6" fill="#450a0a" stroke="#dc2626" stroke-width="0.5"/><text x="535" y="138" text-anchor="middle" font-size="12" font-weight="600" fill="#fca5a5">Err(e.into()) 반환</text><text x="535" y="156" text-anchor="middle" font-size="11" fill="#f87171">From 트레이트로 변환</text>
+<line x1="40" y1="196" x2="640" y2="196" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3 3"/>
+<text x="340" y="216" text-anchor="middle" font-size="11" fill="var(--text2)">? 는 match { Ok(v) =&gt; v, Err(e) =&gt; return Err(e.into()) } 의 축약</text>
+<text x="340" y="236" text-anchor="middle" font-size="11" fill="var(--text2)">함수 반환 타입이 Result여야 사용 가능 — main()도 Result 반환 가능</text>
+</svg><div class="eb"><div class="et"><span class="el"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:4px;fill:#CE422B" xmlns="http://www.w3.org/2000/svg"><path d="M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00-.2278-.1873l.0415-1.1845a.3442.3442 0 00-.49-.328l-1.076.491c-.0872-.0476-.1742-.0952-.2623-.1407l-.1903-1.1673A.3483.3483 0 0016.256.955l-.9597.6905a8.4867 8.4867 0 00-.2855-.086l-.414-1.1066a.3483.3483 0 00-.5781-.1154l-.8069.8666a9.2936 9.2936 0 00-.2936-.0284L12.2946.1683a.3462.3462 0 00-.5892 0l-.6236 1.0073a13.7383 13.7383 0 00-.2936.0284L9.9803.3374a.3462.3462 0 00-.578.1154l-.4141 1.1065c-.0962.0274-.1903.0567-.2855.086L7.744.955a.3483.3483 0 00-.5447.2258L7.009 2.348a9.3574 9.3574 0 00-.2622.1407l-1.0762-.491a.3462.3462 0 00-.49.328l.0416 1.1845a7.9826 7.9826 0 00-.2278.1873L3.8413 3.425a.3472.3472 0 00-.4171.4171l.2713 1.1531c-.0628.075-.1255.1509-.1863.2268l-1.1845-.0415a.3462.3462 0 00-.328.49l.491 1.0761a9.167 9.167 0 00-.1407.2622l-1.1662.1894a.3483.3483 0 00-.2258.5446l.6904.9587a13.303 13.303 0 00-.087.2855l-1.1065.414a.3483.3483 0 00-.1155.5781l.8656.807a9.2936 9.2936 0 00-.0283.2935l-1.0073.6236a.3442.3442 0 000 .5892l1.0073.6236c.008.0982.0182.1964.0283.2936l-.8656.8079a.3462.3462 0 00.1155.578l1.1065.4141c.0273.0962.0567.1914.087.2855l-.6904.9587a.3452.3452 0 00.2268.5447l1.1662.1893c.0456.088.0922.1751.1408.2622l-.491 1.0762a.3462.3462 0 00.328.49l1.1834-.0415c.0618.0769.1235.1528.1873.2277l-.2713 1.1541a.3462.3462 0 00.4171.4161l1.153-.2713c.075.0638.151.1255.2279.1863l-.0415 1.1845a.3442.3442 0 00.49.327l1.0761-.49c.087.0486.1741.0951.2622.1407l.1903 1.1662a.3483.3483 0 00.5447.2268l.9587-.6904a9.299 9.299 0 00.2855.087l.414 1.1066a.3452.3452 0 00.5781.1154l.8079-.8656c.0972.0111.1954.0203.2936.0294l.6236 1.0073a.3472.3472 0 00.5892 0l.6236-1.0073c.0982-.0091.1964-.0183.2936-.0294l.8069.8656a.3483.3483 0 00.578-.1154l.4141-1.1066a8.4626 8.4626 0 00.2855-.087l.9587.6904a.3452.3452 0 00.5447-.2268l.1903-1.1662c.088-.0456.1751-.0931.2622-.1407l1.0762.49a.3472.3472 0 00.49-.327l-.0415-1.1845a6.7267 6.7267 0 00.2267-.1863l1.1531.2713a.3472.3472 0 00.4171-.416l-.2713-1.1542c.0628-.0749.1255-.1508.1863-.2278l1.1845.0415a.3442.3442 0 00.328-.49l-.49-1.076c.0475-.0872.0951-.1742.1407-.2623l1.1662-.1893a.3483.3483 0 00.2258-.5447l-.6904-.9587.087-.2855 1.1066-.414a.3462.3462 0 00.1154-.5781l-.8656-.8079c.0101-.0972.0202-.1954.0283-.2936l1.0073-.6236a.3442.3442 0 000-.5892zm-6.7413 8.3551a.7138.7138 0 01.2986-1.396.714.714 0 11-.2997 1.396zm-.3422-2.3142a.649.649 0 00-.7715.5l-.3573 1.6685c-1.1035.501-2.3285.7795-3.6193.7795a8.7368 8.7368 0 01-3.6951-.814l-.3574-1.6684a.648.648 0 00-.7714-.499l-1.473.3158a8.7216 8.7216 0 01-.7613-.898h7.1676c.081 0 .1356-.0141.1356-.088v-2.536c0-.074-.0536-.0881-.1356-.0881h-2.0966v-1.6077h2.2677c.2065 0 1.1065.0587 1.394 1.2088.0901.3533.2875 1.5044.4232 1.8729.1346.413.6833 1.2381 1.2685 1.2381h3.5716a.7492.7492 0 00.1296-.0131 8.7874 8.7874 0 01-.8119.9526zM6.8369 20.024a.714.714 0 11-.2997-1.396.714.714 0 01.2997 1.396zM4.1177 8.9972a.7137.7137 0 11-1.304.5791.7137.7137 0 011.304-.579zm-.8352 1.9813l1.5347-.6824a.65.65 0 00.33-.8585l-.3158-.7147h1.2432v5.6025H3.5669a8.7753 8.7753 0 01-.2834-3.348zm6.7343-.5437V8.7836h2.9601c.153 0 1.0792.1772 1.0792.8697 0 .575-.7107.7815-1.2948.7815zm10.7574 1.4862c0 .2187-.008.4363-.0243.651h-.9c-.09 0-.1265.0586-.1265.1477v.413c0 .973-.5487 1.1846-1.0296 1.2382-.4576.0517-.9648-.1913-1.0275-.4717-.2704-1.5186-.7198-1.8436-1.4305-2.4034.8817-.5599 1.799-1.386 1.799-2.4915 0-1.1936-.819-1.9458-1.3769-2.3153-.7825-.5163-1.6491-.6195-1.883-.6195H5.4682a8.7651 8.7651 0 014.907-2.7699l1.0974 1.151a.648.648 0 00.9182.0213l1.227-1.1743a8.7753 8.7753 0 016.0044 4.2762l-.8403 1.8982a.652.652 0 00.33.8585l1.6178.7188c.0283.2875.0425.577.0425.8717zm-9.3006-9.5993a.7128.7128 0 11.984 1.0316.7137.7137 0 01-.984-1.0316zm8.3389 6.71a.7107.7107 0 01.9395-.3625.7137.7137 0 11-.9405.3635z"/></svg> Rust</span><button class="ec" onclick="cp('p11')">복사</button><button class="run-btn" onclick="runCode('p11','rust')">&#9655; 실행</button></div><pre class="vp" id="p11"><span class="ln"> 1</span><span class="kw">fn</span> <span class="fn">parse_port</span>(s: &amp;<span class="tp">str</span>) -&gt; Result&lt;u16, <span class="tp">String</span>&gt; {
+<span class="ln"> 2</span>    <span class="cm">// ? — Err면 즉시 반환</span>
+<span class="ln"> 3</span>    <span class="kw">let</span> n: u16 = s.<span class="fn">parse</span>()
+<span class="ln"> 4</span>        .<span class="fn">map_err</span>(|e| <span class="fn">format!</span>(<span class="st">&quot;포트 오류: {}&quot;</span>, e))?;
+<span class="ln"> 5</span>    <span class="kw">if</span> n == <span class="nm">0</span> {
+<span class="ln"> 6</span>        <span class="kw">return</span> <span class="kw">Err</span>(<span class="st">&quot;포트는 0이 될 수 없음&quot;</span>.<span class="fn">into</span>());
+<span class="ln"> 7</span>    }
+<span class="ln"> 8</span>    <span class="kw">Ok</span>(n)
+<span class="ln"> 9</span>}
+<span class="ln">10</span><span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="ln">11</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, <span class="fn">parse_port</span>(<span class="st">&quot;8080&quot;</span>));
+<span class="ln">12</span>    <span class="cm">// Ok(8080)</span>
+<span class="ln">13</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, <span class="fn">parse_port</span>(<span class="st">&quot;abc&quot;</span>));
+<span class="ln">14</span>    <span class="cm">// Err(&quot;포트 오류: ...&quot;)</span>
+<span class="ln">15</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, <span class="fn">parse_port</span>(<span class="st">&quot;0&quot;</span>));
+<span class="ln">16</span>    <span class="cm">// Err(&quot;포트는 0이 될 수 없음&quot;)</span>
+<span class="ln">17</span>}
+</pre><div class="run-output" id="out_p11"></div></div><div class="callout info"><div class="callout-title">📌 ? 의 동작 원리</div><code>expr?</code>는 <code>match expr { Ok(v) =&gt; v, Err(e) =&gt; return Err(e.into()) }</code>와 동일합니다. <code>.into()</code>가 자동 호출되므로 <code>From</code> 트레이트가 구현되어 있으면 에러 타입이 자동 변환됩니다.</div><div class="callout warn"><div class="callout-title">⚠ 반환 타입이 Result여야 한다</div><code>?</code>는 함수 반환 타입이 <code>Result</code>(또는 <code>Option</code>)일 때만 사용 가능합니다. <code>main()</code>도 <code>fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt;</code>로 선언하면 <code>?</code>를 사용할 수 있습니다.</div></section><div class="divider"></div>
+<section class="sec" id="s10"><div class="sec-hdr"><span class="sec-num">§ 10</span><h2>map · and_then — 함수형 체이닝</h2></div><p class="lead"><code>Result</code>도 <code>Iterator</code>처럼 <code>map</code>과 <code>and_then</code>을 지원합니다. 파싱 결과를 연속으로 변환할 때 중첩 <code>match</code> 없이 처리할 수 있습니다.</p><div class="eb"><div class="et"><span class="el"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:4px;fill:#CE422B" xmlns="http://www.w3.org/2000/svg"><path d="M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00-.2278-.1873l.0415-1.1845a.3442.3442 0 00-.49-.328l-1.076.491c-.0872-.0476-.1742-.0952-.2623-.1407l-.1903-1.1673A.3483.3483 0 0016.256.955l-.9597.6905a8.4867 8.4867 0 00-.2855-.086l-.414-1.1066a.3483.3483 0 00-.5781-.1154l-.8069.8666a9.2936 9.2936 0 00-.2936-.0284L12.2946.1683a.3462.3462 0 00-.5892 0l-.6236 1.0073a13.7383 13.7383 0 00-.2936.0284L9.9803.3374a.3462.3462 0 00-.578.1154l-.4141 1.1065c-.0962.0274-.1903.0567-.2855.086L7.744.955a.3483.3483 0 00-.5447.2258L7.009 2.348a9.3574 9.3574 0 00-.2622.1407l-1.0762-.491a.3462.3462 0 00-.49.328l.0416 1.1845a7.9826 7.9826 0 00-.2278.1873L3.8413 3.425a.3472.3472 0 00-.4171.4171l.2713 1.1531c-.0628.075-.1255.1509-.1863.2268l-1.1845-.0415a.3462.3462 0 00-.328.49l.491 1.0761a9.167 9.167 0 00-.1407.2622l-1.1662.1894a.3483.3483 0 00-.2258.5446l.6904.9587a13.303 13.303 0 00-.087.2855l-1.1065.414a.3483.3483 0 00-.1155.5781l.8656.807a9.2936 9.2936 0 00-.0283.2935l-1.0073.6236a.3442.3442 0 000 .5892l1.0073.6236c.008.0982.0182.1964.0283.2936l-.8656.8079a.3462.3462 0 00.1155.578l1.1065.4141c.0273.0962.0567.1914.087.2855l-.6904.9587a.3452.3452 0 00.2268.5447l1.1662.1893c.0456.088.0922.1751.1408.2622l-.491 1.0762a.3462.3462 0 00.328.49l1.1834-.0415c.0618.0769.1235.1528.1873.2277l-.2713 1.1541a.3462.3462 0 00.4171.4161l1.153-.2713c.075.0638.151.1255.2279.1863l-.0415 1.1845a.3442.3442 0 00.49.327l1.0761-.49c.087.0486.1741.0951.2622.1407l.1903 1.1662a.3483.3483 0 00.5447.2268l.9587-.6904a9.299 9.299 0 00.2855.087l.414 1.1066a.3452.3452 0 00.5781.1154l.8079-.8656c.0972.0111.1954.0203.2936.0294l.6236 1.0073a.3472.3472 0 00.5892 0l.6236-1.0073c.0982-.0091.1964-.0183.2936-.0294l.8069.8656a.3483.3483 0 00.578-.1154l.4141-1.1066a8.4626 8.4626 0 00.2855-.087l.9587.6904a.3452.3452 0 00.5447-.2268l.1903-1.1662c.088-.0456.1751-.0931.2622-.1407l1.0762.49a.3472.3472 0 00.49-.327l-.0415-1.1845a6.7267 6.7267 0 00.2267-.1863l1.1531.2713a.3472.3472 0 00.4171-.416l-.2713-1.1542c.0628-.0749.1255-.1508.1863-.2278l1.1845.0415a.3442.3442 0 00.328-.49l-.49-1.076c.0475-.0872.0951-.1742.1407-.2623l1.1662-.1893a.3483.3483 0 00.2258-.5447l-.6904-.9587.087-.2855 1.1066-.414a.3462.3462 0 00.1154-.5781l-.8656-.8079c.0101-.0972.0202-.1954.0283-.2936l1.0073-.6236a.3442.3442 0 000-.5892zm-6.7413 8.3551a.7138.7138 0 01.2986-1.396.714.714 0 11-.2997 1.396zm-.3422-2.3142a.649.649 0 00-.7715.5l-.3573 1.6685c-1.1035.501-2.3285.7795-3.6193.7795a8.7368 8.7368 0 01-3.6951-.814l-.3574-1.6684a.648.648 0 00-.7714-.499l-1.473.3158a8.7216 8.7216 0 01-.7613-.898h7.1676c.081 0 .1356-.0141.1356-.088v-2.536c0-.074-.0536-.0881-.1356-.0881h-2.0966v-1.6077h2.2677c.2065 0 1.1065.0587 1.394 1.2088.0901.3533.2875 1.5044.4232 1.8729.1346.413.6833 1.2381 1.2685 1.2381h3.5716a.7492.7492 0 00.1296-.0131 8.7874 8.7874 0 01-.8119.9526zM6.8369 20.024a.714.714 0 11-.2997-1.396.714.714 0 01.2997 1.396zM4.1177 8.9972a.7137.7137 0 11-1.304.5791.7137.7137 0 011.304-.579zm-.8352 1.9813l1.5347-.6824a.65.65 0 00.33-.8585l-.3158-.7147h1.2432v5.6025H3.5669a8.7753 8.7753 0 01-.2834-3.348zm6.7343-.5437V8.7836h2.9601c.153 0 1.0792.1772 1.0792.8697 0 .575-.7107.7815-1.2948.7815zm10.7574 1.4862c0 .2187-.008.4363-.0243.651h-.9c-.09 0-.1265.0586-.1265.1477v.413c0 .973-.5487 1.1846-1.0296 1.2382-.4576.0517-.9648-.1913-1.0275-.4717-.2704-1.5186-.7198-1.8436-1.4305-2.4034.8817-.5599 1.799-1.386 1.799-2.4915 0-1.1936-.819-1.9458-1.3769-2.3153-.7825-.5163-1.6491-.6195-1.883-.6195H5.4682a8.7651 8.7651 0 014.907-2.7699l1.0974 1.151a.648.648 0 00.9182.0213l1.227-1.1743a8.7753 8.7753 0 016.0044 4.2762l-.8403 1.8982a.652.652 0 00.33.8585l1.6178.7188c.0283.2875.0425.577.0425.8717zm-9.3006-9.5993a.7128.7128 0 11.984 1.0316.7137.7137 0 01-.984-1.0316zm8.3389 6.71a.7107.7107 0 01.9395-.3625.7137.7137 0 11-.9405.3635z"/></svg> Rust</span><button class="ec" onclick="cp('p12')">복사</button><button class="run-btn" onclick="runCode('p12','rust')">&#9655; 실행</button></div><pre class="vp" id="p12"><span class="ln"> 1</span><span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="ln"> 2</span>    <span class="cm">// map — Ok 값을 변환</span>
+<span class="ln"> 3</span>    <span class="kw">let</span> doubled = <span class="st">&quot;21&quot;</span>.parse::&lt;<span class="tp">i32</span>&gt;()
+<span class="ln"> 4</span>        .<span class="fn">map</span>(|n| n * <span class="nm">2</span>);
+<span class="ln"> 5</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, doubled); <span class="cm">// Ok(42)</span>
+<span class="ln"> 6</span>
+<span class="ln"> 7</span>    <span class="cm">// and_then — Ok → Result 체인</span>
+<span class="ln"> 8</span>    <span class="kw">let</span> result = <span class="st">&quot;42&quot;</span>.parse::&lt;<span class="tp">i32</span>&gt;()
+<span class="ln"> 9</span>        .<span class="fn">and_then</span>(|n| {
+<span class="ln">10</span>            <span class="st">&quot;ok&quot;</span>.parse::&lt;<span class="tp">i32</span>&gt;()
+<span class="ln">11</span>                .<span class="fn">map</span>(|_| n)
+<span class="ln">12</span>                .<span class="fn">or</span>(<span class="kw">Ok</span>(n))
+<span class="ln">13</span>        });
+<span class="ln">14</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, result); <span class="cm">// Ok(42)</span>
+<span class="ln">15</span>
+<span class="ln">16</span>    <span class="cm">// 체이닝</span>
+<span class="ln">17</span>    <span class="kw">let</span> v = <span class="st">&quot; 21 &quot;</span>.<span class="fn">trim</span>()
+<span class="ln">18</span>        .parse::&lt;<span class="tp">i32</span>&gt;()
+<span class="ln">19</span>        .<span class="fn">map</span>(|n| n * <span class="nm">2</span>)
+<span class="ln">20</span>        .<span class="fn">unwrap_or</span>(<span class="nm">0</span>);
+<span class="ln">21</span>    <span class="fn">println!</span>(<span class="st">&quot;{}&quot;</span>, v); <span class="cm">// 42</span>
+<span class="ln">22</span>}
+</pre><div class="run-output" id="out_p12"></div></div><div class="callout info"><div class="callout-title">📌 map vs and_then</div><code>map(|v| v*2)</code>은 Ok 값을 변환합니다 — 결과도 <code>Result</code>. <code>and_then(|v| ...)</code>은 Ok 값을 받아 새 <code>Result</code>를 반환합니다. 변환 자체가 실패할 수 있을 때 <code>and_then</code>을 씁니다.</div><div class="callout ok"><div class="callout-title">✓ 파이프라인 패턴</div><code>input.trim().parse::&lt;i32&gt;().map(|n| n*2).unwrap_or(0)</code>처럼 연결할 수 있습니다. 중간에 Err가 나면 이후 <code>map</code>은 건너뛰고 Err가 전파됩니다.</div></section><div class="divider"></div>
+<section class="sec" id="s11"><div class="sec-hdr"><span class="sec-num">§ 11</span><h2>ok() · ok_or() — Option과 Result 전환</h2></div><p class="lead"><code>Result</code>와 <code>Option</code>은 서로 변환할 수 있습니다. API가 <code>Option</code>을 반환하는데 파싱 결과가 필요할 때, 또는 반대로 변환이 필요할 때 사용합니다.</p><div class="eb"><div class="et"><span class="el"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:4px;fill:#CE422B" xmlns="http://www.w3.org/2000/svg"><path d="M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00-.2278-.1873l.0415-1.1845a.3442.3442 0 00-.49-.328l-1.076.491c-.0872-.0476-.1742-.0952-.2623-.1407l-.1903-1.1673A.3483.3483 0 0016.256.955l-.9597.6905a8.4867 8.4867 0 00-.2855-.086l-.414-1.1066a.3483.3483 0 00-.5781-.1154l-.8069.8666a9.2936 9.2936 0 00-.2936-.0284L12.2946.1683a.3462.3462 0 00-.5892 0l-.6236 1.0073a13.7383 13.7383 0 00-.2936.0284L9.9803.3374a.3462.3462 0 00-.578.1154l-.4141 1.1065c-.0962.0274-.1903.0567-.2855.086L7.744.955a.3483.3483 0 00-.5447.2258L7.009 2.348a9.3574 9.3574 0 00-.2622.1407l-1.0762-.491a.3462.3462 0 00-.49.328l.0416 1.1845a7.9826 7.9826 0 00-.2278.1873L3.8413 3.425a.3472.3472 0 00-.4171.4171l.2713 1.1531c-.0628.075-.1255.1509-.1863.2268l-1.1845-.0415a.3462.3462 0 00-.328.49l.491 1.0761a9.167 9.167 0 00-.1407.2622l-1.1662.1894a.3483.3483 0 00-.2258.5446l.6904.9587a13.303 13.303 0 00-.087.2855l-1.1065.414a.3483.3483 0 00-.1155.5781l.8656.807a9.2936 9.2936 0 00-.0283.2935l-1.0073.6236a.3442.3442 0 000 .5892l1.0073.6236c.008.0982.0182.1964.0283.2936l-.8656.8079a.3462.3462 0 00.1155.578l1.1065.4141c.0273.0962.0567.1914.087.2855l-.6904.9587a.3452.3452 0 00.2268.5447l1.1662.1893c.0456.088.0922.1751.1408.2622l-.491 1.0762a.3462.3462 0 00.328.49l1.1834-.0415c.0618.0769.1235.1528.1873.2277l-.2713 1.1541a.3462.3462 0 00.4171.4161l1.153-.2713c.075.0638.151.1255.2279.1863l-.0415 1.1845a.3442.3442 0 00.49.327l1.0761-.49c.087.0486.1741.0951.2622.1407l.1903 1.1662a.3483.3483 0 00.5447.2268l.9587-.6904a9.299 9.299 0 00.2855.087l.414 1.1066a.3452.3452 0 00.5781.1154l.8079-.8656c.0972.0111.1954.0203.2936.0294l.6236 1.0073a.3472.3472 0 00.5892 0l.6236-1.0073c.0982-.0091.1964-.0183.2936-.0294l.8069.8656a.3483.3483 0 00.578-.1154l.4141-1.1066a8.4626 8.4626 0 00.2855-.087l.9587.6904a.3452.3452 0 00.5447-.2268l.1903-1.1662c.088-.0456.1751-.0931.2622-.1407l1.0762.49a.3472.3472 0 00.49-.327l-.0415-1.1845a6.7267 6.7267 0 00.2267-.1863l1.1531.2713a.3472.3472 0 00.4171-.416l-.2713-1.1542c.0628-.0749.1255-.1508.1863-.2278l1.1845.0415a.3442.3442 0 00.328-.49l-.49-1.076c.0475-.0872.0951-.1742.1407-.2623l1.1662-.1893a.3483.3483 0 00.2258-.5447l-.6904-.9587.087-.2855 1.1066-.414a.3462.3462 0 00.1154-.5781l-.8656-.8079c.0101-.0972.0202-.1954.0283-.2936l1.0073-.6236a.3442.3442 0 000-.5892zm-6.7413 8.3551a.7138.7138 0 01.2986-1.396.714.714 0 11-.2997 1.396zm-.3422-2.3142a.649.649 0 00-.7715.5l-.3573 1.6685c-1.1035.501-2.3285.7795-3.6193.7795a8.7368 8.7368 0 01-3.6951-.814l-.3574-1.6684a.648.648 0 00-.7714-.499l-1.473.3158a8.7216 8.7216 0 01-.7613-.898h7.1676c.081 0 .1356-.0141.1356-.088v-2.536c0-.074-.0536-.0881-.1356-.0881h-2.0966v-1.6077h2.2677c.2065 0 1.1065.0587 1.394 1.2088.0901.3533.2875 1.5044.4232 1.8729.1346.413.6833 1.2381 1.2685 1.2381h3.5716a.7492.7492 0 00.1296-.0131 8.7874 8.7874 0 01-.8119.9526zM6.8369 20.024a.714.714 0 11-.2997-1.396.714.714 0 01.2997 1.396zM4.1177 8.9972a.7137.7137 0 11-1.304.5791.7137.7137 0 011.304-.579zm-.8352 1.9813l1.5347-.6824a.65.65 0 00.33-.8585l-.3158-.7147h1.2432v5.6025H3.5669a8.7753 8.7753 0 01-.2834-3.348zm6.7343-.5437V8.7836h2.9601c.153 0 1.0792.1772 1.0792.8697 0 .575-.7107.7815-1.2948.7815zm10.7574 1.4862c0 .2187-.008.4363-.0243.651h-.9c-.09 0-.1265.0586-.1265.1477v.413c0 .973-.5487 1.1846-1.0296 1.2382-.4576.0517-.9648-.1913-1.0275-.4717-.2704-1.5186-.7198-1.8436-1.4305-2.4034.8817-.5599 1.799-1.386 1.799-2.4915 0-1.1936-.819-1.9458-1.3769-2.3153-.7825-.5163-1.6491-.6195-1.883-.6195H5.4682a8.7651 8.7651 0 014.907-2.7699l1.0974 1.151a.648.648 0 00.9182.0213l1.227-1.1743a8.7753 8.7753 0 016.0044 4.2762l-.8403 1.8982a.652.652 0 00.33.8585l1.6178.7188c.0283.2875.0425.577.0425.8717zm-9.3006-9.5993a.7128.7128 0 11.984 1.0316.7137.7137 0 01-.984-1.0316zm8.3389 6.71a.7107.7107 0 01.9395-.3625.7137.7137 0 11-.9405.3635z"/></svg> Rust</span><button class="ec" onclick="cp('p13')">복사</button><button class="run-btn" onclick="runCode('p13','rust')">&#9655; 실행</button></div><pre class="vp" id="p13"><span class="ln"> 1</span><span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="ln"> 2</span>    <span class="cm">// Result → Option</span>
+<span class="ln"> 3</span>    <span class="kw">let</span> opt: <span class="kw">Option</span>&lt;<span class="tp">i32</span>&gt; =
+<span class="ln"> 4</span>        <span class="st">&quot;42&quot;</span>.<span class="fn">parse</span>().<span class="fn">ok</span>();
+<span class="ln"> 5</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, opt); <span class="cm">// Some(42)</span>
+<span class="ln"> 6</span>
+<span class="ln"> 7</span>    <span class="kw">let</span> none: <span class="kw">Option</span>&lt;<span class="tp">i32</span>&gt; =
+<span class="ln"> 8</span>        <span class="st">&quot;abc&quot;</span>.<span class="fn">parse</span>().<span class="fn">ok</span>();
+<span class="ln"> 9</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, none); <span class="cm">// None</span>
+<span class="ln">10</span>
+<span class="ln">11</span>    <span class="cm">// Option → Result</span>
+<span class="ln">12</span>    <span class="kw">let</span> s: <span class="kw">Option</span>&lt;&amp;<span class="tp">str</span>&gt; = <span class="kw">Some</span>(<span class="st">&quot;42&quot;</span>);
+<span class="ln">13</span>    <span class="kw">let</span> r: Result&lt;<span class="tp">i32</span>, &amp;<span class="tp">str</span>&gt; =
+<span class="ln">14</span>        s.<span class="fn">ok_or</span>(<span class="st">&quot;값 없음&quot;</span>)
+<span class="ln">15</span>         .<span class="fn">and_then</span>(|v| v.<span class="fn">parse</span>().<span class="fn">map_err</span>(|_| <span class="st">&quot;파싱 실패&quot;</span>));
+<span class="ln">16</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, r); <span class="cm">// Ok(42)</span>
+<span class="ln">17</span>}
+</pre><div class="run-output" id="out_p13"></div></div><div class="callout info"><div class="callout-title">📌 ok()와 ok_or()</div><code>result.ok()</code>: <code>Ok(v) → Some(v)</code>, <code>Err(_) → None</code> — 에러 정보 버림.<br><code>option.ok_or(e)</code>: <code>Some(v) → Ok(v)</code>, <code>None → Err(e)</code> — 에러 정보 추가.</div><div class="callout warn"><div class="callout-title">⚠ ok()는 에러 정보를 버린다</div><code>.ok()</code>를 사용하면 <code>Err</code>의 에러 정보가 사라집니다. 에러 원인을 로그로 남기거나 사용자에게 보여줘야 한다면 <code>ok()</code> 대신 <code>map_err</code>으로 변환하거나 <code>match</code>를 사용하세요.</div></section><div class="divider"></div>
+<section class="sec" id="s12"><div class="sec-hdr"><span class="sec-num">§ 12</span><h2>여러 필드 파싱 — struct 복원</h2></div><p class="lead">실무에서는 CSV, 설정 파일, 네트워크 패킷 등 여러 필드를 파싱해 구조체를 만드는 경우가 많습니다. 어느 필드에서 실패했는지 정확히 알려주는 에러 처리가 중요합니다.</p><div class="eb"><div class="et"><span class="el"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:4px;fill:#CE422B" xmlns="http://www.w3.org/2000/svg"><path d="M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00-.2278-.1873l.0415-1.1845a.3442.3442 0 00-.49-.328l-1.076.491c-.0872-.0476-.1742-.0952-.2623-.1407l-.1903-1.1673A.3483.3483 0 0016.256.955l-.9597.6905a8.4867 8.4867 0 00-.2855-.086l-.414-1.1066a.3483.3483 0 00-.5781-.1154l-.8069.8666a9.2936 9.2936 0 00-.2936-.0284L12.2946.1683a.3462.3462 0 00-.5892 0l-.6236 1.0073a13.7383 13.7383 0 00-.2936.0284L9.9803.3374a.3462.3462 0 00-.578.1154l-.4141 1.1065c-.0962.0274-.1903.0567-.2855.086L7.744.955a.3483.3483 0 00-.5447.2258L7.009 2.348a9.3574 9.3574 0 00-.2622.1407l-1.0762-.491a.3462.3462 0 00-.49.328l.0416 1.1845a7.9826 7.9826 0 00-.2278.1873L3.8413 3.425a.3472.3472 0 00-.4171.4171l.2713 1.1531c-.0628.075-.1255.1509-.1863.2268l-1.1845-.0415a.3462.3462 0 00-.328.49l.491 1.0761a9.167 9.167 0 00-.1407.2622l-1.1662.1894a.3483.3483 0 00-.2258.5446l.6904.9587a13.303 13.303 0 00-.087.2855l-1.1065.414a.3483.3483 0 00-.1155.5781l.8656.807a9.2936 9.2936 0 00-.0283.2935l-1.0073.6236a.3442.3442 0 000 .5892l1.0073.6236c.008.0982.0182.1964.0283.2936l-.8656.8079a.3462.3462 0 00.1155.578l1.1065.4141c.0273.0962.0567.1914.087.2855l-.6904.9587a.3452.3452 0 00.2268.5447l1.1662.1893c.0456.088.0922.1751.1408.2622l-.491 1.0762a.3462.3462 0 00.328.49l1.1834-.0415c.0618.0769.1235.1528.1873.2277l-.2713 1.1541a.3462.3462 0 00.4171.4161l1.153-.2713c.075.0638.151.1255.2279.1863l-.0415 1.1845a.3442.3442 0 00.49.327l1.0761-.49c.087.0486.1741.0951.2622.1407l.1903 1.1662a.3483.3483 0 00.5447.2268l.9587-.6904a9.299 9.299 0 00.2855.087l.414 1.1066a.3452.3452 0 00.5781.1154l.8079-.8656c.0972.0111.1954.0203.2936.0294l.6236 1.0073a.3472.3472 0 00.5892 0l.6236-1.0073c.0982-.0091.1964-.0183.2936-.0294l.8069.8656a.3483.3483 0 00.578-.1154l.4141-1.1066a8.4626 8.4626 0 00.2855-.087l.9587.6904a.3452.3452 0 00.5447-.2268l.1903-1.1662c.088-.0456.1751-.0931.2622-.1407l1.0762.49a.3472.3472 0 00.49-.327l-.0415-1.1845a6.7267 6.7267 0 00.2267-.1863l1.1531.2713a.3472.3472 0 00.4171-.416l-.2713-1.1542c.0628-.0749.1255-.1508.1863-.2278l1.1845.0415a.3442.3442 0 00.328-.49l-.49-1.076c.0475-.0872.0951-.1742.1407-.2623l1.1662-.1893a.3483.3483 0 00.2258-.5447l-.6904-.9587.087-.2855 1.1066-.414a.3462.3462 0 00.1154-.5781l-.8656-.8079c.0101-.0972.0202-.1954.0283-.2936l1.0073-.6236a.3442.3442 0 000-.5892zm-6.7413 8.3551a.7138.7138 0 01.2986-1.396.714.714 0 11-.2997 1.396zm-.3422-2.3142a.649.649 0 00-.7715.5l-.3573 1.6685c-1.1035.501-2.3285.7795-3.6193.7795a8.7368 8.7368 0 01-3.6951-.814l-.3574-1.6684a.648.648 0 00-.7714-.499l-1.473.3158a8.7216 8.7216 0 01-.7613-.898h7.1676c.081 0 .1356-.0141.1356-.088v-2.536c0-.074-.0536-.0881-.1356-.0881h-2.0966v-1.6077h2.2677c.2065 0 1.1065.0587 1.394 1.2088.0901.3533.2875 1.5044.4232 1.8729.1346.413.6833 1.2381 1.2685 1.2381h3.5716a.7492.7492 0 00.1296-.0131 8.7874 8.7874 0 01-.8119.9526zM6.8369 20.024a.714.714 0 11-.2997-1.396.714.714 0 01.2997 1.396zM4.1177 8.9972a.7137.7137 0 11-1.304.5791.7137.7137 0 011.304-.579zm-.8352 1.9813l1.5347-.6824a.65.65 0 00.33-.8585l-.3158-.7147h1.2432v5.6025H3.5669a8.7753 8.7753 0 01-.2834-3.348zm6.7343-.5437V8.7836h2.9601c.153 0 1.0792.1772 1.0792.8697 0 .575-.7107.7815-1.2948.7815zm10.7574 1.4862c0 .2187-.008.4363-.0243.651h-.9c-.09 0-.1265.0586-.1265.1477v.413c0 .973-.5487 1.1846-1.0296 1.2382-.4576.0517-.9648-.1913-1.0275-.4717-.2704-1.5186-.7198-1.8436-1.4305-2.4034.8817-.5599 1.799-1.386 1.799-2.4915 0-1.1936-.819-1.9458-1.3769-2.3153-.7825-.5163-1.6491-.6195-1.883-.6195H5.4682a8.7651 8.7651 0 014.907-2.7699l1.0974 1.151a.648.648 0 00.9182.0213l1.227-1.1743a8.7753 8.7753 0 016.0044 4.2762l-.8403 1.8982a.652.652 0 00.33.8585l1.6178.7188c.0283.2875.0425.577.0425.8717zm-9.3006-9.5993a.7128.7128 0 11.984 1.0316.7137.7137 0 01-.984-1.0316zm8.3389 6.71a.7107.7107 0 01.9395-.3625.7137.7137 0 11-.9405.3635z"/></svg> Rust</span><button class="ec" onclick="cp('p14')">복사</button><button class="run-btn" onclick="runCode('p14','rust')">&#9655; 실행</button></div><pre class="vp" id="p14"><span class="ln"> 1</span><span class="kw">fn</span> <span class="fn">parse_csv_row</span>(line: &amp;<span class="tp">str</span>)
+<span class="ln"> 2</span>    -&gt; Result&lt;(<span class="tp">String</span>, <span class="tp">i32</span>), <span class="tp">String</span>&gt;
+<span class="ln"> 3</span>{
+<span class="ln"> 4</span>    <span class="kw">let</span> parts: <span class="kw">Vec</span>&lt;&amp;<span class="tp">str</span>&gt; =
+<span class="ln"> 5</span>        line.<span class="fn">splitn</span>(<span class="nm">2</span>, <span class="st">','</span>).<span class="fn">collect</span>();
+<span class="ln"> 6</span>    <span class="kw">if</span> parts.<span class="fn">len</span>() != <span class="nm">2</span> {
+<span class="ln"> 7</span>        <span class="kw">return</span> <span class="kw">Err</span>(<span class="fn">format!</span>(<span class="st">&quot;필드 부족: {}&quot;</span>, line));
+<span class="ln"> 8</span>    }
+<span class="ln"> 9</span>    <span class="kw">let</span> name = parts[<span class="nm">0</span>].<span class="fn">trim</span>().<span class="fn">to_string</span>();
+<span class="ln">10</span>    <span class="kw">let</span> score = parts[<span class="nm">1</span>].<span class="fn">trim</span>()
+<span class="ln">11</span>        .parse::&lt;<span class="tp">i32</span>&gt;()
+<span class="ln">12</span>        .<span class="fn">map_err</span>(|e| <span class="fn">format!</span>(<span class="st">&quot;점수 오류: {}&quot;</span>, e))?;
+<span class="ln">13</span>    <span class="kw">Ok</span>((name, score))
+<span class="ln">14</span>}
+<span class="ln">15</span><span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="ln">16</span>    <span class="kw">let</span> rows = [<span class="st">&quot;Alice,95&quot;</span>, <span class="st">&quot;Bob,abc&quot;</span>, <span class="st">&quot;Carol,88&quot;</span>];
+<span class="ln">17</span>    <span class="kw">for</span> row <span class="kw">in</span> &amp;rows {
+<span class="ln">18</span>        <span class="kw">match</span> <span class="fn">parse_csv_row</span>(row) {
+<span class="ln">19</span>            <span class="kw">Ok</span>((n, s)) =&gt; <span class="fn">println!</span>(<span class="st">&quot;{}: {}&quot;</span>, n, s),
+<span class="ln">20</span>            <span class="kw">Err</span>(e)     =&gt; <span class="fn">println!</span>(<span class="st">&quot;오류 — {}&quot;</span>, e),
+<span class="ln">21</span>        }
+<span class="ln">22</span>    }
+<span class="ln">23</span>}
+</pre><div class="run-output" id="out_p14"></div></div><div class="callout info"><div class="callout-title">📌 map_err로 에러에 컨텍스트 추가</div><code>.map_err(|e| format!("점수 파싱 오류: {}", e))?</code>처럼 에러 메시지에 필드 이름을 포함시키면 디버깅이 훨씬 쉬워집니다. 에러가 어느 필드에서 발생했는지 즉시 알 수 있습니다.</div><div class="callout ok"><div class="callout-title">✓ splitn으로 안전하게 분리</div><code>split(",")</code> 대신 <code>splitn(2, ",")</code>을 사용하면 값 안에 쉼표가 있어도 최대 2개로만 분리됩니다. 필드 수 검증과 함께 사용하면 잘못된 입력을 명확하게 거부할 수 있습니다.</div></section><div class="divider"></div>
+<section class="sec" id="s13"><div class="sec-hdr"><span class="sec-num">§ 13</span><h2>커스텀 타입 파싱 — impl FromStr</h2></div><p class="lead">자신만의 타입에 <code>parse()</code>를 붙이려면 <code>FromStr</code> 트레이트를 구현합니다. 구현하면 <code>parse::&lt;MyType&gt;()</code>를 바로 사용할 수 있습니다.</p><div class="eb"><div class="et"><span class="el"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:4px;fill:#CE422B" xmlns="http://www.w3.org/2000/svg"><path d="M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00-.2278-.1873l.0415-1.1845a.3442.3442 0 00-.49-.328l-1.076.491c-.0872-.0476-.1742-.0952-.2623-.1407l-.1903-1.1673A.3483.3483 0 0016.256.955l-.9597.6905a8.4867 8.4867 0 00-.2855-.086l-.414-1.1066a.3483.3483 0 00-.5781-.1154l-.8069.8666a9.2936 9.2936 0 00-.2936-.0284L12.2946.1683a.3462.3462 0 00-.5892 0l-.6236 1.0073a13.7383 13.7383 0 00-.2936.0284L9.9803.3374a.3462.3462 0 00-.578.1154l-.4141 1.1065c-.0962.0274-.1903.0567-.2855.086L7.744.955a.3483.3483 0 00-.5447.2258L7.009 2.348a9.3574 9.3574 0 00-.2622.1407l-1.0762-.491a.3462.3462 0 00-.49.328l.0416 1.1845a7.9826 7.9826 0 00-.2278.1873L3.8413 3.425a.3472.3472 0 00-.4171.4171l.2713 1.1531c-.0628.075-.1255.1509-.1863.2268l-1.1845-.0415a.3462.3462 0 00-.328.49l.491 1.0761a9.167 9.167 0 00-.1407.2622l-1.1662.1894a.3483.3483 0 00-.2258.5446l.6904.9587a13.303 13.303 0 00-.087.2855l-1.1065.414a.3483.3483 0 00-.1155.5781l.8656.807a9.2936 9.2936 0 00-.0283.2935l-1.0073.6236a.3442.3442 0 000 .5892l1.0073.6236c.008.0982.0182.1964.0283.2936l-.8656.8079a.3462.3462 0 00.1155.578l1.1065.4141c.0273.0962.0567.1914.087.2855l-.6904.9587a.3452.3452 0 00.2268.5447l1.1662.1893c.0456.088.0922.1751.1408.2622l-.491 1.0762a.3462.3462 0 00.328.49l1.1834-.0415c.0618.0769.1235.1528.1873.2277l-.2713 1.1541a.3462.3462 0 00.4171.4161l1.153-.2713c.075.0638.151.1255.2279.1863l-.0415 1.1845a.3442.3442 0 00.49.327l1.0761-.49c.087.0486.1741.0951.2622.1407l.1903 1.1662a.3483.3483 0 00.5447.2268l.9587-.6904a9.299 9.299 0 00.2855.087l.414 1.1066a.3452.3452 0 00.5781.1154l.8079-.8656c.0972.0111.1954.0203.2936.0294l.6236 1.0073a.3472.3472 0 00.5892 0l.6236-1.0073c.0982-.0091.1964-.0183.2936-.0294l.8069.8656a.3483.3483 0 00.578-.1154l.4141-1.1066a8.4626 8.4626 0 00.2855-.087l.9587.6904a.3452.3452 0 00.5447-.2268l.1903-1.1662c.088-.0456.1751-.0931.2622-.1407l1.0762.49a.3472.3472 0 00.49-.327l-.0415-1.1845a6.7267 6.7267 0 00.2267-.1863l1.1531.2713a.3472.3472 0 00.4171-.416l-.2713-1.1542c.0628-.0749.1255-.1508.1863-.2278l1.1845.0415a.3442.3442 0 00.328-.49l-.49-1.076c.0475-.0872.0951-.1742.1407-.2623l1.1662-.1893a.3483.3483 0 00.2258-.5447l-.6904-.9587.087-.2855 1.1066-.414a.3462.3462 0 00.1154-.5781l-.8656-.8079c.0101-.0972.0202-.1954.0283-.2936l1.0073-.6236a.3442.3442 0 000-.5892zm-6.7413 8.3551a.7138.7138 0 01.2986-1.396.714.714 0 11-.2997 1.396zm-.3422-2.3142a.649.649 0 00-.7715.5l-.3573 1.6685c-1.1035.501-2.3285.7795-3.6193.7795a8.7368 8.7368 0 01-3.6951-.814l-.3574-1.6684a.648.648 0 00-.7714-.499l-1.473.3158a8.7216 8.7216 0 01-.7613-.898h7.1676c.081 0 .1356-.0141.1356-.088v-2.536c0-.074-.0536-.0881-.1356-.0881h-2.0966v-1.6077h2.2677c.2065 0 1.1065.0587 1.394 1.2088.0901.3533.2875 1.5044.4232 1.8729.1346.413.6833 1.2381 1.2685 1.2381h3.5716a.7492.7492 0 00.1296-.0131 8.7874 8.7874 0 01-.8119.9526zM6.8369 20.024a.714.714 0 11-.2997-1.396.714.714 0 01.2997 1.396zM4.1177 8.9972a.7137.7137 0 11-1.304.5791.7137.7137 0 011.304-.579zm-.8352 1.9813l1.5347-.6824a.65.65 0 00.33-.8585l-.3158-.7147h1.2432v5.6025H3.5669a8.7753 8.7753 0 01-.2834-3.348zm6.7343-.5437V8.7836h2.9601c.153 0 1.0792.1772 1.0792.8697 0 .575-.7107.7815-1.2948.7815zm10.7574 1.4862c0 .2187-.008.4363-.0243.651h-.9c-.09 0-.1265.0586-.1265.1477v.413c0 .973-.5487 1.1846-1.0296 1.2382-.4576.0517-.9648-.1913-1.0275-.4717-.2704-1.5186-.7198-1.8436-1.4305-2.4034.8817-.5599 1.799-1.386 1.799-2.4915 0-1.1936-.819-1.9458-1.3769-2.3153-.7825-.5163-1.6491-.6195-1.883-.6195H5.4682a8.7651 8.7651 0 014.907-2.7699l1.0974 1.151a.648.648 0 00.9182.0213l1.227-1.1743a8.7753 8.7753 0 016.0044 4.2762l-.8403 1.8982a.652.652 0 00.33.8585l1.6178.7188c.0283.2875.0425.577.0425.8717zm-9.3006-9.5993a.7128.7128 0 11.984 1.0316.7137.7137 0 01-.984-1.0316zm8.3389 6.71a.7107.7107 0 01.9395-.3625.7137.7137 0 11-.9405.3635z"/></svg> Rust</span><button class="ec" onclick="cp('p15')">복사</button><button class="run-btn" onclick="runCode('p15','rust')">&#9655; 실행</button></div><pre class="vp" id="p15"><span class="ln"> 1</span><span class="kw">use</span> std::<span class="tp">str</span>::FromStr;
+<span class="ln"> 2</span><span class="kw">use</span> std::num::ParseIntError;
+<span class="ln"> 3</span>
+<span class="ln"> 4</span>#[<span class="fn">derive</span>(Debug)]
+<span class="ln"> 5</span><span class="kw">struct</span> Point { x: <span class="tp">i32</span>, y: <span class="tp">i32</span> }
+<span class="ln"> 6</span>
+<span class="ln"> 7</span><span class="kw">impl</span> FromStr <span class="kw">for</span> Point {
+<span class="ln"> 8</span>    <span class="kw">type</span> <span class="kw">Err</span> = <span class="tp">String</span>;
+<span class="ln"> 9</span>    <span class="kw">fn</span> <span class="fn">from_str</span>(s: &amp;<span class="tp">str</span>)
+<span class="ln">10</span>        -&gt; Result&lt;<span class="kw">Self</span>, <span class="kw">Self</span>::<span class="kw">Err</span>&gt;
+<span class="ln">11</span>    {
+<span class="ln">12</span>        <span class="kw">let</span> parts: <span class="kw">Vec</span>&lt;&amp;<span class="tp">str</span>&gt; =
+<span class="ln">13</span>            s.<span class="fn">split</span>(<span class="st">','</span>).<span class="fn">collect</span>();
+<span class="ln">14</span>        <span class="kw">if</span> parts.<span class="fn">len</span>() != <span class="nm">2</span> {
+<span class="ln">15</span>            <span class="kw">return</span> <span class="kw">Err</span>(<span class="st">&quot;x,y 형식 필요&quot;</span>.<span class="fn">into</span>());
+<span class="ln">16</span>        }
+<span class="ln">17</span>        <span class="kw">let</span> x = parts[<span class="nm">0</span>].<span class="fn">trim</span>()
+<span class="ln">18</span>            .parse::&lt;<span class="tp">i32</span>&gt;()
+<span class="ln">19</span>            .<span class="fn">map_err</span>(|e: ParseIntError|
+<span class="ln">20</span>                e.<span class="fn">to_string</span>())?;
+<span class="ln">21</span>        <span class="kw">let</span> y = parts[<span class="nm">1</span>].<span class="fn">trim</span>()
+<span class="ln">22</span>            .parse::&lt;<span class="tp">i32</span>&gt;()
+<span class="ln">23</span>            .<span class="fn">map_err</span>(|e: ParseIntError|
+<span class="ln">24</span>                e.<span class="fn">to_string</span>())?;
+<span class="ln">25</span>        <span class="kw">Ok</span>(Point { x, y })
+<span class="ln">26</span>    }
+<span class="ln">27</span>}
+<span class="ln">28</span><span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="ln">29</span>    <span class="kw">let</span> p = <span class="st">&quot;3,4&quot;</span>.parse::&lt;Point&gt;().<span class="fn">unwrap</span>();
+<span class="ln">30</span>    <span class="fn">println!</span>(<span class="st">&quot;x={}, y={}&quot;</span>, p.x, p.y);
+<span class="ln">31</span>    <span class="cm">// x=3, y=4</span>
+<span class="ln">32</span>    <span class="kw">let</span> dist = ((p.x*p.x + p.y*p.y) <span class="kw">as</span> <span class="tp">f64</span>)
+<span class="ln">33</span>        .<span class="fn">sqrt</span>();
+<span class="ln">34</span>    <span class="fn">println!</span>(<span class="st">&quot;원점 거리: {:.2}&quot;</span>, dist); <span class="cm">// 5.00</span>
+<span class="ln">35</span>    <span class="fn">println!</span>(<span class="st">&quot;{:?}&quot;</span>, <span class="st">&quot;a,b&quot;</span>.parse::&lt;Point&gt;());
+<span class="ln">36</span>    <span class="cm">// Err(&quot;invalid digit ...&quot;)</span>
+<span class="ln">37</span>}
+</pre><div class="run-output" id="out_p15"></div></div></div><div class="callout info"><div class="callout-title">📌 FromStr 구현 구조</div><code>type Err</code> 연관 타입으로 에러 타입을 선언하고, <code>from_str(&amp;str) -&gt; Result&lt;Self, Self::Err&gt;</code>를 구현합니다. 내부에서 <code>?</code>를 자유롭게 사용할 수 있어 복잡한 파싱 로직도 깔끔하게 작성됩니다.</div><div class="callout ok"><div class="callout-title">✓ 활용 범위</div><code>FromStr</code>를 구현하면 <code>.parse()</code>뿐 아니라 <code>str::parse()</code>, serde의 문자열 역직렬화, clap의 커맨드라인 인자 파싱 등에도 자동으로 사용됩니다.</div></section><div class="divider"></div>
+<section class="sec" id="s14"><div class="sec-hdr"><span class="sec-num">§ 14</span><h2>에러 타입 변환 — map_err · From</h2></div><p class="lead">여러 곳에서 파싱할 때 에러 타입이 제각각이면 <code>?</code>를 쓸 수 없습니다. <code>map_err</code>로 일일이 변환하거나, <code>From</code> 트레이트를 구현해 자동 변환되게 할 수 있습니다.</p><div class="eb"><div class="et"><span class="el"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-right:4px;fill:#CE422B" xmlns="http://www.w3.org/2000/svg"><path d="M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00-.2278-.1873l.0415-1.1845a.3442.3442 0 00-.49-.328l-1.076.491c-.0872-.0476-.1742-.0952-.2623-.1407l-.1903-1.1673A.3483.3483 0 0016.256.955l-.9597.6905a8.4867 8.4867 0 00-.2855-.086l-.414-1.1066a.3483.3483 0 00-.5781-.1154l-.8069.8666a9.2936 9.2936 0 00-.2936-.0284L12.2946.1683a.3462.3462 0 00-.5892 0l-.6236 1.0073a13.7383 13.7383 0 00-.2936.0284L9.9803.3374a.3462.3462 0 00-.578.1154l-.4141 1.1065c-.0962.0274-.1903.0567-.2855.086L7.744.955a.3483.3483 0 00-.5447.2258L7.009 2.348a9.3574 9.3574 0 00-.2622.1407l-1.0762-.491a.3462.3462 0 00-.49.328l.0416 1.1845a7.9826 7.9826 0 00-.2278.1873L3.8413 3.425a.3472.3472 0 00-.4171.4171l.2713 1.1531c-.0628.075-.1255.1509-.1863.2268l-1.1845-.0415a.3462.3462 0 00-.328.49l.491 1.0761a9.167 9.167 0 00-.1407.2622l-1.1662.1894a.3483.3483 0 00-.2258.5446l.6904.9587a13.303 13.303 0 00-.087.2855l-1.1065.414a.3483.3483 0 00-.1155.5781l.8656.807a9.2936 9.2936 0 00-.0283.2935l-1.0073.6236a.3442.3442 0 000 .5892l1.0073.6236c.008.0982.0182.1964.0283.2936l-.8656.8079a.3462.3462 0 00.1155.578l1.1065.4141c.0273.0962.0567.1914.087.2855l-.6904.9587a.3452.3452 0 00.2268.5447l1.1662.1893c.0456.088.0922.1751.1408.2622l-.491 1.0762a.3462.3462 0 00.328.49l1.1834-.0415c.0618.0769.1235.1528.1873.2277l-.2713 1.1541a.3462.3462 0 00.4171.4161l1.153-.2713c.075.0638.151.1255.2279.1863l-.0415 1.1845a.3442.3442 0 00.49.327l1.0761-.49c.087.0486.1741.0951.2622.1407l.1903 1.1662a.3483.3483 0 00.5447.2268l.9587-.6904a9.299 9.299 0 00.2855.087l.414 1.1066a.3452.3452 0 00.5781.1154l.8079-.8656c.0972.0111.1954.0203.2936.0294l.6236 1.0073a.3472.3472 0 00.5892 0l.6236-1.0073c.0982-.0091.1964-.0183.2936-.0294l.8069.8656a.3483.3483 0 00.578-.1154l.4141-1.1066a8.4626 8.4626 0 00.2855-.087l.9587.6904a.3452.3452 0 00.5447-.2268l.1903-1.1662c.088-.0456.1751-.0931.2622-.1407l1.0762.49a.3472.3472 0 00.49-.327l-.0415-1.1845a6.7267 6.7267 0 00.2267-.1863l1.1531.2713a.3472.3472 0 00.4171-.416l-.2713-1.1542c.0628-.0749.1255-.1508.1863-.2278l1.1845.0415a.3442.3442 0 00.328-.49l-.49-1.076c.0475-.0872.0951-.1742.1407-.2623l1.1662-.1893a.3483.3483 0 00.2258-.5447l-.6904-.9587.087-.2855 1.1066-.414a.3462.3462 0 00.1154-.5781l-.8656-.8079c.0101-.0972.0202-.1954.0283-.2936l1.0073-.6236a.3442.3442 0 000-.5892zm-6.7413 8.3551a.7138.7138 0 01.2986-1.396.714.714 0 11-.2997 1.396zm-.3422-2.3142a.649.649 0 00-.7715.5l-.3573 1.6685c-1.1035.501-2.3285.7795-3.6193.7795a8.7368 8.7368 0 01-3.6951-.814l-.3574-1.6684a.648.648 0 00-.7714-.499l-1.473.3158a8.7216 8.7216 0 01-.7613-.898h7.1676c.081 0 .1356-.0141.1356-.088v-2.536c0-.074-.0536-.0881-.1356-.0881h-2.0966v-1.6077h2.2677c.2065 0 1.1065.0587 1.394 1.2088.0901.3533.2875 1.5044.4232 1.8729.1346.413.6833 1.2381 1.2685 1.2381h3.5716a.7492.7492 0 00.1296-.0131 8.7874 8.7874 0 01-.8119.9526zM6.8369 20.024a.714.714 0 11-.2997-1.396.714.714 0 01.2997 1.396zM4.1177 8.9972a.7137.7137 0 11-1.304.5791.7137.7137 0 011.304-.579zm-.8352 1.9813l1.5347-.6824a.65.65 0 00.33-.8585l-.3158-.7147h1.2432v5.6025H3.5669a8.7753 8.7753 0 01-.2834-3.348zm6.7343-.5437V8.7836h2.9601c.153 0 1.0792.1772 1.0792.8697 0 .575-.7107.7815-1.2948.7815zm10.7574 1.4862c0 .2187-.008.4363-.0243.651h-.9c-.09 0-.1265.0586-.1265.1477v.413c0 .973-.5487 1.1846-1.0296 1.2382-.4576.0517-.9648-.1913-1.0275-.4717-.2704-1.5186-.7198-1.8436-1.4305-2.4034.8817-.5599 1.799-1.386 1.799-2.4915 0-1.1936-.819-1.9458-1.3769-2.3153-.7825-.5163-1.6491-.6195-1.883-.6195H5.4682a8.7651 8.7651 0 014.907-2.7699l1.0974 1.151a.648.648 0 00.9182.0213l1.227-1.1743a8.7753 8.7753 0 016.0044 4.2762l-.8403 1.8982a.652.652 0 00.33.8585l1.6178.7188c.0283.2875.0425.577.0425.8717zm-9.3006-9.5993a.7128.7128 0 11.984 1.0316.7137.7137 0 01-.984-1.0316zm8.3389 6.71a.7107.7107 0 01.9395-.3625.7137.7137 0 11-.9405.3635z"/></svg> Rust</span><button class="ec" onclick="cp('p16')">복사</button><button class="run-btn" onclick="runCode('p16','rust')">&#9655; 실행</button></div><pre class="vp" id="p16"><span class="ln"> 1</span><span class="kw">use</span> std::num::ParseIntError;
+<span class="ln"> 2</span>
+<span class="ln"> 3</span>#[<span class="fn">derive</span>(Debug)]
+<span class="ln"> 4</span><span class="kw">enum</span> AppError {
+<span class="ln"> 5</span>    <span class="fn">ParseFailed</span>(ParseIntError),
+<span class="ln"> 6</span>    <span class="fn">TooLarge</span>(<span class="tp">i32</span>),
+<span class="ln"> 7</span>}
+<span class="ln"> 8</span><span class="kw">impl</span> From&lt;ParseIntError&gt; <span class="kw">for</span> AppError {
+<span class="ln"> 9</span>    <span class="kw">fn</span> <span class="fn">from</span>(e: ParseIntError) -&gt; <span class="kw">Self</span> {
+<span class="ln">10</span>        AppError::<span class="fn">ParseFailed</span>(e)
+<span class="ln">11</span>    }
+<span class="ln">12</span>}
+<span class="ln">13</span><span class="kw">fn</span> <span class="fn">parse_small</span>(s: &amp;<span class="tp">str</span>)
+<span class="ln">14</span>    -&gt; Result&lt;<span class="tp">i32</span>, AppError&gt;
+<span class="ln">15</span>{
+<span class="ln">16</span>    <span class="kw">let</span> n: <span class="tp">i32</span> = s.<span class="fn">parse</span>()?;
+<span class="ln">17</span>    <span class="kw">if</span> n &gt; <span class="nm">100</span> {
+<span class="ln">18</span>        <span class="kw">return</span> <span class="kw">Err</span>(AppError::<span class="fn">TooLarge</span>(n));
+<span class="ln">19</span>    }
+<span class="ln">20</span>    <span class="kw">Ok</span>(n)
+<span class="ln">21</span>}
+<span class="ln">22</span><span class="kw">fn</span> <span class="fn">main</span>() {
+<span class="ln">23</span>    <span class="kw">let</span> results = [<span class="st">&quot;42&quot;</span>, <span class="st">&quot;abc&quot;</span>, <span class="st">&quot;999&quot;</span>];
+<span class="ln">24</span>    <span class="kw">for</span> s <span class="kw">in</span> &amp;results {
+<span class="ln">25</span>        <span class="kw">match</span> <span class="fn">parse_small</span>(s) {
+<span class="ln">26</span>            <span class="kw">Ok</span>(n) =&gt;
+<span class="ln">27</span>                <span class="fn">println!</span>(<span class="st">&quot;{} -&gt; Ok({})&quot;</span>, s, n),
+<span class="ln">28</span>            <span class="kw">Err</span>(AppError::<span class="fn">ParseFailed</span>(e)) =&gt;
+<span class="ln">29</span>                <span class="fn">println!</span>(<span class="st">&quot;파싱 실패: {}&quot;</span>, e),
+<span class="ln">30</span>            <span class="kw">Err</span>(AppError::<span class="fn">TooLarge</span>(n)) =&gt;
+<span class="ln">31</span>                <span class="fn">println!</span>(<span class="st">&quot;너무 큰 값: {}&quot;</span>, n),
+<span class="ln">32</span>        }
+<span class="ln">33</span>    }
+<span class="ln">34</span>}
+</pre><div class="run-output" id="out_p16"></div></div></div><div class="callout info"><div class="callout-title">📌 From 트레이트와 ? 연산자</div><code>From&lt;ParseIntError&gt; for AppError</code>를 구현하면 <code>?</code>가 자동으로 <code>.into()</code>를 호출해 타입을 변환합니다. 모든 파싱 에러를 하나의 커스텀 에러 타입으로 통합할 수 있습니다.</div><div class="callout ok"><div class="callout-title">✓ Box<dyn Error> 활용</div><code>Box&lt;dyn std::error::Error&gt;</code>를 반환 타입으로 쓰면 어떤 에러 타입이든 <code>?</code>로 처리할 수 있습니다. 빠른 프로토타이핑이나 <code>main()</code> 함수에서 자주 사용됩니다.</div></section><div class="divider"></div>
+<section class="sec" id="s15"><div class="sec-hdr"><span class="sec-num">§ 15</span><h2>상황별 패턴 비교표</h2></div><p class="lead">파싱 결과를 어떻게 처리할지 상황에 따라 최선의 방법이 다릅니다.</p><div class="tbl-wrap"><table>
+<thead><tr><th>상황</th><th>권장 방법</th><th>이유</th></tr></thead>
+<tbody>
+<tr><td>프로토타입 / 테스트</td><td><code>unwrap()</code></td><td>빠르게 작성, 실패 즉시 인지</td></tr>
+<tr><td>기본값이 있음</td><td><code>unwrap_or(기본값)</code></td><td>실패를 조용히 대체</td></tr>
+<tr><td>에러 메시지 필요</td><td><code>expect("설명")</code></td><td>패닉 시 원인 파악</td></tr>
+<tr><td>Ok만 처리</td><td><code>if let Ok(v) = ...</code></td><td>간결, Err 무시</td></tr>
+<tr><td>Ok/Err 모두 처리</td><td><code>match</code></td><td>가장 명시적, 에러 분류 가능</td></tr>
+<tr><td>함수 내 에러 전파</td><td><code>?</code> 연산자</td><td>보일러플레이트 없음</td></tr>
+<tr><td>파싱 후 변환</td><td><code>.map()</code> 체이닝</td><td>함수형, 간결</td></tr>
+<tr><td>변환 자체가 실패 가능</td><td><code>.and_then()</code></td><td>중첩 Result 처리</td></tr>
+<tr><td>Option 필요</td><td><code>.ok()</code></td><td>Result → Option, Err 버림</td></tr>
+<tr><td>커스텀 타입</td><td><code>impl FromStr</code></td><td>parse() 직접 지원</td></tr>
+</tbody></table></div><div class="callout ok"><div class="callout-title">✓ 선택 원칙</div>에러가 발생할 수 없는 확신이 있을 때만 <code>unwrap()</code>. 함수 경계에서는 <code>?</code>로 전파. 최종 사용자에게 노출되는 코드에서는 <code>match</code>나 <code>map_err</code>로 명확한 메시지를 제공합니다.</div></section><div class="divider"></div>
+</div>
+</main>
+<footer>
+  <p>Rust 문자열 파싱 — parse() · Result · 터보피시 완전 정복</p>
+  <p style="margin-top:6px;font-size:11px">The Rust Book · std::str::FromStr · VS Code Dark Modern 테마</p>
+</footer>
+<script>
+function toggleTheme(){
+  const html=document.documentElement;
+  const isDark=html.getAttribute('data-theme')==='dark';
+  html.setAttribute('data-theme',isDark?'light':'dark');
+  const icon=document.getElementById('themeIcon');
+  const label=document.getElementById('themeLabel');
+  if(icon)icon.textContent=isDark?'☀️':'🌙';
+  if(label)label.textContent=isDark?'라이트 모드':'다크 모드';
+  localStorage.setItem('theme',isDark?'light':'dark');
+}
+function cp(id){
+  var el=document.getElementById(id);if(!el)return;
+  var clone=el.cloneNode(true);
+  clone.querySelectorAll('.ln').forEach(function(n){n.remove();});
+  var text=clone.innerText||clone.textContent;
+  text=text.replace(/^[ \t]*\d{1,3}(?=\D)/gm,'').replace(/^[ \t]*\d{1,3}$/gm,'');
+  navigator.clipboard.writeText(text.trim()).catch(function(){});
+}
+async function runCode(blockId,lang){
+  const pre=document.getElementById(blockId);
+  const outDiv=document.getElementById('out_'+blockId);
+  const btn=document.querySelector('[onclick="runCode(\''+blockId+'\',\''+lang+'\')"]');
+  if(!pre||!outDiv)return;
+  let code=pre.innerText||pre.textContent;
+  code=code.replace(/^[ \t]*\d{1,3}(?=\D)/gm,'').replace(/^[ \t]*\d{1,3}$/gm,'');
+  code=code.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
+           .replace(/&quot;/g,'"').replace(/&#x27;/g,"'").replace(/&nbsp;/g,' ');
+  if(btn){btn.disabled=true;btn.textContent='실행 중...';}
+  outDiv.className='run-output show loading';
+  outDiv.textContent='⏳ 원격 컴파일 중... (Wandbox)';
+  try{
+    const res=await fetch('https://wandbox.org/api/compile.json',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({compiler:'rust-1.82.0',code:code,save:false})
+    });
+    const d=await res.json();
+    const out=(d.program_output||'')+(d.program_error||'');
+    const err=d.compiler_error||'';
+    if(err){
+      const hasRealError=err.includes('error[') || /^error:/.test(err);
+      if(!hasRealError){
+        outDiv.className='run-output show';
+        outDiv.textContent='● 출력:\n'+(out||'(출력 없음)')+'\n\n⚠ 경고 (실행됨):\n'+err;
+      } else {
+        outDiv.className='run-output show error';
+        outDiv.textContent='● 컴파일 에러:\n'+err;
+      }
+    }
+    else if(out){outDiv.className='run-output show';outDiv.textContent='● 출력:\n'+out;}
+    else{outDiv.className='run-output show';outDiv.textContent='● (출력 없음)';}
+  }catch(e){outDiv.className='run-output show error';outDiv.textContent='● 네트워크 오류';}
+  if(btn){btn.disabled=false;btn.textContent='▷ 실행';}
+}
+(function(){
+  var saved=localStorage.getItem('theme');
+  var preferDark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+  var theme=saved||(preferDark?'dark':'light');
+  document.documentElement.setAttribute('data-theme',theme);
+  var icon=document.getElementById('themeIcon');
+  var label=document.getElementById('themeLabel');
+  if(theme==='light'){
+    if(icon)icon.textContent='☀️';
+    if(label)label.textContent='라이트 모드';
+  } else {
+    if(icon)icon.textContent='🌙';
+    if(label)label.textContent='다크 모드';
+  }
+  // 사이드바 스크롤 감지
+  var secs=[];var current='';
+  function onScroll(){
+    var scrollY=window.pageYOffset;var found='';
+    for(var i=secs.length-1;i>=0;i--){
+      if(secs[i].offsetTop<=scrollY+80){found=secs[i].id;break;}
+    }
+    if(found!==current){
+      current=found;
+      document.querySelectorAll('.sb-a').forEach(function(a){
+        var active=a.getAttribute('href')==='#'+found;
+        a.classList.toggle('active',active);
+        if(active){
+          var sb=document.getElementById('sidebar');
+          if(sb){
+            var aTop=a.offsetTop,sbH=sb.clientHeight,sbST=sb.scrollTop;
+            if(aTop<sbST+50)sb.scrollTop=aTop-50;
+            else if(aTop>sbST+sbH-80)sb.scrollTop=aTop-sbH+80;
+          }
+        }
+      });
+    }
+  }
+  window.addEventListener('scroll',onScroll,{passive:true});
+  window.addEventListener('load',function(){
+    secs=Array.from(document.querySelectorAll('section[id]'));
+    onScroll();
+  });
+})();
+</script>
+</body>
+</html>
