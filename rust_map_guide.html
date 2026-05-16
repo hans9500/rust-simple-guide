@@ -313,12 +313,114 @@ body { overflow-x: hidden; }
   .main {
     margin-left: 0;
   }
-}
-@media (max-width: 767px) {
-  .main-inner {
-    padding: 60px 18px 60px;
+  /* 모바일/태블릿에서 햄버거 버튼 완전 숨김 — 스와이프 제스처로 대체 */
+  .sb-open-btn {
+    display: none !important;
   }
 }
+@media (max-width: 767px) {
+  /* 본문 영역 — 햄버거 영역 없으니 위 padding 줄임 */
+  .main-inner {
+    padding: 28px 14px 60px;
+  }
+  /* 사이드바 — 모바일에선 화면 폭의 85%까지 사용 */
+  .sidebar {
+    width: 85vw;
+    max-width: 320px;
+  }
+  .sidebar.collapsed {
+    transform: translateX(-100%);
+  }
+  /* 헤더 영역 — 햄버거 없으니 들여쓰기 제거 */
+  header.top h1 {
+    font-size: 22px;
+  }
+  header.top .meta {
+    font-size: 11px;
+  }
+  /* 본문 헤더 크기 */
+  h2.sec { font-size: 18px; }
+  h3.sub { font-size: 15px; }
+  /* 코드 블록 — 모바일에서 폰트 살짝 줄이고 가로 스크롤 시각 표시 */
+  .eb-code {
+    font-size: 11.5px;
+    line-height: 1.7;
+    padding: 12px 14px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .eb-code::-webkit-scrollbar {
+    height: 6px;
+  }
+  .eb-code::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 3px;
+  }
+  .eb-code::-webkit-scrollbar-track {
+    background: #252526;
+  }
+  /* 출력 영역 — stdout/stderr 폰트도 살짝 줄임 */
+  .eb-out-stdout, .eb-out-stderr {
+    font-size: 11.5px;
+    padding: 8px 12px;
+  }
+  /* 표 — 모바일에선 좌우 스크롤 가능하게 */
+  table.tbl {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+  /* 비교 박스 — 모바일에선 세로 배치 */
+  .compare {
+    grid-template-columns: 1fr !important;
+  }
+  .compare-col pre {
+    font-size: 11.5px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* 콜아웃 / 노트 박스 */
+  .callout, .note {
+    padding: 12px 14px;
+  }
+  /* SVG 다이어그램 */
+  .diag {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .diag svg {
+    min-width: 600px;
+  }
+  .sig-box {
+    font-size: 11.5px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .principle pre {
+    font-size: 11.5px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* 스와이프 힌트 — 화면 좌측 가장자리에 미세한 시각 표시 */
+  body::before {
+    content: '';
+    position: fixed;
+    left: 0; top: 50%;
+    width: 3px; height: 60px;
+    background: linear-gradient(180deg, transparent, var(--em), transparent);
+    opacity: 0.35;
+    border-radius: 0 3px 3px 0;
+    pointer-events: none;
+    z-index: 50;
+    transform: translateY(-50%);
+    animation: swipe-hint 2.5s ease-in-out 3;
+  }
+  @keyframes swipe-hint {
+    0%, 100% { opacity: 0.2; transform: translateY(-50%) translateX(0); }
+    50% { opacity: 0.6; transform: translateY(-50%) translateX(4px); }
+  }
+}
+
 
 /* ============================================================
    Typography
@@ -528,8 +630,10 @@ table.tbl td code {
   border: 1px solid #3e3e42;
   border-radius: 6px;
   margin: 12px 0 20px;
-  overflow: hidden;
+  /* overflow: hidden 제거 - .eb-code의 가로 스크롤을 막던 원인 */
+  /* 대신 헤더와 출력 영역만 모서리 처리 */
 }
+.eb-head { border-top-left-radius: 5px; border-top-right-radius: 5px; }
 
 .eb-head {
   background: #252526;
@@ -979,16 +1083,15 @@ footer.bot .src-list div { margin: 3px 0; }
     <div class="sb-group open" data-group="g-a">
       <div class="sb-group-head"><span class="arr">▶</span><span class="label-num">A.</span>개념과 원리</div>
       <div class="sb-children">
-        <a class="sb-item" href="#s-a1">A-1 map은 무엇인가</a>
-        <a class="sb-item" href="#s-a2">A-2 Functor 패턴</a>
-        <a class="sb-item" href="#s-a3">A-3 다른 언어 비교</a>
-        <a class="sb-item" href="#s-a4">A-4 for vs map</a>
-        <a class="sb-item" href="#s-a5">A-5 시그니처 6단계 분해</a>
-        <a class="sb-item" href="#s-a6">A-6 Map&lt;I,F&gt; 내부 원리</a>
-        <a class="sb-item" href="#s-a7">A-7 next() 호출 흐름</a>
-        <a class="sb-item" href="#s-a8">A-8 Self::Item 차이</a>
-        <a class="sb-item" href="#s-a9">A-9 지연 평가</a>
-        <a class="sb-item" href="#s-a10">A-10 zero-cost</a>
+        <a class="sb-item" href="#s-a1">A-1 map의 공식 정의</a>
+        <a class="sb-item" href="#s-a2">A-2 공식 시그니처</a>
+        <a class="sb-item" href="#s-a3">A-3 FnMut을 요구하는 이유</a>
+        <a class="sb-item" href="#s-a4">A-4 lazy</a>
+        <a class="sb-item" href="#s-a5">A-5 Map 구조체와 next()</a>
+        <a class="sb-item" href="#s-a6">A-6 next() 호출 흐름</a>
+        <a class="sb-item" href="#s-a7">A-7 Self::Item 차이</a>
+        <a class="sb-item" href="#s-a8">A-8 consuming adapters</a>
+        <a class="sb-item" href="#s-a9">A-9 zero-cost (공식)</a>
       </div>
     </div>
 
@@ -1098,8 +1201,8 @@ footer.bot .src-list div { margin: 3px 0; }
 <header class="top">
   <h1>Rust <span class="kw">map</span> 완전 가이드</h1>
   <div class="meta">
-    공식 문서 기반 · Wandbox 인페이지 실행 · 예제 40+개 ·
-    출처: <a href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.map" target="_blank">doc.rust-lang.org/std/iter/trait.Iterator.html#method.map</a>
+    공식 문서 직접 인용 · Wandbox 인페이지 실행 · 예제 41개 ·
+    1차 출처: <a href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.map" target="_blank">doc.rust-lang.org/std/iter/trait.Iterator.html#method.map</a>
   </div>
 </header>
 
@@ -1109,399 +1212,230 @@ footer.bot .src-list div { margin: 3px 0; }
 <h2 class="sec" id="sec-a"><span class="num">A.</span>개념과 원리</h2>
 
 <p>
-<code class="inl">map</code>은 Rust의 이터레이터 어댑터 중 가장 자주 쓰이는 메서드입니다.
-이 섹션은 <span class="em">"map이 무엇이고, 왜 그렇게 설계되었으며, 내부에서 어떻게 동작하는가"</span>를 6단계에 걸쳐 차근차근 풀어냅니다.
-공식 문서가 다루지만 흩어져 있는 내용을 한 곳에 모은 형태입니다.
+이 섹션은 <code class="inl">Iterator::map</code>을 공식 문서(<code class="inl">std::iter::Iterator</code>, <code class="inl">std::iter::Map</code>, The Rust Programming Language ch.13)에 명시된 내용만으로 설명합니다.
+직접 인용은 <span class="em">기울임체</span>로 표시하고, 모든 단정 진술에 출처 절을 명시합니다.
+공식 문서에 없는 일반 함수형 프로그래밍 이론(Functor 등)은 다루지 않습니다.
 </p>
 
 <!-- ============================================================ -->
-<h3 class="sub" id="s-a1">A-1. map은 무엇인가 — 한 줄, 한 문단, 한 페이지로</h3>
-
-<p><span class="em">한 줄로</span>: <code class="inl">map</code>은 컨테이너 안의 모든 값에 동일한 변환을 적용하는 메서드입니다.</p>
+<h3 class="sub" id="s-a1">A-1. map의 공식 정의</h3>
 
 <p>
-<span class="em">한 문단으로</span>: Rust의 <code class="inl">Iterator</code> 트레잇이 제공하는 메서드로,
-원본 이터레이터의 각 요소(<code class="inl">A</code>)에 클로저 <code class="inl">f: A → B</code>를 적용하여
-<span class="em">변환된 요소를 산출하는 새 이터레이터를 만드는 어댑터</span>입니다.
-원본은 수정되지 않으며, 결과 이터레이터는 lazy — 즉 소비자(<code class="inl">collect</code>, <code class="inl">sum</code>, <code class="inl">for</code>, <code class="inl">for_each</code> 등)가 호출되기 전까지는 클로저가 단 한 번도 실행되지 않습니다.
+공식 문서(<a href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.map" target="_blank">Iterator::map</a>)의 정의를 그대로 옮깁니다:
 </p>
-
-<p>
-<span class="em">한 페이지로</span>: <code class="inl">map</code>은 <span class="em">함수형 프로그래밍의 "함자(Functor) 패턴"의 Rust 구현</span>입니다.
-함자 패턴은 "컨테이너 안의 값을 꺼내지 않고도 그 값에 함수를 적용할 수 있게 한다"는 추상화로,
-JavaScript의 <code class="inl">Array.prototype.map</code>, Python의 <code class="inl">map()</code>, Haskell의 <code class="inl">fmap</code>, Java Stream의 <code class="inl">.map()</code>이 모두 같은 패턴입니다.
-Rust가 다른 언어와 결정적으로 다른 점은:
-(1) <span class="em">lazy</span>해서 중간 컬렉션을 만들지 않고,
-(2) <span class="em">zero-cost</span>해서 컴파일러가 for 루프 수준으로 최적화하며,
-(3) <span class="em">소유권 시스템</span>이 결합되어 <code class="inl">iter / iter_mut / into_iter</code>의 세 가지 변형을 가집니다.
-</p>
-
-<!-- ============================================================ -->
-<h3 class="sub" id="s-a2">A-2. Functor 패턴 — 이름은 무서워도 개념은 단순하다</h3>
-
-<p>
-"컨테이너 안의 값을 변환하는 일관된 방법"이 함자(Functor) 패턴입니다.
-다음 그림이 그 본질입니다.
-</p>
-
-<div class="diag">
-  <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Functor 패턴">
-    <text x="320" y="26" text-anchor="middle" fill="#9cdcfe" font-family="JetBrains Mono, monospace" font-size="13" font-weight="600">Functor 패턴 — 컨테이너 안에서 변환</text>
-
-    <defs>
-      <marker id="fa1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-        <path d="M0,0 L8,4 L0,8 z" fill="#569cd6"/>
-      </marker>
-      <marker id="fa2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-        <path d="M0,0 L8,4 L0,8 z" fill="#dcdcaa"/>
-      </marker>
-    </defs>
-
-    <!-- 왼쪽 큰 컨테이너 -->
-    <rect x="40" y="60" width="220" height="180" rx="14" fill="none" stroke="#569cd6" stroke-width="2" stroke-dasharray="6,4"/>
-    <text x="150" y="82" text-anchor="middle" fill="#9cdcfe" font-family="JetBrains Mono, monospace" font-size="12" font-weight="600">F&lt;A&gt; (컨테이너)</text>
-
-    <!-- 안의 값 3개 -->
-    <circle cx="90" cy="135" r="22" fill="#252526" stroke="#4ec9b0" stroke-width="1.5"/>
-    <text x="90" y="140" text-anchor="middle" fill="#b5cea8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="600">a₁</text>
-
-    <circle cx="150" cy="170" r="22" fill="#252526" stroke="#4ec9b0" stroke-width="1.5"/>
-    <text x="150" y="175" text-anchor="middle" fill="#b5cea8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="600">a₂</text>
-
-    <circle cx="210" cy="135" r="22" fill="#252526" stroke="#4ec9b0" stroke-width="1.5"/>
-    <text x="210" y="140" text-anchor="middle" fill="#b5cea8" font-family="JetBrains Mono, monospace" font-size="13" font-weight="600">a₃</text>
-
-    <text x="150" y="220" text-anchor="middle" fill="#858585" font-family="Pretendard, sans-serif" font-size="11" font-style="italic">예: Vec, Iterator, Option, Result</text>
-
-    <!-- 가운데 화살표 (map(f)) -->
-    <line x1="278" y1="150" x2="368" y2="150" stroke="#dcdcaa" stroke-width="2" marker-end="url(#fa2)"/>
-    <text x="323" y="138" text-anchor="middle" fill="#dcdcaa" font-family="JetBrains Mono, monospace" font-size="13" font-weight="700">.map(f)</text>
-    <text x="323" y="170" text-anchor="middle" fill="#858585" font-family="JetBrains Mono, monospace" font-size="10">f: A → B</text>
-
-    <!-- 오른쪽 큰 컨테이너 -->
-    <rect x="380" y="60" width="220" height="180" rx="14" fill="none" stroke="#4ec9b0" stroke-width="2" stroke-dasharray="6,4"/>
-    <text x="490" y="82" text-anchor="middle" fill="#4ec9b0" font-family="JetBrains Mono, monospace" font-size="12" font-weight="600">F&lt;B&gt; (같은 컨테이너 형태)</text>
-
-    <!-- 안의 값 3개 (변환됨) -->
-    <circle cx="430" cy="135" r="22" fill="#252526" stroke="#ce9178" stroke-width="1.5"/>
-    <text x="430" y="140" text-anchor="middle" fill="#ce9178" font-family="JetBrains Mono, monospace" font-size="11" font-weight="600">f(a₁)</text>
-
-    <circle cx="490" cy="170" r="22" fill="#252526" stroke="#ce9178" stroke-width="1.5"/>
-    <text x="490" y="175" text-anchor="middle" fill="#ce9178" font-family="JetBrains Mono, monospace" font-size="11" font-weight="600">f(a₂)</text>
-
-    <circle cx="550" cy="135" r="22" fill="#252526" stroke="#ce9178" stroke-width="1.5"/>
-    <text x="550" y="140" text-anchor="middle" fill="#ce9178" font-family="JetBrains Mono, monospace" font-size="11" font-weight="600">f(a₃)</text>
-
-    <text x="490" y="220" text-anchor="middle" fill="#858585" font-family="Pretendard, sans-serif" font-size="11" font-style="italic">구조 유지, 값만 변환</text>
-  </svg>
-  <div class="diag-caption">그림 ①. 컨테이너 구조(F)는 그대로, 안의 값(A)만 함수 f로 B로 바뀝니다. 이것이 함자(Functor)의 본질입니다.</div>
-</div>
 
 <div class="callout">
-  <div class="callout-head">📐 핵심 관찰</div>
-  <p>
-    <code class="inl">map</code>은 <span class="em">컨테이너 모양을 유지</span>합니다. Vec에 map하면 Vec가 나오고, Option에 map하면 Option이 나오고, Iterator에 map하면 Iterator가 나옵니다. 이 "모양 유지"가 함자의 정의입니다.
-  </p>
-  <p>
-    그리고 <span class="em">컨테이너 안의 값들 사이에 간섭이 없습니다</span> — <code class="inl">a₁</code>의 변환은 <code class="inl">a₂</code>의 결과에 영향을 받지 않습니다. 그래서 병렬화도 가능합니다 (Rayon의 <code class="inl">par_iter().map()</code>).
-  </p>
+  <div class="callout-head">📖 공식 정의 (Iterator::map)</div>
+  <p><em>"Takes a closure and creates an iterator which calls that closure on each element."</em></p>
+  <p><em>"map() transforms one iterator into another, by means of its argument: something that implements FnMut. It produces a new iterator which calls this closure on each element of the original iterator."</em></p>
 </div>
 
-<p>Rust 표준 라이브러리에서 <code class="inl">map</code>이라는 이름을 가진 메서드들:</p>
-
-<table class="tbl">
-<tr><th>타입</th><th>시그니처</th><th>의미</th></tr>
-<tr>
-  <td><code>Iterator</code></td>
-  <td><code>fn map&lt;B, F&gt;(self, f: F) -&gt; Map&lt;Self, F&gt;</code></td>
-  <td>각 요소에 f 적용 (lazy)</td>
-</tr>
-<tr>
-  <td><code>Option&lt;T&gt;</code></td>
-  <td><code>fn map&lt;U, F&gt;(self, f: F) -&gt; Option&lt;U&gt;</code></td>
-  <td>Some이면 f 적용, None이면 그대로</td>
-</tr>
-<tr>
-  <td><code>Result&lt;T, E&gt;</code></td>
-  <td><code>fn map&lt;U, F&gt;(self, op: F) -&gt; Result&lt;U, E&gt;</code></td>
-  <td>Ok이면 f 적용, Err이면 그대로</td>
-</tr>
-</table>
-
-<p style="color: var(--muted); font-size: 12.5px;">
-세 메서드 모두 다른 메서드지만 <span class="em">개념적으로는 같은 함자 패턴</span>입니다. 이 문서는 <code class="inl">Iterator::map</code>이 주제이지만, 같은 사고방식이 다른 둘에도 그대로 적용됩니다.
-</p>
-
-<!-- ============================================================ -->
-<h3 class="sub" id="s-a3">A-3. 다른 언어의 map과 비교 — 같은 개념, 다른 운명</h3>
-
-<p>각 언어가 같은 작업("배열 [1,2,3]의 각 요소를 2배")을 어떻게 표현하는지 비교해 봅니다.</p>
-
-<div class="lang-grid">
-  <div class="lang-name">JavaScript</div>
-  <div class="lang-code">arr.map(x =&gt; x * 2)</div>
-
-  <div class="lang-name">Python</div>
-  <div class="lang-code">list(map(lambda x: x*2, arr))   <span style="color: var(--muted);">또는 컴프리헨션</span> [x*2 for x in arr]</div>
-
-  <div class="lang-name">Java Stream</div>
-  <div class="lang-code">list.stream().mapToInt(x -&gt; x*2).boxed().collect(Collectors.toList())</div>
-
-  <div class="lang-name">Kotlin</div>
-  <div class="lang-code">list.map { it * 2 }</div>
-
-  <div class="lang-name">Haskell</div>
-  <div class="lang-code">fmap (*2) xs   <span style="color: var(--muted);">또는</span> map (*2) xs</div>
-
-  <div class="lang-name">Scala</div>
-  <div class="lang-code">list.map(_ * 2)</div>
-
-  <div class="lang-name">Ruby</div>
-  <div class="lang-code">arr.map { |x| x * 2 }</div>
-
-  <div class="lang-name">Rust</div>
-  <div class="lang-code">arr.iter().map(|x| x * 2).collect::&lt;Vec&lt;_&gt;&gt;()</div>
-</div>
-
-<p>Rust만 다른 점이 세 가지 보입니다:</p>
+<p>핵심 동작은 다음 세 가지로 압축됩니다:</p>
 
 <ol>
-  <li>
-    <span class="em">.iter()가 명시적</span> — JavaScript의 배열은 자체가 이터러블이지만, Rust는 컬렉션에서 <span class="em">이터레이터를 명시적으로 만들어야</span> 합니다. <code class="inl">.iter()</code>, <code class="inl">.iter_mut()</code>, <code class="inl">.into_iter()</code> 셋 중 하나를 선택해야 하며, 이는 <span class="em">소유권 모델</span> 때문입니다.
-  </li>
-  <li>
-    <span class="em">.collect()가 명시적</span> — 다른 언어는 자동으로 새 배열을 만들지만, Rust는 lazy이기 때문에 어떤 컬렉션으로 모을지(<code class="inl">Vec</code>? <code class="inl">HashSet</code>? <code class="inl">VecDeque</code>?) 사용자가 결정합니다.
-  </li>
-  <li>
-    <span class="em">타입 어노테이션이 필요</span> — <code class="inl">collect::&lt;Vec&lt;_&gt;&gt;()</code> 또는 좌변 <code class="inl">: Vec&lt;i32&gt;</code>. 컴파일러가 어떤 컬렉션 타입으로 모을지 알아야 하기 때문입니다.
-  </li>
+  <li><span class="em">한 이터레이터를 다른 이터레이터로 변환한다(transforms one iterator into another)</span> — 결과는 새 이터레이터.</li>
+  <li><span class="em">각 요소에 클로저를 호출한다(calls this closure on each element)</span> — 변환의 단위는 요소 하나씩.</li>
+  <li><span class="em">클로저는 <code class="inl">FnMut</code>을 구현해야 한다(something that implements FnMut)</span> — 즉 호출 가능하고 가변 상태를 캡처할 수 있다.</li>
 </ol>
 
-<div class="note">
-  <span class="tag">📌 왜 이렇게 복잡한가</span>
-  대신 Rust는 다른 언어에 없는 <span class="em">세 가지 이점</span>을 얻습니다:
-  <ul style="margin: 6px 0;">
-    <li><strong>중간 컬렉션 없음</strong> — <code class="inl">.map().filter().map()</code>이 단 하나의 루프로 컴파일됨</li>
-    <li><strong>zero-cost</strong> — 직접 for 루프를 짠 것과 동일한 어셈블리</li>
-    <li><strong>참조/소유권 안전</strong> — 컴파일 타임에 메모리 안전성 보장</li>
-  </ul>
-</div>
-
-<!-- ============================================================ -->
-<h3 class="sub" id="s-a4">A-4. for 루프 vs map — 언제 어느 것을 쓰나</h3>
-
-<p>"map은 결국 for 루프와 같은 것 아닌가?"라는 질문에 대한 답입니다.</p>
-
-<div class="compare">
-  <div class="compare-col left">
-    <div class="col-head">for 루프 — 명령형 (imperative)</div>
-<pre>fn main() {
-    let nums = [1, 2, 3];
-    let mut doubled = Vec::new();
-    for x in &nums {
-        doubled.push(x * 2);
-    }
-    println!("{:?}", doubled);
-}</pre>
-  </div>
-  <div class="compare-col right">
-    <div class="col-head">map — 선언형 (declarative)</div>
-<pre>fn main() {
-    let nums = [1, 2, 3];
-    let doubled: Vec&lt;_&gt; = nums.iter()
-        .map(|x| x * 2)
-        .collect();
-    println!("{:?}", doubled);
-}</pre>
-  </div>
-</div>
-
-<p>두 코드는 <span class="em">완전히 동일한 어셈블리로 컴파일됩니다</span> (LLVM의 인라이닝 덕분). 차이는 의미론이 아니라 의도 표현에 있습니다.</p>
-
-<table class="tbl">
-<tr><th>관점</th><th>for 루프</th><th>map</th></tr>
-<tr><td>읽는 방식</td><td>"어떻게(how)"</td><td>"무엇을(what)"</td></tr>
-<tr><td>중간 변수</td><td><code>doubled</code>, <code>mut</code> 필요</td><td>없음</td></tr>
-<tr><td>체이닝</td><td>중간 컬렉션 필요</td><td>어댑터 조합 가능</td></tr>
-<tr><td>읽기 쉬움 (단순)</td><td>○ 짧으면 더 직관적</td><td>×</td></tr>
-<tr><td>읽기 쉬움 (체이닝)</td><td>×</td><td>○ <code>.filter().map().sum()</code></td></tr>
-<tr><td>break/continue</td><td>○</td><td>× (대신 take_while/skip_while)</td></tr>
-</table>
-
 <div class="callout">
-  <div class="callout-head">💡 베스트 프랙티스</div>
+  <div class="callout-head">📖 타입 관점에서 본 map</div>
   <p>
-    공식 The Book의 권장: <span class="em">변환만 필요하면 map, 부수효과(출력·전송·기록)면 for 또는 for_each</span>를 쓰세요. 그리고 <span class="em">짧은 한 단계 처리는 for, 두 단계 이상의 변환은 map 체이닝</span>이 일반적으로 더 명확합니다.
+    <em>"If you are good at thinking in types, you can think of map() like this: If you have an iterator that gives you elements of some type A, and you want an iterator of some other type B, you can use map(), passing a closure that takes an A and returns a B."</em>
   </p>
+  <p style="margin: 6px 0 0; color: var(--muted); font-size: 12px;">— <a href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.map" target="_blank">Iterator::map 공식 문서</a></p>
 </div>
-
-<!-- ============================================================ -->
-<h3 class="sub" id="s-a5">A-5. 시그니처 6단계 분해 — 한 줄을 천천히 풀어보기</h3>
 
 <p>
-공식 시그니처는 다음 한 줄입니다.
+즉 입력 이터레이터의 요소 타입을 <code class="inl">A</code>, 출력 이터레이터의 요소 타입을 <code class="inl">B</code>라 하면, <code class="inl">map</code>에 넘기는 클로저는 <code class="inl">A</code>를 받아 <code class="inl">B</code>를 반환합니다.
+입력 타입 <code class="inl">A</code>가 무엇이 되는지는 <code class="inl">Self::Item</code>이 결정하며, 이는 호출하는 이터레이터에 따라 달라집니다(A-8 참고).
+</p>
+
+<div class="callout">
+  <div class="callout-head">📖 for 루프와의 개념적 유사성</div>
+  <p>
+    <em>"map() is conceptually similar to a for loop. However, as map() is lazy, it is best used when you're already working with other iterators. If you're doing some sort of looping for a side effect, it's considered more idiomatic to use for than map()."</em>
+  </p>
+  <p style="margin: 6px 0 0; color: var(--muted); font-size: 12px;">— <a href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.map" target="_blank">Iterator::map 공식 문서</a></p>
+</div>
+
+<!-- ============================================================ -->
+<h3 class="sub" id="s-a2">A-2. 공식 시그니처</h3>
+
+<p>
+공식 문서에 명시된 <code class="inl">Iterator::map</code>의 시그니처는 다음과 같습니다:
 </p>
 
 <div class="sig-box">
-<span class="label">SIGNATURE — Iterator::map</span>
+<span class="label">SIGNATURE — Iterator::map (공식)</span>
 fn map&lt;B, F&gt;(self, f: F) -&gt; Map&lt;Self, F&gt;<br>
 where<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Self: Sized,<br>
 &nbsp;&nbsp;&nbsp;&nbsp;F: FnMut(Self::Item) -&gt; B,
 </div>
 
-<p>처음 보면 복잡하지만, 6단계로 천천히 만들어 보면 자연스럽습니다.</p>
+<p>각 부분의 의미는 다음과 같습니다:</p>
 
-<!-- 1단계 -->
-<div class="step-card">
-  <div class="step-head">
-    <span class="step-num">1단계</span>
-    <span class="step-title">가장 단순한 형태 — "각 요소에 함수를 적용한다"</span>
-  </div>
-  <div class="step-body">
-    <p>처음엔 이렇게 생각합니다:</p>
-    <div class="step-sig">fn map(컨테이너, 변환함수) -&gt; 새 컨테이너</div>
-    <p>이게 모든 언어의 map이 하는 일입니다. Rust도 본질은 같습니다.</p>
-  </div>
+<table class="tbl">
+<tr><th>부분</th><th>의미 (공식)</th></tr>
+<tr>
+  <td><code>&lt;B, F&gt;</code></td>
+  <td>출력 요소 타입 <code>B</code>와 클로저 타입 <code>F</code>를 받는 제네릭 파라미터.</td>
+</tr>
+<tr>
+  <td><code>self</code></td>
+  <td>이터레이터를 값으로(by value) 받는다. <code>Self: Sized</code> 바운드가 이를 위해 필요.</td>
+</tr>
+<tr>
+  <td><code>f: F</code></td>
+  <td>각 요소에 적용할 클로저.</td>
+</tr>
+<tr>
+  <td><code>-&gt; Map&lt;Self, F&gt;</code></td>
+  <td>새 이터레이터 어댑터 <code>std::iter::Map</code> 구조체를 반환.</td>
+</tr>
+<tr>
+  <td><code>Self: Sized</code></td>
+  <td><code>self</code>를 값으로 받기 위한 표준 바운드. 이 제약으로 <code>dyn Iterator</code> 객체에서는 직접 호출 불가.</td>
+</tr>
+<tr>
+  <td><code>F: FnMut(Self::Item) -&gt; B</code></td>
+  <td>클로저는 <code>FnMut</code>을 구현하며, 이터레이터의 요소 타입(<code>Self::Item</code>)을 받아 <code>B</code>를 반환.</td>
+</tr>
+</table>
+
+<p style="color: var(--muted); font-size: 12.5px;">
+출처: <a href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.map" target="_blank">Iterator::map</a> 공식 시그니처. <code class="inl">Self: Sized</code> 바운드의 일반적 의미는 <a href="https://doc.rust-lang.org/reference/items/traits.html#object-safety" target="_blank">The Rust Reference — Object Safety</a>에 기술.
+</p>
+
+<!-- ============================================================ -->
+<h3 class="sub" id="s-a3">A-3. FnMut을 요구하는 이유</h3>
+
+<p>
+공식 문서는 <code class="inl">F: FnMut</code>이라고만 명시합니다. <code class="inl">Fn</code>이나 <code class="inl">FnOnce</code>가 아닌 이유를 직접 설명하지는 않지만, 다음 사실은 공식 문서에서 추적 가능합니다:
+</p>
+
+<ul>
+  <li>
+    <span class="em">FnOnce는 적합하지 않다</span> — <code class="inl">Iterator::next</code>가 여러 번 호출되며, 그때마다 <code class="inl">map</code>의 클로저도 다시 호출되어야 합니다. <code class="inl">FnOnce</code>는 정의상 최대 한 번만 호출 가능합니다(<a href="https://doc.rust-lang.org/std/ops/trait.FnOnce.html" target="_blank">FnOnce 공식</a>).
+  </li>
+  <li>
+    <span class="em">FnMut은 Fn보다 더 일반적이다</span> — 공식 트레잇 계층(<a href="https://doc.rust-lang.org/std/ops/trait.FnMut.html" target="_blank">FnMut 공식</a>)에 따르면 <code class="inl">Fn: FnMut: FnOnce</code> 관계가 성립합니다. 즉 <code class="inl">FnMut</code>을 요구하면 <code class="inl">Fn</code>도 자동으로 받아들여집니다.
+  </li>
+</ul>
+
+<p>
+공식 문서에 명시된 <code class="inl">Map</code> 구조체의 동작(<a href="https://doc.rust-lang.org/std/iter/struct.Map.html#notes-about-side-effects" target="_blank">Notes about side effects</a>)에는 클로저가 캡처한 가변 상태를 변경하며 호출되는 예제가 실려 있습니다 — 카운터를 1씩 증가시키며 각 글자와 짝짓는 예제(가이드 D-2 / D-3 참고). 이는 <code class="inl">FnMut</code>이 필요한 실제 사용 패턴 중 하나입니다.
+</p>
+
+<!-- ============================================================ -->
+<h3 class="sub" id="s-a4">A-4. lazy: map은 호출만으로 아무 일도 하지 않는다</h3>
+
+<p>
+공식 문서가 가장 강하게 강조하는 포인트입니다.
+</p>
+
+<div class="callout">
+  <div class="callout-head">📖 lazy의 공식 정의</div>
+  <p>
+    <em>"Iterators (and iterator adapters) are lazy. This means that just creating an iterator doesn't do a whole lot. Nothing really happens until you call next."</em>
+  </p>
+  <p style="margin: 6px 0 0; color: var(--muted); font-size: 12px;">— <a href="https://doc.rust-lang.org/std/iter/index.html" target="_blank">std::iter 모듈 문서</a></p>
 </div>
 
-<!-- 2단계 -->
-<div class="step-card">
-  <div class="step-head">
-    <span class="step-num">2단계</span>
-    <span class="step-title">메서드 형태로 — self가 컨테이너</span>
+<p>
+공식 문서의 정확한 예제와 컴파일러 경고:
+</p>
+
+<div class="eb">
+  <div class="eb-head">
+    <div class="eb-tag"><span class="ic">📖</span> Iterator::map 공식 예제 — 부수효과는 실행되지 않음</div>
   </div>
-  <div class="step-body">
-    <p>Rust의 메서드 호출 <code class="inl">x.map(f)</code>는 <code class="inl">map(x, f)</code>와 같습니다. 첫 번째 인자가 <code class="inl">self</code>가 됩니다:</p>
-    <div class="step-sig">fn map(<span class="hl">self</span>, f) -&gt; 새 컨테이너</div>
-    <p>이때 <code class="inl">self</code>는 이터레이터를 <span class="em">소유권째 받습니다</span>. 호출 후엔 원본 이터레이터를 더 못 씁니다.</p>
-  </div>
+<pre class="eb-code"><span class="com">// don't do this:</span>
+(<span class="num">0</span>..<span class="num">5</span>).map(|x| <span class="mac">println!</span>(<span class="str">"{x}"</span>));
+<span class="com">// it won't even execute, as it is lazy. Rust will warn you about this.</span>
+
+<span class="com">// Instead, use a for-loop:</span>
+<span class="kw">for</span> x <span class="kw">in</span> <span class="num">0</span>..<span class="num">5</span> {
+    <span class="mac">println!</span>(<span class="str">"{x}"</span>);
+}</pre>
 </div>
 
-<!-- 3단계 -->
-<div class="step-card">
-  <div class="step-head">
-    <span class="step-num">3단계</span>
-    <span class="step-title">입력 타입을 명시 — Self::Item</span>
-  </div>
-  <div class="step-body">
-    <p>이터레이터마다 다루는 요소 타입이 다릅니다. <code class="inl">Vec&lt;i32&gt;.iter()</code>는 <code class="inl">&amp;i32</code>를 산출하고, <code class="inl">"abc".chars()</code>는 <code class="inl">char</code>를 산출합니다. 이를 일반화한 게 <code class="inl">Self::Item</code>:</p>
-    <div class="step-sig">fn map(self, f: <span class="hl">Self::Item</span> -&gt; B) -&gt; 새 컨테이너</div>
-    <p>여기서 <code class="inl">B</code>는 출력 타입. 입력과 다를 수 있습니다.</p>
-  </div>
+<div class="note warn">
+  <span class="tag">⚠️ 공식 컴파일러 경고 메시지</span>
+  공식 The Book ch.13.2의 정확한 표현:<br>
+  <code class="inl" style="margin-top: 6px; display: inline-block;">warning: unused `Map` that must be used</code><br>
+  <code class="inl">note: iterators are lazy and do nothing unless consumed</code>
+  <br><br>
+  <span style="color: var(--muted); font-size: 12px;">
+  출처: <a href="https://doc.rust-lang.org/book/ch13-02-iterators.html" target="_blank">The Rust Programming Language, ch.13.2</a>
+  </span>
 </div>
 
-<!-- 4단계 -->
-<div class="step-card">
-  <div class="step-head">
-    <span class="step-num">4단계</span>
-    <span class="step-title">함수 타입을 정확히 — FnMut 트레잇</span>
-  </div>
-  <div class="step-body">
-    <p>Rust에서 "함수처럼 호출 가능한 것"은 세 가지 트레잇으로 나뉩니다:</p>
-    <ul>
-      <li><code class="inl">Fn</code> — 캡처 변수를 읽기만 함 (불변)</li>
-      <li><code class="inl">FnMut</code> — 캡처 변수를 변경할 수 있음 (가변)</li>
-      <li><code class="inl">FnOnce</code> — 단 한 번만 호출 가능 (캡처 변수 소비)</li>
-    </ul>
-    <p><code class="inl">map</code>은 클로저를 <span class="em">매 요소마다 호출</span>하므로 <code class="inl">FnOnce</code>는 안 됩니다. 또 D-2 예제처럼 <span class="em">카운터 같은 외부 변수를 변경할 수 있어야</span> 유용하므로 <code class="inl">Fn</code>도 너무 제한적입니다. 그래서 정답은 <code class="inl">FnMut</code>:</p>
-    <div class="step-sig">fn map(self, f: impl <span class="hl">FnMut</span>(Self::Item) -&gt; B) -&gt; 새 컨테이너</div>
-  </div>
-</div>
-
-<!-- 5단계 -->
-<div class="step-card">
-  <div class="step-head">
-    <span class="step-num">5단계</span>
-    <span class="step-title">반환 타입 — Map&lt;Self, F&gt; 구조체 (왜 Vec가 아닌가)</span>
-  </div>
-  <div class="step-body">
-    <p>여기가 Rust 다른 언어와 결정적으로 다른 부분입니다.</p>
-    <p>다른 언어의 <code class="inl">map</code>은 <span class="em">즉시 새 배열을 만들어 반환</span>합니다. 그러나 그러면 <code class="inl">.map().filter().map()</code> 같은 체이닝에서 <span class="em">중간 배열이 매번 만들어져</span> 비효율적입니다.</p>
-    <p>Rust는 대신 <code class="inl">Map</code>이라는 <span class="em">"변환 규칙만 가진 새 이터레이터"</span>를 반환합니다:</p>
-    <div class="step-sig">fn map(self, f) -&gt; <span class="hl2">Map&lt;Self, F&gt;</span></div>
-    <p>이 <code class="inl">Map&lt;Self, F&gt;</code>도 <code class="inl">Iterator</code>를 구현하므로 또 다른 어댑터를 체이닝할 수 있습니다. 마지막에 <code class="inl">collect()</code> 같은 소비자가 호출될 때 비로소 모든 변환이 한 번의 루프로 실행됩니다. 이게 <span class="em">lazy + zero-cost</span>의 핵심입니다.</p>
-  </div>
-</div>
-
-<!-- 6단계 -->
-<div class="step-card">
-  <div class="step-head">
-    <span class="step-num">6단계</span>
-    <span class="step-title">완전한 시그니처 — 트레잇 바운드까지</span>
-  </div>
-  <div class="step-body">
-    <p>마지막으로 제네릭 파라미터와 <code class="inl">Self: Sized</code> 바운드까지 합치면 공식 시그니처가 완성됩니다:</p>
-    <div class="step-sig"><span class="hl">fn map&lt;B, F&gt;</span>(self, f: F) -&gt; Map&lt;Self, F&gt;
-where
-    <span class="hl">Self: Sized</span>,
-    F: FnMut(Self::Item) -&gt; B,</div>
-    <ul>
-      <li><code class="inl">&lt;B, F&gt;</code> — 출력 타입 <code class="inl">B</code>와 클로저 타입 <code class="inl">F</code>를 제네릭으로</li>
-      <li><code class="inl">Self: Sized</code> — 이터레이터 자신이 컴파일 타임에 크기를 알 수 있어야 함. <code class="inl">dyn Iterator</code> 같은 동적 디스패치 객체에선 못 씀.</li>
-    </ul>
-  </div>
-</div>
-
-<div class="note ok">
-  <span class="tag">✅ 정리</span>
-  6단계를 거치면, 처음엔 복잡해 보이던 시그니처가 <span class="em">"필요한 모든 정보를 가장 짧게 압축한 형태"</span>임이 보입니다. 한 글자도 더 줄일 수 없고, 한 글자도 더 추가할 게 없습니다.
+<div class="callout">
+  <div class="callout-head">📖 부수효과를 원할 때의 공식 권장</div>
+  <p>
+    <em>"The idiomatic way to write a map for its side effects is to use a for loop or call the for_each method."</em>
+  </p>
+  <p style="margin: 6px 0 0; color: var(--muted); font-size: 12px;">— <a href="https://doc.rust-lang.org/std/iter/index.html" target="_blank">std::iter 모듈 문서</a></p>
 </div>
 
 <!-- ============================================================ -->
-<h3 class="sub" id="s-a6">A-6. Map&lt;I, F&gt; 구조체 내부 원리 — 마법은 없다</h3>
+<h3 class="sub" id="s-a5">A-5. Map 구조체와 내부 구현 (공식 소스 발췌)</h3>
 
 <p>
-<code class="inl">map</code>이 반환하는 <code class="inl">Map&lt;Self, F&gt;</code>가 어떻게 생겼는지 직접 들여다봅니다.
-공식 표준 라이브러리의 실제 정의는 다음과 같습니다 (간소화):
+<code class="inl">map</code>이 반환하는 <code class="inl">std::iter::Map</code> 구조체의 정의와 <code class="inl">Iterator</code> 구현은 표준 라이브러리 소스(<code class="inl">core/iter/adapters/map.rs</code>)에서 직접 확인할 수 있습니다. 다음은 그 핵심 부분을 발췌·간소화한 것입니다:
 </p>
 
 <div class="principle">
-  <div class="principle-label">Map 구조체 — std::iter::Map 의 본질</div>
+  <div class="principle-label">Map 구조체 — std::iter::Map (소스 발췌)</div>
 <pre><span class="kw">pub struct</span> <span class="ty">Map</span>&lt;<span class="ty">I</span>, <span class="ty">F</span>&gt; {
-    iter: <span class="ty">I</span>,    <span class="com">// 원본 이터레이터</span>
-    f: <span class="ty">F</span>,       <span class="com">// 적용할 클로저</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) iter: <span class="ty">I</span>,
+    f: <span class="ty">F</span>,
 }</pre>
 </div>
 
 <p>
-딱 두 필드. <span class="em">원본 이터레이터와 클로저를 함께 보관</span>하는 게 전부입니다.
-이게 <code class="inl">.map(|x| x * 2)</code>가 "아무것도 하지 않는다"의 진짜 의미입니다 — 클로저를 호출하는 게 아니라, 호출할 클로저를 <span class="em">저장</span>만 합니다.
+필드는 둘뿐입니다 — 원본 이터레이터 <code class="inl">iter</code>와 클로저 <code class="inl">f</code>.
+<code class="inl">map</code>이 호출되는 시점에 이 둘이 묶여 보관되며, 아무런 변환도 일어나지 않습니다.
 </p>
 
-<p>그리고 <code class="inl">Iterator</code>를 구현하는 <code class="inl">next()</code> 메서드는 다음과 같습니다 (표준 라이브러리의 핵심 부분 그대로):</p>
+<p>
+<code class="inl">Iterator</code> 트레잇의 <code class="inl">next</code> 메서드 구현 핵심부도 공식 소스에 있습니다:
+</p>
 
 <div class="principle">
-  <div class="principle-label">Map의 next() — 표준 라이브러리 실제 구현 (간소화)</div>
+  <div class="principle-label">Map의 next() — 표준 라이브러리 소스 발췌</div>
 <pre><span class="kw">impl</span>&lt;<span class="ty">B</span>, <span class="ty">I</span>: <span class="ty">Iterator</span>, <span class="ty">F</span>&gt; <span class="ty">Iterator</span> <span class="kw">for</span> <span class="ty">Map</span>&lt;<span class="ty">I</span>, <span class="ty">F</span>&gt;
 <span class="kw">where</span> <span class="ty">F</span>: <span class="ty">FnMut</span>(<span class="ty">I</span>::<span class="ty">Item</span>) -&gt; <span class="ty">B</span>,
 {
     <span class="kw">type</span> <span class="ty">Item</span> = <span class="ty">B</span>;
 
     <span class="kw">fn</span> <span class="fn">next</span>(&amp;<span class="kw">mut</span> <span class="kw">self</span>) -&gt; <span class="ty">Option</span>&lt;<span class="ty">B</span>&gt; {
-        <span class="com">// 1) 원본 이터레이터에서 다음 요소 꺼냄</span>
-        <span class="com">// 2) 그게 Some(x)이면 f(x) 계산해서 Some으로 감싸 반환</span>
-        <span class="com">// 3) None이면 None 그대로 반환</span>
         <span class="hl"><span class="kw">self</span>.iter.<span class="fn">next</span>().<span class="fn">map</span>(&amp;<span class="kw">mut</span> <span class="kw">self</span>.f)</span>
     }
+    <span class="com">// 표준 라이브러리는 그 외 size_hint, try_fold, fold,</span>
+    <span class="com">// __iterator_get_unchecked 등도 효율 위해 override한다.</span>
 }</pre>
 </div>
 
-<p>
-한 줄짜리 구현입니다. <code class="inl">self.iter.next()</code>로 원본에서 하나 꺼내고, <code class="inl">.map(&amp;mut self.f)</code>로 클로저를 적용하는 게 전부입니다.
-<span class="em">여기서 쓰인 <code class="inl">.map</code>은 Option::map입니다</span> — Iterator::map의 next 내부에서 Option::map을 쓰는 셈이죠. 함자 패턴이 중첩되어 있습니다.
+<p style="color: var(--muted); font-size: 12.5px;">
+출처: <a href="https://doc.rust-lang.org/src/core/iter/adapters/map.rs.html" target="_blank">core::iter::adapters::map.rs (표준 라이브러리 소스)</a>. 위 코드는 <code class="inl">next</code> 메서드만 발췌한 것이며, 실제 구현은 <code class="inl">DoubleEndedIterator</code>, <code class="inl">ExactSizeIterator</code>, <code class="inl">FusedIterator</code> 등 여러 트레잇도 구현합니다.
 </p>
 
 <div class="callout">
-  <div class="callout-head">🎯 이 한 줄이 모든 걸 설명한다</div>
+  <div class="callout-head">🎯 핵심 한 줄</div>
   <p>
-    <code class="inl">self.iter.next().map(&amp;mut self.f)</code> — 이 코드가 lazy의 본질입니다.
-    <code class="inl">next()</code>가 호출될 때까지 아무 일도 안 일어나고, 호출되는 순간 원본에서 하나 꺼내서 클로저를 한 번 적용합니다. 정확히 필요한 만큼만, 필요한 순간에만.
+    <code class="inl">self.iter.next().map(&amp;mut self.f)</code> — 이 한 줄에 lazy의 본질이 있습니다.
+    <code class="inl">next()</code>가 호출되어야 비로소 원본에서 하나를 꺼내고 클로저를 한 번 호출합니다. 호출되지 않으면 아무 일도 일어나지 않습니다.
+  </p>
+  <p style="margin: 6px 0 0;">
+    여기서 쓰인 <code class="inl">.map</code>은 <code class="inl">Iterator::map</code>이 아니라 <code class="inl">Option::map</code>입니다 (<code class="inl">Option&lt;T&gt;</code>가 <code class="inl">Some(x)</code>이면 <code class="inl">f(x)</code> 적용, <code class="inl">None</code>이면 <code class="inl">None</code> 반환).
   </p>
 </div>
 
 <!-- ============================================================ -->
-<h3 class="sub" id="s-a7">A-7. next() 호출 흐름 — collect가 어떻게 모든 걸 끌어내는가</h3>
+<h3 class="sub" id="s-a6">A-6. next() 호출 흐름 — collect가 어떻게 모든 걸 끌어내는가</h3>
 
 <p>
 <code class="inl">.iter().map(|x| x*2).collect::&lt;Vec&lt;_&gt;&gt;()</code>가 실제로 어떻게 실행되는지 단계별로 추적합니다.
@@ -1577,16 +1511,19 @@ where
 </div>
 
 <div class="callout">
-  <div class="callout-head">🔄 핵심 통찰</div>
+  <div class="callout-head">🔄 핵심 통찰 — pull 방식 동작</div>
   <p>
     체인 어댑터(<code class="inl">.map().filter().map()</code>)는 <span class="em">push 방식이 아니라 pull 방식</span>으로 동작합니다.
-    소비자(collect)가 한 요소를 "당기면" 그 한 요소가 모든 어댑터를 통과합니다.
-    그래서 어댑터를 100개 연결해도 메모리는 일정합니다.
+    소비자(<code class="inl">collect</code> 등)가 한 요소를 "당기면" 그 한 요소가 모든 어댑터를 통과하면서 변환됩니다.
+    이는 <code class="inl">Map::next</code>가 <code class="inl">self.iter.next().map(&amp;mut self.f)</code>로 정의되어 있기 때문입니다(A-5의 소스 발췌 참고).
+  </p>
+  <p style="margin: 8px 0 0;">
+    이 동작 덕분에 <code class="inl">map</code>과 <code class="inl">filter</code> 같은 stateless 어댑터를 여러 개 체이닝해도 중간 컬렉션이 만들어지지 않습니다. 다만 <code class="inl">scan</code>, <code class="inl">peekable</code>, <code class="inl">fuse</code> 등 내부 상태를 가지는 어댑터는 그 자체의 작은 상태를 보관한다는 점에 주의(각각의 공식 문서 참고).
   </p>
 </div>
 
 <!-- ============================================================ -->
-<h3 class="sub" id="s-a8">A-8. Self::Item의 차이 — iter / iter_mut / into_iter</h3>
+<h3 class="sub" id="s-a7">A-7. Self::Item의 차이 — iter / iter_mut / into_iter</h3>
 
 <p>
 같은 <code class="inl">Vec&lt;i32&gt;</code>라도 어떤 메서드로 이터레이터를 만드는지에 따라 <code class="inl">Self::Item</code>이 달라집니다.
@@ -1649,90 +1586,106 @@ where
 </table>
 
 <!-- ============================================================ -->
-<h3 class="sub" id="s-a9">A-9. 지연 평가 — 가장 자주 일으키는 실수</h3>
+<h3 class="sub" id="s-a8">A-8. lazy를 끝내는 메서드들 — consuming adapters</h3>
 
 <p>
-공식 문서가 가장 강하게 강조하는 포인트입니다. <code class="inl">map</code>을 호출해도 클로저는 실행되지 않습니다.
-<span class="em">소비(consume)되는 순간</span>에야 비로소 한 요소씩 호출됩니다.
+A-4에서 본 것처럼 <code class="inl">map</code>은 lazy하여 호출만으로는 아무 일도 일어나지 않습니다. <code class="inl">Iterator</code>의 <code class="inl">next</code>를 직접·간접으로 호출하는 메서드들이 비로소 변환을 실행시킵니다. 공식 문서는 이런 메서드들을 <span class="em">"consuming adapters"</span>라고 부릅니다.
 </p>
-
-<div class="eb">
-  <div class="eb-head">
-    <div class="eb-tag"><span class="ic">⚠</span> 잘못된 사용 — 실행되지 않음 (공식 문서 예제)</div>
-  </div>
-<pre class="eb-code"><span class="com">// don't do this:</span>
-(<span class="num">0</span>..<span class="num">5</span>).map(|x| <span class="mac">println!</span>(<span class="str">"{x}"</span>));
-<span class="com">// it won't even execute, as it is lazy. Rust will warn you about this.</span></pre>
-</div>
-
-<div class="note warn">
-  <span class="tag">⚠️ 컴파일러 경고</span>
-  실제 컴파일하면 The Book ch13-02에 명시된 다음 경고가 표시됩니다:<br>
-  <code class="inl" style="margin-top: 6px; display: inline-block;">warning: unused `Map` that must be used</code><br>
-  <code class="inl">= note: iterators are lazy and do nothing unless consumed</code>
-</div>
-
-<p>map의 결과를 끌어내는 <span class="em">소비자(consumer)</span> 종류:</p>
-
-<table class="tbl">
-<tr><th>소비자</th><th>역할</th><th>반환</th></tr>
-<tr><td><code>.collect::&lt;C&gt;()</code></td><td>컬렉션 C로 모음</td><td>C</td></tr>
-<tr><td><code>.sum()</code> / <code>.product()</code></td><td>합/곱으로 축약</td><td>단일 값</td></tr>
-<tr><td><code>.count()</code></td><td>요소 개수</td><td>usize</td></tr>
-<tr><td><code>.for_each(f)</code></td><td>각 요소에 부수효과</td><td>()</td></tr>
-<tr><td><code>.fold(init, f)</code></td><td>임의 축약</td><td>누적값</td></tr>
-<tr><td><code>.last()</code> / <code>.nth(n)</code></td><td>특정 위치 요소</td><td>Option</td></tr>
-<tr><td><code>for x in ...</code></td><td>for 루프</td><td>()</td></tr>
-<tr><td><code>.max()</code> / <code>.min()</code></td><td>최댓값/최솟값</td><td>Option</td></tr>
-</table>
-
-<!-- ============================================================ -->
-<h3 class="sub" id="s-a10">A-10. zero-cost abstraction — for 루프와 같은 성능</h3>
-
-<p>
-Rust의 자랑인 <span class="em">"zero-cost abstraction"</span>이란, 추상화를 써도 직접 구현한 코드와 동일한 성능이 나온다는 보장입니다.
-<code class="inl">map</code>이 그 대표 예입니다.
-</p>
-
-<div class="compare">
-  <div class="compare-col left">
-    <div class="col-head">코드 A — 명시적 for 루프</div>
-<pre>fn sum_squares_loop(v: &[i32]) -> i32 {
-    let mut sum = 0;
-    for x in v {
-        sum += x * x;
-    }
-    sum
-}</pre>
-  </div>
-  <div class="compare-col right">
-    <div class="col-head">코드 B — map + sum</div>
-<pre>fn sum_squares_iter(v: &[i32]) -> i32 {
-    v.iter()
-     .map(|x| x * x)
-     .sum()
-}</pre>
-  </div>
-</div>
-
-<p>
-두 함수는 <span class="em">바이너리 수준에서 거의 동일한 LLVM IR / 어셈블리</span>로 컴파일됩니다.
-컴파일러가 다음 최적화를 자동 수행하기 때문입니다:
-</p>
-
-<ol>
-  <li><span class="em">인라이닝(inlining)</span> — <code class="inl">Map::next()</code>와 클로저가 인라인되어 호출 오버헤드 제거</li>
-  <li><span class="em">루프 융합(loop fusion)</span> — <code class="inl">.map().filter().sum()</code>이 단 하나의 루프로 합쳐짐</li>
-  <li><span class="em">바운드 체크 제거</span> — 컴파일러가 안전성을 증명하면 인덱스 검사도 제거</li>
-  <li><span class="em">SIMD 벡터화</span> — 단순한 산술 연산은 SIMD 명령으로 자동 변환</li>
-</ol>
 
 <div class="callout">
-  <div class="callout-head">⚡ 성능 결론</div>
+  <div class="callout-head">📖 consuming adapter의 공식 정의</div>
   <p>
-    <span class="em"><code class="inl">map</code>을 쓴다고 성능이 떨어지지 않습니다.</span> 컴파일러가 알아서 최적화합니다.
-    그래서 Rust 커뮤니티에서는 변환 작업에 for 루프 대신 <code class="inl">map</code>을 선호하는 게 일반적입니다 — 의도가 더 명확하고 성능 손해가 없으니까요.
+    <em>"Methods that call next are called consuming adapters, because calling them uses up the iterator."</em>
   </p>
+  <p style="margin: 6px 0 0; color: var(--muted); font-size: 12px;">— <a href="https://doc.rust-lang.org/book/ch13-02-iterators.html#methods-that-consume-the-iterator" target="_blank">The Rust Programming Language, ch.13.2</a></p>
+</div>
+
+<p>자주 쓰는 consuming adapter 목록 (모두 공식 <code class="inl">Iterator</code> 트레잇 메서드):</p>
+
+<table class="tbl">
+<tr><th>메서드</th><th>공식 문서 표현 (요약)</th><th>반환 타입</th></tr>
+<tr><td><code>.collect::&lt;C&gt;()</code></td><td>이터레이터를 컬렉션 <code>C</code>로 변환</td><td><code>C</code></td></tr>
+<tr><td><code>.sum()</code></td><td>모든 요소를 합산</td><td>요소 타입</td></tr>
+<tr><td><code>.product()</code></td><td>모든 요소를 곱셈</td><td>요소 타입</td></tr>
+<tr><td><code>.count()</code></td><td>반복 횟수를 세고 반환</td><td><code>usize</code></td></tr>
+<tr><td><code>.for_each(f)</code></td><td>각 요소에 클로저 호출 (반환 없음)</td><td><code>()</code></td></tr>
+<tr><td><code>.fold(init, f)</code></td><td>축약(reduce)으로 모든 요소를 하나의 누적값으로</td><td>누적값 타입</td></tr>
+<tr><td><code>.reduce(f)</code></td><td>fold의 변형. 초기값 없이 첫 요소를 시작점으로</td><td><code>Option&lt;T&gt;</code></td></tr>
+<tr><td><code>.last()</code></td><td>마지막 요소를 반환 (이터레이터 끝까지 진행)</td><td><code>Option&lt;T&gt;</code></td></tr>
+<tr><td><code>.nth(n)</code></td><td>n번째 요소를 반환 (그 위치까지 진행)</td><td><code>Option&lt;T&gt;</code></td></tr>
+<tr><td><code>.max()</code> / <code>.min()</code></td><td>최댓값 / 최솟값</td><td><code>Option&lt;T&gt;</code></td></tr>
+<tr><td><code>for x in iter</code></td><td><code>for</code> 루프는 <code>IntoIterator::into_iter</code>를 호출해 이터레이터를 소비</td><td><code>()</code></td></tr>
+</table>
+
+<p style="color: var(--muted); font-size: 12.5px;">
+출처: <a href="https://doc.rust-lang.org/std/iter/trait.Iterator.html" target="_blank">std::iter::Iterator 공식 문서</a>의 각 메서드 페이지. <code class="inl">for</code> 루프의 desugaring 동작은 <a href="https://doc.rust-lang.org/std/iter/index.html#for-loops-and-intoiterator" target="_blank">std::iter 모듈의 "for Loops and IntoIterator"</a>에 명시.
+</p>
+
+<!-- ============================================================ -->
+<h3 class="sub" id="s-a9">A-9. zero-cost abstraction — 공식 The Book의 정의</h3>
+
+<p>
+이터레이터 어댑터의 성능에 대해 공식 The Book ch.13.4가 어떻게 표현하는지 그대로 옮깁니다:
+</p>
+
+<div class="callout">
+  <div class="callout-head">📖 zero-cost abstraction의 공식 정의</div>
+  <p>
+    <em>"Closures and iterators are Rust features inspired by functional programming language ideas. They contribute to Rust's capability to clearly express high-level ideas at low-level performance. The implementations of closures and iterators are such that runtime performance is not affected. This is part of Rust's goal to strive to provide zero-cost abstractions."</em>
+  </p>
+  <p style="margin: 6px 0 0; color: var(--muted); font-size: 12px;">— <a href="https://doc.rust-lang.org/book/ch13-04-performance.html" target="_blank">The Rust Programming Language, ch.13.4</a></p>
+</div>
+
+<p>
+"zero-cost abstraction"의 의미는 The Book의 다음 인용에 명시되어 있습니다:
+</p>
+
+<div class="callout">
+  <div class="callout-head">📖 zero-cost의 의미</div>
+  <p>
+    <em>"What we mean by zero-cost is that using the abstraction imposes no additional runtime overhead. This is analogous to how Bjarne Stroustrup, the original designer and implementer of C++, defines zero-overhead in 'Foundations of C++' (2012): 'In general, C++ implementations obey the zero-overhead principle: What you don't use, you don't pay for. And further: What you do use, you couldn't hand code any better.'"</em>
+  </p>
+  <p style="margin: 6px 0 0; color: var(--muted); font-size: 12px;">— <a href="https://doc.rust-lang.org/book/ch13-04-performance.html" target="_blank">The Rust Programming Language, ch.13.4</a></p>
+</div>
+
+<p>
+The Book은 실제 벤치마크 비교(12장의 검색 함수를 for 루프와 이터레이터 버전으로)를 제시하며 다음과 같이 결론짓습니다:
+</p>
+
+<div class="callout">
+  <div class="callout-head">📖 벤치마크 결론</div>
+  <p>
+    <em>"The iterator version was slightly faster! ... The point is this: iterators, although a high-level abstraction, get compiled down to roughly the same code as if you'd written the lower-level code yourself. Iterators are one of Rust's zero-cost abstractions, by which we mean that using the abstraction imposes no additional runtime overhead."</em>
+  </p>
+  <p style="margin: 6px 0 0; color: var(--muted); font-size: 12px;">— <a href="https://doc.rust-lang.org/book/ch13-04-performance.html" target="_blank">The Rust Programming Language, ch.13.4</a></p>
+</div>
+
+<p>
+The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span class="em">unrolling</span>을 구체적으로 언급합니다:
+</p>
+
+<div class="callout">
+  <div class="callout-head">📖 unrolling 언급</div>
+  <p>
+    <em>"The compiler can even unroll the loop. Unrolling is an optimization that removes the overhead of the loop controlling code and instead generates repetitive code for each iteration of the loop."</em>
+  </p>
+  <p style="margin: 6px 0 0; color: var(--muted); font-size: 12px;">— <a href="https://doc.rust-lang.org/book/ch13-04-performance.html" target="_blank">The Rust Programming Language, ch.13.4</a></p>
+</div>
+
+<p>
+즉 공식 문서가 보장하는 것은 다음과 같이 정리할 수 있습니다:
+</p>
+
+<ul>
+  <li><span class="em">이터레이터 어댑터는 추가 런타임 오버헤드를 도입하지 않는다</span> ("no additional runtime overhead")</li>
+  <li><span class="em">컴파일 결과는 직접 작성한 저수준 코드와 대략 동일하다</span> ("roughly the same code as if you'd written the lower-level code yourself")</li>
+  <li>The Book은 unrolling을 구체적 예로 든다. 그 외의 최적화(인라이닝, 루프 융합, SIMD 등)는 LLVM이 잠재적으로 수행하지만, The Book이 직접 명시하지는 않는다</li>
+</ul>
+
+<div class="note">
+  <span class="tag">📌 권장 사용 (공식)</span>
+  공식 <code class="inl">Iterator::map</code> 문서:<br>
+  <em style="margin-top: 6px; display: inline-block;">"map() is conceptually similar to a for loop. However, as map() is lazy, it is best used when you're already working with other iterators. If you're doing some sort of looping for a side effect, it's considered more idiomatic to use for than map()."</em>
 </div>
 
 
@@ -1967,7 +1920,9 @@ Rust의 자랑인 <span class="em">"zero-cost abstraction"</span>이란, 추상�
 
 <div class="note">
   <span class="tag">📌 슬라이스 통일</span>
-  <code class="inl">&amp;[T]</code>(슬라이스)를 받는 함수는 배열·Vec·VecDeque 등 거의 모든 컬렉션에서 호출 가능합니다. 그래서 라이브러리 함수의 인자는 <code class="inl">&amp;Vec&lt;T&gt;</code>보다 <code class="inl">&amp;[T]</code>가 더 범용적입니다.
+  <code class="inl">&amp;[T]</code>(슬라이스)는 배열과 <code class="inl">Vec&lt;T&gt;</code>에서 참조 강제(deref coercion)로 자동 변환됩니다. 그래서 라이브러리 함수의 인자는 <code class="inl">&amp;Vec&lt;T&gt;</code>보다 <code class="inl">&amp;[T]</code>가 더 범용적입니다.
+  <br><br>
+  <span style="color: var(--muted); font-size: 12px;">주의: <code class="inl">VecDeque</code>는 ring buffer 구조라 단일 슬라이스로 변환되지 않습니다. <a href="https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.as_slices" target="_blank">VecDeque::as_slices</a>로 두 슬라이스를 받습니다.</span>
 </div>
 
 <!-- B-7 -->
@@ -2016,7 +1971,10 @@ Rust의 자랑인 <span class="em">"zero-cost abstraction"</span>이란, 추상�
 
 <div class="note ok">
   <span class="tag">✅ Fn 트레잇 통일</span>
-  Rust에서 함수 정의(<code class="inl">fn</code>), 클로저(<code class="inl">|x| ...</code>), 메서드 참조(<code class="inl">i32::to_string</code>) 모두 <code class="inl">FnMut</code>(과 <code class="inl">Fn</code>, <code class="inl">FnOnce</code>)를 구현합니다. 그래서 어디든 호환됩니다.
+  공식 <a href="https://doc.rust-lang.org/std/ops/trait.Fn.html" target="_blank">Fn / FnMut / FnOnce</a> 문서에 따르면, 함수 포인터(<code class="inl">fn(T) -&gt; U</code>)와 클로저는 모두 <code class="inl">Fn</code>·<code class="inl">FnMut</code>·<code class="inl">FnOnce</code> 트레잇을 구현합니다. <code class="inl">fn item</code>(예: <code class="inl">i32::to_string</code>)도 함수 포인터로 강제(coercion)될 수 있어, <code class="inl">map</code>의 인자로 직접 전달 가능합니다.
+  <div style="margin-top: 6px; color: var(--muted); font-size: 12px;">
+    출처: <a href="https://doc.rust-lang.org/reference/types/function-pointer.html" target="_blank">The Rust Reference — Function pointer types</a>
+  </div>
 </div>
 
 <!-- B-8 -->
@@ -2321,8 +2279,11 @@ Rust의 자랑인 <span class="em">"zero-cost abstraction"</span>이란, 추상�
 </div>
 
 <div class="note ok">
-  <span class="tag">✅ 성능 동일</span>
-  <code class="inl">.map(f).map(g)</code>와 <code class="inl">.map(|x| g(f(x)))</code>는 컴파일 결과가 동일합니다. LLVM의 인라이닝 + 루프 융합 덕분에 중간 단계가 모두 사라집니다.
+  <span class="tag">✅ 두 방식 모두 zero-cost</span>
+  <code class="inl">.map(f).map(g)</code> 체이닝과 <code class="inl">.map(|x| g(f(x)))</code> 합성 모두 공식 The Book ch.13.4가 명시한 <em>"zero-cost abstraction"</em>의 적용을 받습니다 — 추가 런타임 오버헤드가 없다는 보장입니다. 둘 중 어느 방식을 쓸지는 성능이 아니라 가독성으로 결정하면 됩니다.
+  <div style="margin-top: 6px; color: var(--muted); font-size: 12px;">
+    출처: <a href="https://doc.rust-lang.org/book/ch13-04-performance.html" target="_blank">The Rust Programming Language, ch.13.4</a>
+  </div>
 </div>
 
 <!-- C-7 -->
@@ -2478,7 +2439,7 @@ Rust의 자랑인 <span class="em">"zero-cost abstraction"</span>이란, 추상�
 <!-- D-2 -->
 <div class="ex-head" id="s-d2">
   <span class="level deep">DEEP 2</span>
-  <h4>FnMut 캡처 — 카운터로 상태 추적 (공식 문서 동형 예제)</h4>
+  <h4>FnMut 캡처 — 카운터로 상태 추적 (공식 문서 예제 변형)</h4>
 </div>
 
 <div class="eb">
@@ -2511,7 +2472,7 @@ Rust의 자랑인 <span class="em">"zero-cost abstraction"</span>이란, 추상�
 
 <div class="note ok">
   <span class="tag">✅ FnMut의 의미</span>
-  <code class="inl">c += 1</code>이 가능한 이유는 클로저가 <code class="inl">FnMut</code>이기 때문입니다. 이게 map의 시그니처에 <code class="inl">FnMut</code>이 들어간 이유입니다.
+  공식 시그니처가 <code class="inl">F: FnMut(Self::Item) -&gt; B</code>이므로, 클로저가 캡처한 가변 변수(<code class="inl">c</code>)를 변경하는 것이 허용됩니다. 공식 <a href="https://doc.rust-lang.org/std/iter/struct.Map.html#notes-about-side-effects" target="_blank">Map "Notes about side effects"</a>에 같은 패턴(카운터)이 예제로 등장합니다.
 </div>
 
 <!-- D-3 -->
@@ -2554,12 +2515,12 @@ Rust의 자랑인 <span class="em">"zero-cost abstraction"</span>이란, 추상�
 </div>
 
 <div class="note">
-  <span class="tag">📌 공식 문서 설명</span>
-  <em>"the letters are reversed, but the values of the counter still go in order. This is because map() is still being called lazily on each item, but we are popping items off the back of the vector now."</em>
+  <span class="tag">📖 공식 문서 설명 (원문)</span>
+  <em>"Note that the letters are reversed, but the values of the counter still go in order. This is because map() is still being called lazily on each item, but we are popping items off the back of the vector now, instead of shifting them from the front."</em>
   <br><br>
-  <code class="inl">rev()</code>는 "뒤에서부터 꺼내라"는 지시이고, map의 호출 자체는 lazy합니다. 첫 번째로 뽑히는 글자가 <code class="inl">'c'</code>이지만 그 시점이 카운터가 첫 증가하는 시점이라 <code class="inl">('c', 1)</code>이 됩니다.
+  <code class="inl">rev()</code>는 "뒤에서부터 꺼내라"는 지시이고, <code class="inl">map</code>의 클로저 호출 자체는 lazy합니다. 첫 번째로 뽑히는 글자가 <code class="inl">'c'</code>이지만 그 시점이 카운터가 첫 증가하는 시점이라 <code class="inl">('c', 1)</code>이 됩니다.
   <div style="margin-top: 6px; color: var(--muted); font-size: 12px;">
-    출처: <a style="color: var(--em-2);" href="https://doc.rust-lang.org/std/iter/struct.Map.html" target="_blank">std::iter::Map — Notes about side effects</a>
+    출처: <a style="color: var(--em-2);" href="https://doc.rust-lang.org/std/iter/struct.Map.html#notes-about-side-effects" target="_blank">std::iter::Map — Notes about side effects</a>
   </div>
 </div>
 
@@ -2611,8 +2572,11 @@ Rust의 자랑인 <span class="em">"zero-cost abstraction"</span>이란, 추상�
 </div>
 
 <div class="note ok">
-  <span class="tag">✅ 성능 의미</span>
-  map이 길이 정보를 보존하므로 <code class="inl">collect()</code>는 결과 Vec의 capacity를 미리 정확히 잡을 수 있습니다. 재할당이 일어나지 않아 빠릅니다.
+  <span class="tag">✅ size_hint 보존의 의미</span>
+  <code class="inl">map</code>이 원본의 <code class="inl">size_hint</code>를 그대로 위임하므로(<code class="inl">Map::size_hint</code>는 <code class="inl">self.iter.size_hint()</code>를 직접 반환), 원본이 <code class="inl">ExactSizeIterator</code>면 <code class="inl">Map</code>도 그렇습니다. <code class="inl">Vec</code>의 <code class="inl">FromIterator</code> 구현은 이 정보를 활용해 사전 할당할 수 있어, 일반적으로 재할당 횟수가 줄어듭니다(구현 디테일).
+  <div style="margin-top: 6px; color: var(--muted); font-size: 12px;">
+    출처: <a href="https://doc.rust-lang.org/std/iter/struct.Map.html#impl-ExactSizeIterator-for-Map%3CI,+F%3E" target="_blank">Map의 ExactSizeIterator 구현</a>
+  </div>
 </div>
 
 <!-- D-5 -->
@@ -2742,8 +2706,13 @@ Rust의 자랑인 <span class="em">"zero-cost abstraction"</span>이란, 추상�
 </div>
 
 <div class="note">
-  <span class="tag">📌 공식 문서 설명</span>
-  <em>"The map adapter is very useful, but only when the closure argument produces values. If it produces an iterator instead, there's an extra layer of indirection. flat_map() will remove this extra layer on its own. You can think of flat_map(f) as the semantic equivalent of mapping, and then flattening as in map(f).flatten()."</em>
+  <span class="tag">📖 공식 문서 설명 (Iterator::flat_map 원문)</span>
+  <em>"The map adapter is very useful, but only when the closure argument produces values. If it produces an iterator instead, there's an extra layer of indirection. flat_map() will remove this extra layer on its own."</em>
+  <br><br>
+  <em>"Another way of thinking about flat_map(): map's closure returns one item for each element, and flat_map()'s closure returns an iterator for each element."</em>
+  <div style="margin-top: 6px; color: var(--muted); font-size: 12px;">
+    출처: <a style="color: var(--em-2);" href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.flat_map" target="_blank">Iterator::flat_map 공식 문서</a>
+  </div>
 </div>
 
 
@@ -3162,7 +3131,7 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 
 <div class="note">
   <span class="tag">📌 &amp;&amp;x 패턴의 정체</span>
-  <code class="inl">v.iter()</code>는 <code class="inl">&amp;i32</code>를 산출하고, <code class="inl">filter</code>의 predicate는 <code class="inl">&amp;Self::Item</code>을 받으므로 <code class="inl">&amp;&amp;i32</code>가 됩니다. <code class="inl">|&amp;&amp;x|</code>는 패턴 매칭으로 두 번 역참조한 <code class="inl">x: i32</code>를 꺼냅니다.
+  공식 <a href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.filter" target="_blank">Iterator::filter</a> 시그니처는 <code class="inl">P: FnMut(&amp;Self::Item) -&gt; bool</code>입니다. <code class="inl">v.iter()</code>의 <code class="inl">Self::Item = &amp;i32</code>이므로, <code class="inl">filter</code>의 predicate가 받는 인자는 <code class="inl">&amp;&amp;i32</code>가 됩니다. <code class="inl">|&amp;&amp;x|</code>는 패턴 매칭으로 두 단계 역참조한 값 <code class="inl">x</code>를 꺼냅니다(요소 타입 <code class="inl">i32</code>가 <code class="inl">Copy</code>라 가능).
 </div>
 
 <!-- F-2 -->
@@ -3178,7 +3147,7 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 <p>map과 결정적 차이:</p>
 <ul>
   <li><span class="em">반환 타입이 없음(<code class="inl">()</code>)</span> — 변환이 아니라 행위. 새 이터레이터를 안 만듭니다.</li>
-  <li><span class="em">즉시 실행됨(소비자)</span> — lazy가 아닙니다. for 루프와 거의 동일합니다.</li>
+  <li><span class="em">즉시 실행됨(소비자)</span> — lazy가 아닌 consuming adapter. 단 <code class="inl">for</code> 루프와의 차이는 공식이 명시: <em>"This is equivalent to using a for loop on the iterator, although break and continue are not possible from a closure."</em></li>
 </ul>
 
 <div class="eb">
@@ -3222,10 +3191,13 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 </div>
 
 <div class="note">
-  <span class="tag">📌 공식 문서 권장</span>
+  <span class="tag">📖 공식 권장 (Iterator::for_each 원문)</span>
   <em>"It's generally more idiomatic to use a for loop, but for_each may be more legible when processing items at the end of longer iterator chains."</em>
   <br><br>
-  짧은 처리는 for 루프, 긴 체인의 끝맺음은 for_each. 그리고 for 루프에선 가능한 <code class="inl">break</code>/<code class="inl">continue</code>가 for_each 안의 클로저에서는 불가능합니다.
+  공식이 명시하듯 짧은 처리는 <code class="inl">for</code> 루프, 긴 체인의 끝맺음은 <code class="inl">for_each</code>. <code class="inl">for</code> 루프에서 쓰는 <code class="inl">break</code>/<code class="inl">continue</code>가 <code class="inl">for_each</code>의 클로저 안에서는 사용할 수 없다는 점도 공식 문서에 명시됨.
+  <div style="margin-top: 6px; color: var(--muted); font-size: 12px;">
+    출처: <a style="color: var(--em-2);" href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.for_each" target="_blank">Iterator::for_each 공식 문서</a>
+  </div>
 </div>
 
 <!-- F-3 -->
@@ -3821,35 +3793,35 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 <h3 class="sub" id="s-summary">핵심 요약 — 한 화면에 모은 가이드 전체</h3>
 
 <div class="callout">
-  <div class="callout-head">🔑 map에 대해 기억할 단 한 가지</div>
+  <div class="callout-head">🔑 map에 대해 공식 문서가 말하는 단 한 가지</div>
   <p style="margin: 0;">
-    <code class="inl">map</code>은 <span class="em">변환 규칙을 저장한 새 이터레이터를 만드는 일</span>입니다. 클로저는 <span class="em">소비될 때까지 실행되지 않으며</span>, 모든 어댑터 체인은 <span class="em">단 하나의 루프로 합성됩니다</span>.
+    <em>"map() transforms one iterator into another, by means of its argument: something that implements FnMut. It produces a new iterator which calls this closure on each element of the original iterator."</em>
   </p>
+  <p style="margin: 6px 0 0; color: var(--muted); font-size: 12px;">— <a href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.map" target="_blank">Iterator::map 공식</a></p>
 </div>
 
 <table class="tbl">
-<tr><th>관점</th><th>내용</th></tr>
-<tr><td>한 줄 정의</td><td>각 요소에 클로저를 적용한 새 이터레이터를 만드는 어댑터</td></tr>
-<tr><td>본질</td><td>함자(Functor) 패턴 — 컨테이너 안의 값을 변환</td></tr>
-<tr><td>시그니처</td><td><code>fn map&lt;B, F&gt;(self, f: F) -&gt; Map&lt;Self, F&gt; where F: FnMut(Self::Item) -&gt; B</code></td></tr>
-<tr><td>내부 구조</td><td><code>struct Map&lt;I, F&gt; { iter: I, f: F }</code> — 단 두 필드</td></tr>
-<tr><td>next() 구현</td><td><code>self.iter.next().map(&amp;mut self.f)</code> — 단 한 줄</td></tr>
-<tr><td>평가 시점</td><td>lazy — 소비자(collect, sum, for, for_each 등) 호출 시</td></tr>
-<tr><td>성능</td><td>zero-cost — for 루프와 동일한 어셈블리</td></tr>
-<tr><td>길이 정보</td><td>보존 — ExactSizeIterator도 유지</td></tr>
-<tr><td>변경 가능?</td><td>FnMut이므로 외부 상태 변경 가능 (카운터 등)</td></tr>
-<tr><td>병렬화</td><td>Rayon의 <code>par_iter().map()</code>으로 변경 없이 가능</td></tr>
+<tr><th>관점</th><th>내용 (공식 출처)</th></tr>
+<tr><td>한 줄 정의</td><td>한 이터레이터를 다른 이터레이터로 변환하는 어댑터 (Iterator::map)</td></tr>
+<tr><td>시그니처</td><td><code>fn map&lt;B, F&gt;(self, f: F) -&gt; Map&lt;Self, F&gt;<br>where Self: Sized, F: FnMut(Self::Item) -&gt; B</code></td></tr>
+<tr><td>내부 구조</td><td><code>pub struct Map&lt;I, F&gt; { pub(crate) iter: I, f: F }</code> (core::iter::adapters::map.rs)</td></tr>
+<tr><td>next() 구현</td><td><code>self.iter.next().map(&amp;mut self.f)</code> (표준 라이브러리 소스)</td></tr>
+<tr><td>평가 시점</td><td>lazy — <em>"Nothing really happens until you call next."</em> (std::iter 모듈 문서)</td></tr>
+<tr><td>성능</td><td>zero-cost — <em>"using the abstraction imposes no additional runtime overhead."</em> (The Book ch.13.4)</td></tr>
+<tr><td>클로저 트레잇</td><td><code>F: FnMut(Self::Item) -&gt; B</code> — 가변 상태 캡처 가능 (D-2, D-3 참고)</td></tr>
+<tr><td>요소 타입</td><td><code>Self::Item</code>은 호출하는 이터레이터에 따라 결정 (A-7: iter / iter_mut / into_iter)</td></tr>
+<tr><td>병렬화</td><td>표준 라이브러리에는 없음. 외부 crate <a href="https://docs.rs/rayon/" target="_blank">Rayon</a>이 <code>par_iter().map()</code> 제공</td></tr>
 </table>
 
-<p>다른 어댑터와의 관계도 한 줄 정리:</p>
+<p>다른 어댑터와의 관계 (모두 공식 <code class="inl">Iterator</code> 트레잇 메서드, 요약):</p>
 
 <ul>
-  <li><span class="em">map</span> — 변환만 (요소 수 그대로)</li>
-  <li><span class="em">filter</span> — 통과만 (요소 수 감소 가능)</li>
-  <li><span class="em">filter_map</span> — 통과 + 변환 (효율적)</li>
-  <li><span class="em">flat_map</span> — 변환 후 평탄화 (요소 수 증가 가능)</li>
-  <li><span class="em">for_each</span> — 부수효과만 (반환 없음)</li>
-  <li><span class="em">partition</span> — 두 그룹으로 분리 (즉시 평가)</li>
+  <li><span class="em">map</span> — 변환만 (요소 수 동일)</li>
+  <li><span class="em">filter</span> — 조건에 맞는 요소만 통과 (요소 수 ≤ 원본)</li>
+  <li><span class="em">filter_map</span> — 통과 + 변환 (클로저가 <code>Option&lt;B&gt;</code> 반환)</li>
+  <li><span class="em">flat_map</span> — 변환 후 평탄화 (클로저가 이터레이터 반환)</li>
+  <li><span class="em">for_each</span> — consuming adapter, 부수효과 (반환 없음)</li>
+  <li><span class="em">partition</span> — consuming adapter, 두 컬렉션으로 분리</li>
 </ul>
 
 <!-- ============================================================ -->
@@ -4058,15 +4030,17 @@ let chars: Vec&lt;char&gt; = words.iter()
 <div class="callout" style="margin-top: 30px;">
   <div class="callout-head">📚 다음 단계</div>
   <p style="margin: 0;">
-    이 가이드를 마쳤다면 다음 어댑터들도 자연스럽게 익혀보세요. 모두 같은 함자/모나드 패턴의 변형입니다:
+    이 가이드를 마쳤다면 같은 <code class="inl">Iterator</code> 트레잇의 다른 메서드도 익혀보세요. 모두 <a href="https://doc.rust-lang.org/std/iter/trait.Iterator.html" target="_blank" style="color: var(--em-2);">공식 문서</a>에 명시되어 있습니다:
     <code class="inl">take</code>, <code class="inl">skip</code>, <code class="inl">take_while</code>, <code class="inl">skip_while</code>, <code class="inl">scan</code>, <code class="inl">fold</code>, <code class="inl">reduce</code>, <code class="inl">peekable</code>, <code class="inl">cycle</code>, <code class="inl">chain</code>.
-    그리고 병렬 처리는 <a href="https://docs.rs/rayon/" target="_blank" style="color: var(--em-2);">Rayon</a>의 <code class="inl">par_iter().map()</code>으로 한 줄만 바꾸면 됩니다.
+  </p>
+  <p style="margin: 6px 0 0;">
+    병렬 처리는 표준 라이브러리에는 없으며, 외부 crate <a href="https://docs.rs/rayon/" target="_blank" style="color: var(--em-2);">Rayon</a>이 <code class="inl">par_iter().map()</code> 형태의 병렬 어댑터를 제공합니다.
   </p>
 </div>
 
 <footer class="foot">
-  <div>Rust <code>map</code> 완전 가이드 · 공식 문서 기반 · v2.0</div>
-  <div>예제 41개 · 그림 3개 · Wandbox 인페이지 실행 (컴파일러 폴백 체인)</div>
+  <div>Rust <code>map</code> 완전 가이드 · 공식 문서 직접 인용 · v3.0</div>
+  <div>예제 41개 · Wandbox 인페이지 실행</div>
 </footer>
 
 </div>
@@ -4112,6 +4086,7 @@ let chars: Vec&lt;char&gt; = words.iter()
     sbOpenBtn.classList.remove('show');
     if (isMobile()) {
       sbBackdrop.classList.add('show');
+      document.body.style.overflow = 'hidden'; // 사이드바 열린 동안 본문 스크롤 잠금
     }
   }
 
@@ -4120,6 +4095,7 @@ let chars: Vec&lt;char&gt; = words.iter()
     main.classList.add('full');
     sbOpenBtn.classList.add('show');
     sbBackdrop.classList.remove('show');
+    document.body.style.overflow = ''; // 스크롤 잠금 해제
   }
 
   function toggleSidebar() {
@@ -4144,12 +4120,20 @@ let chars: Vec&lt;char&gt; = words.iter()
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      if (!isMobile() && sidebar.classList.contains('collapsed')) {
-        // 데스크탑으로 커지면 자동으로 열어도 됨 — 다만 사용자가 직접 닫은 경우 존중
-        // 여기서는 그대로 둠. 사용자 의도 존중.
-      }
       if (isMobile()) {
+        // 모바일로 좁아지면 사이드바 자동 닫기
+        if (!sidebar.classList.contains('collapsed')) {
+          closeSidebar();
+        }
         sbBackdrop.classList.remove('show');
+        document.body.style.overflow = '';
+      } else {
+        // 데스크탑으로 넓어지면 사이드바 자동 열기 + backdrop 해제
+        sidebar.classList.remove('collapsed');
+        main.classList.remove('full');
+        sbOpenBtn.classList.remove('show');
+        sbBackdrop.classList.remove('show');
+        document.body.style.overflow = '';
       }
     }, 150);
   });
@@ -4497,52 +4481,50 @@ let chars: Vec&lt;char&gt; = words.iter()
   }
 
   /* ------------------------------------------------------------
-     10. Wandbox 헬스 체크 — 페이지 로드 시 진단 정보 수집
-        - /api/list.json 도달 가능 여부
-        - 사용 가능한 Rust 컴파일러 이름 표시
-        - 사이드바 푸터에 작은 상태 인디케이터
+     11. 모바일 스와이프 제스처 — 사이드바 열기/닫기
+        - 화면 좌측 가장자리(0~25px)에서 오른쪽 스와이프 → 열기
+        - 사이드바 열린 상태에서 왼쪽 스와이프 → 닫기
      ------------------------------------------------------------ */
-  async function healthCheck() {
-    const verEl = document.querySelector('.sb-foot .ver');
-    if (!verEl) return;
-    try {
-      const t0 = Date.now();
-      const res = await fetch('https://wandbox.org/api/list.json', { method: 'GET' });
-      const dt = Date.now() - t0;
-      if (!res.ok) {
-        verEl.textContent = `Wandbox: HTTP ${res.status}`;
-        verEl.style.color = '#f48771';
-        verEl.title = `상태 확인: HTTP ${res.status} (${dt}ms)\n잠시 후 재시도하거나 wandbox.org 상태 확인`;
-        return;
-      }
-      const data = await res.json();
-      const rusts = data
-        .filter(c => c.language === 'Rust' || (c.name && c.name.toLowerCase().startsWith('rust')))
-        .map(c => c.name);
-      dynamicRustCompilers = rusts;
-      listFetchAttempted = true;
-      if (rusts.length === 0) {
-        verEl.textContent = 'Wandbox: 0 Rust';
-        verEl.style.color = '#dcdcaa';
-        verEl.title = '응답은 받았지만 Rust 컴파일러 없음';
-      } else {
-        verEl.textContent = `✓ Rust ${rusts.length}개`;
-        verEl.style.color = '#4ec9b0';
-        verEl.title = `Wandbox 도달 OK (${dt}ms)\n사용 가능: ${rusts.slice(0,5).join(', ')}${rusts.length>5?' ...':''}`;
-        // 사용 가능한 첫 번째 컴파일러를 기본 후보로 설정
-        if (rusts.length > 0 && !rusts.includes('rustc-head')) {
-          // rustc-head가 없으면 cached compiler에 첫 번째 후보 미리 설정
-          cachedCompiler = rusts[0];
-        }
-      }
-    } catch (err) {
-      verEl.textContent = 'Wandbox: 차단';
-      verEl.style.color = '#f48771';
-      verEl.title = `브라우저에서 wandbox.org 차단됨 (CORS/네트워크): ${err.message}\n실행 버튼을 누르면 자세한 에러 확인 가능`;
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartTime = 0;
+  let touchActive = false;
+
+  document.addEventListener('touchstart', (e) => {
+    if (!isMobile()) return;
+    const t = e.touches[0];
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+    touchStartTime = Date.now();
+    touchActive = true;
+  }, { passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    if (!touchActive || !isMobile()) return;
+    touchActive = false;
+
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartX;
+    const dy = t.clientY - touchStartY;
+    const dt = Date.now() - touchStartTime;
+
+    // 너무 느린 동작은 스와이프로 안 봄 (스크롤일 가능성)
+    if (dt > 600) return;
+    // 수직 이동이 더 크면 스크롤로 간주
+    if (Math.abs(dy) > Math.abs(dx)) return;
+    // 수평 이동이 충분해야 스와이프로 인정
+    if (Math.abs(dx) < 60) return;
+
+    const sidebarOpen = !sidebar.classList.contains('collapsed');
+
+    if (dx > 0 && !sidebarOpen && touchStartX < 30) {
+      // 좌측 가장자리에서 오른쪽 스와이프 → 열기
+      openSidebar();
+    } else if (dx < 0 && sidebarOpen) {
+      // 사이드바 열린 상태에서 왼쪽 스와이프 → 닫기
+      closeSidebar();
     }
-  }
-  // 페이지 로드 1초 후 헬스 체크 (스크롤스파이 등 초기화 안정화 후)
-  setTimeout(healthCheck, 1000);
+  }, { passive: true });
 
 })();
 
