@@ -655,6 +655,17 @@ table.tbl td code {
   color: #ce9178;
   font-weight: 700;
 }
+/* Rust 공식 로고 아이콘 (SVG) — .rs 파일 표시용
+   공식: 밝은 배경엔 검정(rust-logo-blk), 어두운 배경엔 흰색.
+   본 가이드는 다크 테마이므로 흰색 사용. */
+.eb-head .eb-tag .ic-rust {
+  width: 18px;
+  height: 18px;
+  color: #d4d4d4;
+  flex-shrink: 0;
+  vertical-align: middle;
+  display: inline-block;
+}
 .eb-head .eb-btns {
   display: flex;
   gap: 6px;
@@ -1067,6 +1078,63 @@ footer.bot .src-list div { margin: 3px 0; }
 </head>
 <body>
 
+<!-- ============================================================ -->
+<!-- SVG Symbols - 한 번 정의 후 <use>로 참조                       -->
+<!-- Rust 공식 로고: rust-lang/rust-artwork (CC-BY 4.0)             -->
+<!-- ============================================================ -->
+<svg width="0" height="0" style="position:absolute;overflow:hidden;" aria-hidden="true">
+  <defs>
+    <!-- 공식 Rust 로고: 게어 + R, 32개 cog가 11.25도씩 회전 -->
+    <symbol id="rust-logo" viewBox="-53 -53 106 106">
+      <g>
+        <!-- R 문자 (공식 path) -->
+        <path d="M -9,-15 H 4 C 12,-15 12,-7 4,-7 H -9 Z
+                 M -40,22 H 0 V 11 H -9 V 3 H 1 C 12,3 6,22 15,22 H 40
+                 V 3 H 34 V 5 C 34,13 25,12 24,7 C 23,2 19,-2 18,-2 C 33,-10 24,-26 12,-26 H -35
+                 V -15 H -25 V 11 H -40 Z"
+              fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/>
+        <!-- 게어 외곽 원 -->
+        <circle r="43" fill="none" stroke="currentColor" stroke-width="9"/>
+        <!-- 32개 cog: 11.25도씩 회전. 0번부터 31번까지 -->
+        <g fill="currentColor" stroke="currentColor" stroke-width="3" stroke-linejoin="round">
+          <polygon points="46,3 51,0 46,-3"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(11.25)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(22.5)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(33.75)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(45)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(56.25)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(67.5)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(78.75)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(90)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(101.25)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(112.5)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(123.75)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(135)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(146.25)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(157.5)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(168.75)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(180)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(191.25)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(202.5)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(213.75)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(225)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(236.25)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(247.5)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(258.75)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(270)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(281.25)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(292.5)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(303.75)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(315)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(326.25)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(337.5)"/>
+          <polygon points="46,3 51,0 46,-3" transform="rotate(348.75)"/>
+        </g>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
 <div class="app">
 
 <!-- ============================================================ -->
@@ -1096,7 +1164,7 @@ footer.bot .src-list div { margin: 3px 0; }
     </div>
 
     <div class="sb-group" data-group="g-b">
-      <div class="sb-group-head"><span class="arr">▶</span><span class="label-num">B.</span>기본 예제 (8개)</div>
+      <div class="sb-group-head"><span class="arr">▶</span><span class="label-num">B.</span>기본 예제 (9개)</div>
       <div class="sb-children">
         <a class="sb-item" href="#s-b1">B-1 doubled</a>
         <a class="sb-item" href="#s-b2">i32 → String</a>
@@ -1106,6 +1174,7 @@ footer.bot .src-list div { margin: 3px 0; }
         <a class="sb-item" href="#s-b6">슬라이스에서 map</a>
         <a class="sb-item" href="#s-b7">함수 포인터 전달</a>
         <a class="sb-item" href="#s-b8">iter vs into_iter</a>
+        <a class="sb-item" href="#s-b9">copied / cloned</a>
       </div>
     </div>
 
@@ -1124,7 +1193,7 @@ footer.bot .src-list div { margin: 3px 0; }
     </div>
 
     <div class="sb-group" data-group="g-d">
-      <div class="sb-group-head"><span class="arr">▶</span><span class="label-num">D.</span>심층 예제 (6개)</div>
+      <div class="sb-group-head"><span class="arr">▶</span><span class="label-num">D.</span>심층 예제 (7개)</div>
       <div class="sb-children">
         <a class="sb-item" href="#s-d1">D-1 lazy 증명</a>
         <a class="sb-item" href="#s-d2">FnMut 캡처</a>
@@ -1132,11 +1201,12 @@ footer.bot .src-list div { margin: 3px 0; }
         <a class="sb-item" href="#s-d4">size_hint 보존</a>
         <a class="sb-item" href="#s-d5">Map 직접 구현</a>
         <a class="sb-item" href="#s-d6">map vs flat_map</a>
+        <a class="sb-item" href="#s-d7">라이프타임/소유권</a>
       </div>
     </div>
 
     <div class="sb-group" data-group="g-e">
-      <div class="sb-group-head"><span class="arr">▶</span><span class="label-num">E.</span>실전 예제 (7개)</div>
+      <div class="sb-group-head"><span class="arr">▶</span><span class="label-num">E.</span>실전 예제 (8개)</div>
       <div class="sb-children">
         <a class="sb-item" href="#s-e1">E-1 Result 수집</a>
         <a class="sb-item" href="#s-e2">Option::map</a>
@@ -1145,6 +1215,7 @@ footer.bot .src-list div { margin: 3px 0; }
         <a class="sb-item" href="#s-e5">구조체 변환</a>
         <a class="sb-item" href="#s-e6">통계 계산</a>
         <a class="sb-item" href="#s-e7">중첩 컬렉션</a>
+        <a class="sb-item" href="#s-e8">? 연산자 + map</a>
       </div>
     </div>
 
@@ -1434,6 +1505,50 @@ where<br>
   </p>
 </div>
 
+<p style="margin-top: 24px;">
+<code class="inl">Map&lt;I, F&gt;</code> 구조체는 <code class="inl">Iterator</code> 외에도 여러 트레잇을 구현합니다. 어떤 트레잇을 구현하는지는 원본 이터레이터 <code class="inl">I</code>가 무엇을 구현하느냐에 따라 달라집니다 (조건부 구현):
+</p>
+
+<table class="tbl">
+<tr><th>Map이 구현하는 트레잇</th><th>조건 (where 절)</th><th>의미</th></tr>
+<tr>
+  <td><code>Iterator</code></td>
+  <td><code>I: Iterator</code></td>
+  <td>기본. <code>next()</code> 호출 가능</td>
+</tr>
+<tr>
+  <td><code>DoubleEndedIterator</code></td>
+  <td><code>I: DoubleEndedIterator</code></td>
+  <td><code>next_back()</code> 가능 → <code>rev()</code> 사용 가능 (D-3 참고)</td>
+</tr>
+<tr>
+  <td><code>ExactSizeIterator</code></td>
+  <td><code>I: ExactSizeIterator</code></td>
+  <td><code>len()</code>으로 정확한 길이 조회 가능 (D-4 참고)</td>
+</tr>
+<tr>
+  <td><code>FusedIterator</code></td>
+  <td><code>I: FusedIterator</code></td>
+  <td>한 번 <code>None</code>이면 영원히 <code>None</code> 보장</td>
+</tr>
+<tr>
+  <td><code>Clone</code>, <code>Debug</code></td>
+  <td><code>I: Clone/Debug</code>, <code>F: Clone/Debug</code></td>
+  <td>원본 이터레이터와 클로저가 각각 구현해야 함</td>
+</tr>
+</table>
+
+<p style="color: var(--muted); font-size: 12.5px;">
+출처: <a href="https://doc.rust-lang.org/std/iter/struct.Map.html#trait-implementations" target="_blank">std::iter::Map의 Trait Implementations</a> 절. 공식 문서는 *"The map iterator implements DoubleEndedIterator, meaning that you can also map backwards"*라고 명시합니다.
+</p>
+
+<div class="callout">
+  <div class="callout-head">📖 핵심 원칙 — 조건부 구현</div>
+  <p style="margin: 0;">
+    <code class="inl">Map</code>은 <span class="em">원본 이터레이터가 제공하는 능력을 그대로 위임</span>합니다. 입력이 양방향이면 출력도 양방향, 입력이 정확한 길이를 알면 출력도 압니다. 클로저가 요소 변환만 하기 때문에 원본의 구조적 특성이 유지됩니다.
+  </p>
+</div>
+
 <!-- ============================================================ -->
 <h3 class="sub" id="s-a6">A-6. next() 호출 흐름 — collect가 어떻게 모든 걸 끌어내는가</h3>
 
@@ -1683,18 +1798,18 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 </ul>
 
 <div class="note">
-  <span class="tag">📌 권장 사용 (공식)</span>
+  <span class="tag">📖 권장 사용 (공식)</span>
   공식 <code class="inl">Iterator::map</code> 문서:<br>
   <em style="margin-top: 6px; display: inline-block;">"map() is conceptually similar to a for loop. However, as map() is lazy, it is best used when you're already working with other iterators. If you're doing some sort of looping for a side effect, it's considered more idiomatic to use for than map()."</em>
 </div>
 
 
 <!-- ============================================================ -->
-<!-- B. 기본 예제 (7개)                                            -->
+<!-- B. 기본 예제 (9개)                                            -->
 <!-- ============================================================ -->
-<h2 class="sec" id="sec-b"><span class="num">B.</span>기본 예제 (7개)</h2>
+<h2 class="sec" id="sec-b"><span class="num">B.</span>기본 예제 (9개)</h2>
 
-<p>가장 단순한 사용부터, 다양한 타입의 이터레이터에서 map을 쓰는 패턴까지 7개 예제로 익힙니다. 각 예제는 ▶ 실행으로 Wandbox에서 컴파일/실행됩니다.</p>
+<p>가장 단순한 사용부터, 다양한 타입의 이터레이터에서 map을 쓰는 패턴까지 9개 예제로 익힙니다. 각 예제는 ▶ 실행으로 Wandbox에서 컴파일/실행됩니다.</p>
 
 <!-- B-1 -->
 <div class="ex-head" id="s-b1">
@@ -1704,7 +1819,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> b1.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> b1.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-b1">복사</button>
       <button class="eb-btn run" data-code="code-b1" data-out="out-b1">▶ 실행</button>
@@ -1728,7 +1843,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 </div>
 
 <div class="note">
-  <span class="tag">📌 읽는 법</span>
+  <span class="tag">🔍 읽는 법</span>
   <code class="inl">a.iter()</code>는 <code class="inl">&amp;i32</code>를 산출합니다. 클로저 인자 <code class="inl">x</code>는 <code class="inl">&amp;i32</code>지만, 산술 연산자가 자동 역참조되므로 <code class="inl">x * 2</code>가 자연스럽게 컴파일됩니다.
 </div>
 
@@ -1740,7 +1855,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> b2.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> b2.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-b2">복사</button>
       <button class="eb-btn run" data-code="code-b2" data-out="out-b2">▶ 실행</button>
@@ -1775,7 +1890,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> b3.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> b3.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-b3">복사</button>
       <button class="eb-btn run" data-code="code-b3" data-out="out-b3">▶ 실행</button>
@@ -1807,7 +1922,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> b4.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> b4.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-b4">복사</button>
       <button class="eb-btn run" data-code="code-b4" data-out="out-b4">▶ 실행</button>
@@ -1834,7 +1949,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 </div>
 
 <div class="note">
-  <span class="tag">📌 Range가 이터레이터인 이유</span>
+  <span class="tag">💡 Range가 이터레이터인 이유</span>
   <code class="inl">1..=5</code>는 <code class="inl">RangeInclusive&lt;i32&gt;</code> 타입이고 <code class="inl">Iterator</code>를 구현합니다. <code class="inl">.iter()</code>를 부를 필요 없이 바로 <code class="inl">.map()</code>을 체이닝할 수 있습니다.
 </div>
 
@@ -1846,7 +1961,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> b5.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> b5.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-b5">복사</button>
       <button class="eb-btn run" data-code="code-b5" data-out="out-b5">▶ 실행</button>
@@ -1890,7 +2005,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> b6.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> b6.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-b6">복사</button>
       <button class="eb-btn run" data-code="code-b6" data-out="out-b6">▶ 실행</button>
@@ -1919,7 +2034,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 </div>
 
 <div class="note">
-  <span class="tag">📌 슬라이스 통일</span>
+  <span class="tag">🔑 슬라이스 통일</span>
   <code class="inl">&amp;[T]</code>(슬라이스)는 배열과 <code class="inl">Vec&lt;T&gt;</code>에서 참조 강제(deref coercion)로 자동 변환됩니다. 그래서 라이브러리 함수의 인자는 <code class="inl">&amp;Vec&lt;T&gt;</code>보다 <code class="inl">&amp;[T]</code>가 더 범용적입니다.
   <br><br>
   <span style="color: var(--muted); font-size: 12px;">주의: <code class="inl">VecDeque</code>는 ring buffer 구조라 단일 슬라이스로 변환되지 않습니다. <a href="https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.as_slices" target="_blank">VecDeque::as_slices</a>로 두 슬라이스를 받습니다.</span>
@@ -1933,7 +2048,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> b7.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> b7.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-b7">복사</button>
       <button class="eb-btn run" data-code="code-b7" data-out="out-b7">▶ 실행</button>
@@ -1985,7 +2100,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> b8.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> b8.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-b8">복사</button>
       <button class="eb-btn run" data-code="code-b8" data-out="out-b8">▶ 실행</button>
@@ -2017,6 +2132,72 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
   </div>
 </div>
 
+<!-- B-9 -->
+<div class="ex-head" id="s-b9">
+  <span class="level basic">BASIC 9</span>
+  <h4>copied() / cloned() — map의 단축 형태</h4>
+</div>
+
+<p>
+<code class="inl">iter()</code>가 <code class="inl">&amp;T</code>를 산출할 때, <code class="inl">T</code> 값을 얻으려면 <code class="inl">map(|&amp;x| x)</code> 같은 형태가 흔합니다.
+공식 <code class="inl">Iterator</code> 트레잇은 같은 일을 더 명확하게 표현하는 두 메서드를 제공합니다.
+</p>
+
+<table class="tbl">
+<tr><th>메서드</th><th>공식 시그니처 (요약)</th><th>제약</th></tr>
+<tr>
+  <td><code>copied()</code></td>
+  <td><code>fn copied&lt;'a, T&gt;(self) -&gt; Copied&lt;Self&gt;<br>where Self: Iterator&lt;Item = &amp;'a T&gt;, T: Copy</code></td>
+  <td>요소 타입이 <code>Copy</code>여야 함</td>
+</tr>
+<tr>
+  <td><code>cloned()</code></td>
+  <td><code>fn cloned&lt;'a, T&gt;(self) -&gt; Cloned&lt;Self&gt;<br>where Self: Iterator&lt;Item = &amp;'a T&gt;, T: Clone</code></td>
+  <td>요소 타입이 <code>Clone</code>이어야 함</td>
+</tr>
+</table>
+
+<div class="eb">
+  <div class="eb-head">
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> b9.rs</div>
+    <div class="eb-btns">
+      <button class="eb-btn copy" data-target="code-b9">복사</button>
+      <button class="eb-btn run" data-code="code-b9" data-out="out-b9">▶ 실행</button>
+    </div>
+  </div>
+<pre class="eb-code" id="code-b9"><span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> v = <span class="mac">vec!</span>[<span class="num">1i32</span>, <span class="num">2</span>, <span class="num">3</span>];
+
+    <span class="com">// 1) iter()는 &amp;i32 산출. i32가 필요할 때 세 가지 방법:</span>
+    <span class="com">// 방법 A: map으로 패턴 매칭</span>
+    <span class="kw">let</span> a: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = v.<span class="fn">iter</span>().<span class="fn">map</span>(|&amp;x| x * <span class="num">2</span>).<span class="fn">collect</span>();
+    <span class="com">// 방법 B: copied() - Copy 타입에만 가능, 의도 명확</span>
+    <span class="kw">let</span> b: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = v.<span class="fn">iter</span>().<span class="fn">copied</span>().<span class="fn">map</span>(|x| x * <span class="num">2</span>).<span class="fn">collect</span>();
+    <span class="com">// 방법 C: cloned() - 어떤 Clone 타입이든 가능</span>
+    <span class="kw">let</span> c: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = v.<span class="fn">iter</span>().<span class="fn">cloned</span>().<span class="fn">map</span>(|x| x * <span class="num">2</span>).<span class="fn">collect</span>();
+
+    <span class="mac">println!</span>(<span class="str">"A (map &amp;x):  {:?}"</span>, a);
+    <span class="mac">println!</span>(<span class="str">"B (copied):  {:?}"</span>, b);
+    <span class="mac">println!</span>(<span class="str">"C (cloned):  {:?}"</span>, c);
+
+    <span class="com">// 2) String처럼 Copy가 아닌 타입에는 copied() 불가</span>
+    <span class="kw">let</span> words = <span class="mac">vec!</span>[<span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hi"</span>), <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"bye"</span>)];
+    <span class="com">// let bad: Vec&lt;String&gt; = words.iter().copied().collect();  // 컴파일 에러</span>
+    <span class="kw">let</span> good: <span class="ty">Vec</span>&lt;<span class="ty">String</span>&gt; = words.<span class="fn">iter</span>().<span class="fn">cloned</span>().<span class="fn">collect</span>();
+    <span class="mac">println!</span>(<span class="str">"cloned strings: {:?}"</span>, good);
+}</pre>
+  <div class="eb-out" id="out-b9">
+    <div class="eb-out-head"><span class="head-left">▶ 출력 <span class="head-spinner"></span></span><span class="src">Wandbox</span></div>
+    <div class="eb-out-stdout"></div>
+    <div class="eb-out-stderr"></div>
+  </div>
+</div>
+
+<div class="note ok">
+  <span class="tag">✅ 언제 무엇을 쓸까</span>
+  공식 <a href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.copied" target="_blank">Iterator::copied</a> 문서는 <em>"This is useful when you have an iterator over &amp;T, but you need an iterator over T"</em>라고 명시합니다. 의도가 분명하므로 <code class="inl">map(|&amp;x| x)</code>보다 <code class="inl">copied()</code>가 가독성에서 우월합니다. <code class="inl">Copy</code>가 안 되는 타입은 <code class="inl">cloned()</code>를 쓰되, 깊은 복사 비용이 있다는 점을 고려해야 합니다.
+</div>
+
 
 <!-- ============================================================ -->
 <!-- C. 중간 예제 (8개)                                            -->
@@ -2033,7 +2214,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> c1.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> c1.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-c1">복사</button>
       <button class="eb-btn run" data-code="code-c1" data-out="out-c1">▶ 실행</button>
@@ -2071,7 +2252,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> c2.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> c2.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-c2">복사</button>
       <button class="eb-btn run" data-code="code-c2" data-out="out-c2">▶ 실행</button>
@@ -2112,7 +2293,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> c3.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> c3.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-c3">복사</button>
       <button class="eb-btn run" data-code="code-c3" data-out="out-c3">▶ 실행</button>
@@ -2145,7 +2326,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> c4.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> c4.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-c4">복사</button>
       <button class="eb-btn run" data-code="code-c4" data-out="out-c4">▶ 실행</button>
@@ -2186,7 +2367,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 </div>
 
 <div class="note">
-  <span class="tag">📌 zip의 특성</span>
+  <span class="tag">💡 zip의 특성</span>
   두 이터레이터 중 <span class="em">짧은 쪽</span>에 맞춰 멈춥니다. 길이가 다르면 긴 쪽의 나머지는 버려집니다.
 </div>
 
@@ -2198,7 +2379,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> c5.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> c5.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-c5">복사</button>
       <button class="eb-btn run" data-code="code-c5" data-out="out-c5">▶ 실행</button>
@@ -2239,7 +2420,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> c6.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> c6.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-c6">복사</button>
       <button class="eb-btn run" data-code="code-c6" data-out="out-c6">▶ 실행</button>
@@ -2294,7 +2475,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> c7.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> c7.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-c7">복사</button>
       <button class="eb-btn run" data-code="code-c7" data-out="out-c7">▶ 실행</button>
@@ -2340,7 +2521,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> c8.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> c8.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-c8">복사</button>
       <button class="eb-btn run" data-code="code-c8" data-out="out-c8">▶ 실행</button>
@@ -2382,9 +2563,9 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 
 <!-- ============================================================ -->
-<!-- D. 심층 예제 (6개)                                            -->
+<!-- D. 심층 예제 (7개)                                            -->
 <!-- ============================================================ -->
-<h2 class="sec" id="sec-d"><span class="num">D.</span>심층 예제 (6개)</h2>
+<h2 class="sec" id="sec-d"><span class="num">D.</span>심층 예제 (7개)</h2>
 
 <p>map의 본질과 내부 동작을 직접 손으로 확인하는 예제들입니다.</p>
 
@@ -2396,7 +2577,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> d1.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> d1.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-d1">복사</button>
       <button class="eb-btn run" data-code="code-d1" data-out="out-d1">▶ 실행</button>
@@ -2444,7 +2625,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> d2.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> d2.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-d2">복사</button>
       <button class="eb-btn run" data-code="code-d2" data-out="out-d2">▶ 실행</button>
@@ -2483,7 +2664,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> d3.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> d3.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-d3">복사</button>
       <button class="eb-btn run" data-code="code-d3" data-out="out-d3">▶ 실행</button>
@@ -2532,7 +2713,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> d4.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> d4.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-d4">복사</button>
       <button class="eb-btn run" data-code="code-d4" data-out="out-d4">▶ 실행</button>
@@ -2589,7 +2770,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> d5.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> d5.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-d5">복사</button>
       <button class="eb-btn run" data-code="code-d5" data-out="out-d5">▶ 실행</button>
@@ -2660,7 +2841,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> d6.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> d6.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-d6">복사</button>
       <button class="eb-btn run" data-code="code-d6" data-out="out-d6">▶ 실행</button>
@@ -2715,11 +2896,77 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
   </div>
 </div>
 
+<!-- D-7 -->
+<div class="ex-head" id="s-d7">
+  <span class="level deep">DEEP 7</span>
+  <h4>라이프타임과 소유권 — 클로저가 외부 값을 빌리는 패턴</h4>
+</div>
+
+<p>
+<code class="inl">map</code>의 클로저가 외부 변수를 사용할 때, 빌림(borrow)인지 이동(move)인지에 따라 동작이 달라집니다. <code class="inl">FnMut</code> 트레잇은 둘 다 허용하지만 결과는 다릅니다.
+</p>
+
+<div class="eb">
+  <div class="eb-head">
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> d7.rs</div>
+    <div class="eb-btns">
+      <button class="eb-btn copy" data-target="code-d7">복사</button>
+      <button class="eb-btn run" data-code="code-d7" data-out="out-d7">▶ 실행</button>
+    </div>
+  </div>
+<pre class="eb-code" id="code-d7"><span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="com">// === 1) 외부 String을 클로저가 빌림 (기본) ===</span>
+    <span class="kw">let</span> prefix = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"[item] "</span>);
+    <span class="kw">let</span> nums = <span class="mac">vec!</span>[<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>];
+
+    <span class="kw">let</span> labels: <span class="ty">Vec</span>&lt;<span class="ty">String</span>&gt; = nums.<span class="fn">iter</span>()
+        .<span class="fn">map</span>(|n| <span class="mac">format!</span>(<span class="str">"{}{}"</span>, prefix, n))
+        .<span class="fn">collect</span>();
+    <span class="mac">println!</span>(<span class="str">"1) {:?}"</span>, labels);
+    <span class="mac">println!</span>(<span class="str">"   prefix 여전히 사용 가능: {}"</span>, prefix);
+
+    <span class="com">// === 2) move로 소유권 이전 ===</span>
+    <span class="kw">let</span> header = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"== "</span>);
+    <span class="kw">let</span> nums2 = <span class="mac">vec!</span>[<span class="num">10</span>, <span class="num">20</span>];
+
+    <span class="com">// move 키워드: header를 클로저로 이동</span>
+    <span class="kw">let</span> lines: <span class="ty">Vec</span>&lt;<span class="ty">String</span>&gt; = nums2.<span class="fn">into_iter</span>()
+        .<span class="fn">map</span>(<span class="kw">move</span> |n| <span class="mac">format!</span>(<span class="str">"{}{}"</span>, header, n))
+        .<span class="fn">collect</span>();
+    <span class="mac">println!</span>(<span class="str">"2) {:?}"</span>, lines);
+    <span class="com">// println!("{}", header);  // 컴파일 에러: header가 이동됨</span>
+
+    <span class="com">// === 3) 컬렉션 자체를 소비: into_iter ===</span>
+    <span class="kw">let</span> owners = <span class="mac">vec!</span>[<span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"a"</span>), <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"b"</span>)];
+    <span class="kw">let</span> upper: <span class="ty">Vec</span>&lt;<span class="ty">String</span>&gt; = owners.<span class="fn">into_iter</span>()
+        .<span class="fn">map</span>(|s| s.<span class="fn">to_uppercase</span>())
+        .<span class="fn">collect</span>();
+    <span class="mac">println!</span>(<span class="str">"3) {:?}"</span>, upper);
+    <span class="com">// println!("{:?}", owners);  // 컴파일 에러: owners moved by into_iter</span>
+}</pre>
+  <div class="eb-out" id="out-d7">
+    <div class="eb-out-head"><span class="head-left">▶ 출력 <span class="head-spinner"></span></span><span class="src">Wandbox</span></div>
+    <div class="eb-out-stdout"></div>
+    <div class="eb-out-stderr"></div>
+  </div>
+</div>
+
+<div class="note ok">
+  <span class="tag">✅ 빌림 vs 이동 정리</span>
+  공식 The Book ch.13.1이 다루듯, 클로저가 환경을 캡처하는 방식은 세 가지:
+  <ul style="margin: 6px 0;">
+    <li><span class="em">불변 빌림 (<code class="inl">&amp;T</code>)</span> — 기본. 클로저 밖에서 변수 계속 사용 가능</li>
+    <li><span class="em">가변 빌림 (<code class="inl">&amp;mut T</code>)</span> — 클로저가 캡처 변수를 수정할 때</li>
+    <li><span class="em">이동 (<code class="inl">T</code>)</span> — <code class="inl">move</code> 키워드 또는 컴파일러가 필요하다고 판단할 때</li>
+  </ul>
+  공식 <a href="https://doc.rust-lang.org/book/ch13-01-closures.html" target="_blank">The Book ch.13.1 — Closures: Capturing the Environment</a>에 자세한 설명.
+</div>
+
 
 <!-- ============================================================ -->
-<!-- E. 실전 예제 (7개)                                            -->
+<!-- E. 실전 예제 (8개)                                            -->
 <!-- ============================================================ -->
-<h2 class="sec" id="sec-e"><span class="num">E.</span>실전 예제 (7개)</h2>
+<h2 class="sec" id="sec-e"><span class="num">E.</span>실전 예제 (8개)</h2>
 
 <p>실제 코드에서 자주 만나는 패턴들입니다.</p>
 
@@ -2731,7 +2978,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> e1.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> e1.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-e1">복사</button>
       <button class="eb-btn run" data-code="code-e1" data-out="out-e1">▶ 실행</button>
@@ -2778,7 +3025,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> e2.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> e2.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-e2">복사</button>
       <button class="eb-btn run" data-code="code-e2" data-out="out-e2">▶ 실행</button>
@@ -2812,6 +3059,35 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
   </div>
 </div>
 
+<div class="note">
+  <span class="tag">📖 세 가지 map의 공식 시그니처 비교</span>
+  같은 이름 <code class="inl">map</code>이지만 트레잇 바운드가 다릅니다:
+  <table class="tbl" style="margin-top: 8px;">
+  <tr><th>타입</th><th>공식 시그니처</th><th>클로저 트레잇</th></tr>
+  <tr>
+    <td><code>Iterator</code></td>
+    <td><code>fn map&lt;B, F&gt;(self, f: F) -&gt; Map&lt;Self, F&gt;<br>where Self: Sized, F: FnMut(Self::Item) -&gt; B</code></td>
+    <td><code>FnMut</code></td>
+  </tr>
+  <tr>
+    <td><code>Option&lt;T&gt;</code></td>
+    <td><code>pub fn map&lt;U, F&gt;(self, f: F) -&gt; Option&lt;U&gt;<br>where F: FnOnce(T) -&gt; U</code></td>
+    <td><code>FnOnce</code></td>
+  </tr>
+  <tr>
+    <td><code>Result&lt;T, E&gt;</code></td>
+    <td><code>pub fn map&lt;U, F&gt;(self, op: F) -&gt; Result&lt;U, E&gt;<br>where F: FnOnce(T) -&gt; U</code></td>
+    <td><code>FnOnce</code></td>
+  </tr>
+  </table>
+  <p style="margin: 8px 0 0;">
+    차이의 이유: <code class="inl">Iterator::map</code>은 클로저를 <span class="em">매 요소마다 반복 호출</span>하므로 <code class="inl">FnMut</code>이 필요합니다. <code class="inl">Option::map</code>과 <code class="inl">Result::map</code>은 <span class="em">최대 한 번만</span> 클로저를 호출(Some/Ok일 때 1번, None/Err이면 0번)하므로 더 약한 제약인 <code class="inl">FnOnce</code>로 충분합니다.
+  </p>
+  <div style="margin-top: 6px; color: var(--muted); font-size: 12px;">
+    출처: <a style="color: var(--em-2);" href="https://doc.rust-lang.org/std/option/enum.Option.html#method.map" target="_blank">Option::map</a>, <a style="color: var(--em-2);" href="https://doc.rust-lang.org/std/result/enum.Result.html#method.map" target="_blank">Result::map</a> 공식 문서
+  </div>
+</div>
+
 <!-- E-3 -->
 <div class="ex-head" id="s-e3">
   <span class="level real">REAL 3</span>
@@ -2820,7 +3096,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> e3.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> e3.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-e3">복사</button>
       <button class="eb-btn run" data-code="code-e3" data-out="out-e3">▶ 실행</button>
@@ -2870,7 +3146,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> e4.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> e4.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-e4">복사</button>
       <button class="eb-btn run" data-code="code-e4" data-out="out-e4">▶ 실행</button>
@@ -2910,7 +3186,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> e5.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> e5.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-e5">복사</button>
       <button class="eb-btn run" data-code="code-e5" data-out="out-e5">▶ 실행</button>
@@ -2964,7 +3240,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> e6.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> e6.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-e6">복사</button>
       <button class="eb-btn run" data-code="code-e6" data-out="out-e6">▶ 실행</button>
@@ -3014,7 +3290,7 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> e7.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> e7.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-e7">복사</button>
       <button class="eb-btn run" data-code="code-e7" data-out="out-e7">▶ 실행</button>
@@ -3060,6 +3336,84 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화로 <span cl
   </div>
 </div>
 
+<!-- E-8 -->
+<div class="ex-head" id="s-e8">
+  <span class="level real">REAL 8</span>
+  <h4>? 연산자와 map의 조합 — 실패 가능 변환 전파</h4>
+</div>
+
+<p>
+실무 코드에서 매우 자주 등장하는 패턴 — 변환이 실패할 수 있을 때 <code class="inl">?</code>로 호출자에게 에러를 전파합니다. <code class="inl">map</code> + <code class="inl">collect::&lt;Result&lt;_, _&gt;&gt;()?</code> 조합이 핵심.
+</p>
+
+<div class="eb">
+  <div class="eb-head">
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> e8.rs</div>
+    <div class="eb-btns">
+      <button class="eb-btn copy" data-target="code-e8">복사</button>
+      <button class="eb-btn run" data-code="code-e8" data-out="out-e8">▶ 실행</button>
+    </div>
+  </div>
+<pre class="eb-code" id="code-e8"><span class="kw">use</span> std::num::ParseIntError;
+
+<span class="com">// 1) collect로 Result&lt;Vec&lt;T&gt;, E&gt;: 첫 에러에서 즉시 멈춤 (E-1과 같은 패턴)</span>
+<span class="kw">fn</span> <span class="fn">parse_all</span>(strs: &amp;[&amp;<span class="ty">str</span>]) -&gt; <span class="ty">Result</span>&lt;<span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt;, <span class="ty">ParseIntError</span>&gt; {
+    strs.<span class="fn">iter</span>()
+        .<span class="fn">map</span>(|s| s.<span class="fn">parse</span>::&lt;<span class="ty">i32</span>&gt;())
+        .<span class="fn">collect</span>()  <span class="com">// 좌변 타입이 Result&lt;Vec&lt;_&gt;, _&gt;면 fail-fast</span>
+}
+
+<span class="com">// 2) map 안에서 ? 연산자 사용 - 클로저가 Result 반환</span>
+<span class="kw">fn</span> <span class="fn">parse_and_double</span>(strs: &amp;[&amp;<span class="ty">str</span>]) -&gt; <span class="ty">Result</span>&lt;<span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt;, <span class="ty">ParseIntError</span>&gt; {
+    strs.<span class="fn">iter</span>()
+        .<span class="fn">map</span>(|s| -&gt; <span class="ty">Result</span>&lt;<span class="ty">i32</span>, <span class="ty">ParseIntError</span>&gt; {
+            <span class="kw">let</span> n = s.<span class="fn">parse</span>::&lt;<span class="ty">i32</span>&gt;()?;
+            <span class="ty">Ok</span>(n * <span class="num">2</span>)
+        })
+        .<span class="fn">collect</span>()
+}
+
+<span class="com">// 3) ?로 호출자에 전파 - 함수가 Result여야 함</span>
+<span class="kw">fn</span> <span class="fn">process</span>(input: &amp;<span class="ty">str</span>) -&gt; <span class="ty">Result</span>&lt;<span class="ty">String</span>, <span class="ty">ParseIntError</span>&gt; {
+    <span class="kw">let</span> nums: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = input.<span class="fn">split</span>(<span class="str">','</span>)
+        .<span class="fn">map</span>(|s| s.<span class="fn">trim</span>().<span class="fn">parse</span>::&lt;<span class="ty">i32</span>&gt;())
+        .<span class="fn">collect</span>::&lt;<span class="ty">Result</span>&lt;_, _&gt;&gt;()?;  <span class="com">// 첫 에러 발생 시 즉시 return Err</span>
+    <span class="ty">Ok</span>(<span class="mac">format!</span>(<span class="str">"합계 = {}"</span>, nums.<span class="fn">iter</span>().<span class="fn">sum</span>::&lt;<span class="ty">i32</span>&gt;()))
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="mac">println!</span>(<span class="str">"1a) {:?}"</span>, <span class="fn">parse_all</span>(&amp;[<span class="str">"10"</span>, <span class="str">"20"</span>, <span class="str">"30"</span>]));
+    <span class="mac">println!</span>(<span class="str">"1b) {:?}"</span>, <span class="fn">parse_all</span>(&amp;[<span class="str">"10"</span>, <span class="str">"abc"</span>, <span class="str">"30"</span>]));
+    <span class="mac">println!</span>(<span class="str">"2)  {:?}"</span>, <span class="fn">parse_and_double</span>(&amp;[<span class="str">"1"</span>, <span class="str">"2"</span>, <span class="str">"3"</span>]));
+
+    <span class="kw">match</span> <span class="fn">process</span>(<span class="str">"10, 20, 30"</span>) {
+        <span class="ty">Ok</span>(s)  =&gt; <span class="mac">println!</span>(<span class="str">"3a) {}"</span>, s),
+        <span class="ty">Err</span>(e) =&gt; <span class="mac">println!</span>(<span class="str">"3a) error: {}"</span>, e),
+    }
+    <span class="kw">match</span> <span class="fn">process</span>(<span class="str">"10, oops, 30"</span>) {
+        <span class="ty">Ok</span>(s)  =&gt; <span class="mac">println!</span>(<span class="str">"3b) {}"</span>, s),
+        <span class="ty">Err</span>(e) =&gt; <span class="mac">println!</span>(<span class="str">"3b) error: {}"</span>, e),
+    }
+}</pre>
+  <div class="eb-out" id="out-e8">
+    <div class="eb-out-head"><span class="head-left">▶ 출력 <span class="head-spinner"></span></span><span class="src">Wandbox</span></div>
+    <div class="eb-out-stdout"></div>
+    <div class="eb-out-stderr"></div>
+  </div>
+</div>
+
+<div class="note ok">
+  <span class="tag">✅ 핵심 패턴 세 가지</span>
+  <ul style="margin: 6px 0;">
+    <li><span class="em">패턴 ①</span>: <code class="inl">.map(fallible).collect::&lt;Result&lt;Vec&lt;_&gt;, _&gt;&gt;()</code> — 좌변 타입만 지정. <code class="inl">FromIterator</code>의 <code class="inl">Result</code> impl 덕분에 fail-fast 동작.</li>
+    <li><span class="em">패턴 ②</span>: 클로저 반환 타입을 <code class="inl">-&gt; Result&lt;_, _&gt;</code>로 명시하고 안에서 <code class="inl">?</code> 사용. 여러 단계 fallible 변환이 필요할 때.</li>
+    <li><span class="em">패턴 ③</span>: <code class="inl">.collect::&lt;Result&lt;_, _&gt;&gt;()?</code> 마지막에 <code class="inl">?</code> — 호출자 함수가 <code class="inl">Result</code> 반환할 때 에러 전파.</li>
+  </ul>
+  <div style="margin-top: 6px; color: var(--muted); font-size: 12px;">
+    출처: <a style="color: var(--em-2);" href="https://doc.rust-lang.org/std/iter/trait.FromIterator.html#impl-FromIterator%3CResult%3CA,+E%3E%3E-for-Result%3CV,+E%3E" target="_blank">FromIterator&lt;Result&lt;A, E&gt;&gt; for Result&lt;V, E&gt;</a>의 fail-fast 동작
+  </div>
+</div>
+
 
 <!-- ============================================================ -->
 <!-- F. filter / for_each (5개)                                    -->
@@ -3088,7 +3442,7 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> f1.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> f1.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-f1">복사</button>
       <button class="eb-btn run" data-code="code-f1" data-out="out-f1">▶ 실행</button>
@@ -3130,7 +3484,7 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 </div>
 
 <div class="note">
-  <span class="tag">📌 &amp;&amp;x 패턴의 정체</span>
+  <span class="tag">🔍 &amp;&amp;x 패턴의 정체</span>
   공식 <a href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.filter" target="_blank">Iterator::filter</a> 시그니처는 <code class="inl">P: FnMut(&amp;Self::Item) -&gt; bool</code>입니다. <code class="inl">v.iter()</code>의 <code class="inl">Self::Item = &amp;i32</code>이므로, <code class="inl">filter</code>의 predicate가 받는 인자는 <code class="inl">&amp;&amp;i32</code>가 됩니다. <code class="inl">|&amp;&amp;x|</code>는 패턴 매칭으로 두 단계 역참조한 값 <code class="inl">x</code>를 꺼냅니다(요소 타입 <code class="inl">i32</code>가 <code class="inl">Copy</code>라 가능).
 </div>
 
@@ -3152,7 +3506,7 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> f2.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> f2.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-f2">복사</button>
       <button class="eb-btn run" data-code="code-f2" data-out="out-f2">▶ 실행</button>
@@ -3216,7 +3570,7 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> f3.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> f3.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-f3">복사</button>
       <button class="eb-btn run" data-code="code-f3" data-out="out-f3">▶ 실행</button>
@@ -3282,7 +3636,7 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> f4.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> f4.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-f4">복사</button>
       <button class="eb-btn run" data-code="code-f4" data-out="out-f4">▶ 실행</button>
@@ -3401,7 +3755,7 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> h1.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> h1.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-h1">복사</button>
       <button class="eb-btn run" data-code="code-h1" data-out="out-h1">▶ 실행</button>
@@ -3444,7 +3798,7 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> h2.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> h2.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-h2">복사</button>
       <button class="eb-btn run" data-code="code-h2" data-out="out-h2">▶ 실행</button>
@@ -3490,7 +3844,7 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> h3.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> h3.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-h3">복사</button>
       <button class="eb-btn run" data-code="code-h3" data-out="out-h3">▶ 실행</button>
@@ -3536,7 +3890,7 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> h4.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> h4.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-h4">복사</button>
       <button class="eb-btn run" data-code="code-h4" data-out="out-h4">▶ 실행</button>
@@ -3564,7 +3918,7 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 </div>
 
 <div class="note">
-  <span class="tag">📌 inspect의 본질</span>
+  <span class="tag">🔑 inspect의 본질</span>
   <code class="inl">inspect</code>는 map과 거의 같지만 <span class="em">변환 없이 통과시킵니다</span>. 클로저가 <code class="inl">&amp;Item</code>을 받고 반환 없음. 단일 루프이므로 출력 순서가 "1→2→통과→2→4→통과..." 이런 식으로 교차합니다 (lazy의 본질).
 </div>
 
@@ -3576,7 +3930,7 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> h5.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> h5.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-h5">복사</button>
       <button class="eb-btn run" data-code="code-h5" data-out="out-h5">▶ 실행</button>
@@ -3626,7 +3980,7 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> h6.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> h6.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-h6">복사</button>
       <button class="eb-btn run" data-code="code-h6" data-out="out-h6">▶ 실행</button>
@@ -3676,7 +4030,7 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> h7.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> h7.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-h7">복사</button>
       <button class="eb-btn run" data-code="code-h7" data-out="out-h7">▶ 실행</button>
@@ -3726,7 +4080,7 @@ map과 함께 가장 많이 쓰이는 두 친구 메서드입니다. 시그니�
 
 <div class="eb">
   <div class="eb-head">
-    <div class="eb-tag"><span class="ic">📄</span> h8.rs</div>
+    <div class="eb-tag"><svg class="ic-rust" aria-hidden="true"><use href="#rust-logo"/></svg> h8.rs</div>
     <div class="eb-btns">
       <button class="eb-btn copy" data-target="code-h8">복사</button>
       <button class="eb-btn run" data-code="code-h8" data-out="out-h8">▶ 실행</button>
@@ -3942,7 +4296,7 @@ let chars: Vec&lt;char&gt; = words.iter()
 <h4>⑥ Result&lt;Vec&lt;T&gt;, E&gt; vs Vec&lt;Result&lt;T, E&gt;&gt;를 혼동</h4>
 
 <div class="note">
-  <span class="tag">📌 좌변 타입에 따라 달라짐</span>
+  <span class="tag">💡 좌변 타입에 따라 달라짐</span>
   같은 <code class="inl">.map(|s| s.parse::&lt;i32&gt;())</code>여도 collect의 타입을:
   <ul style="margin: 6px 0;">
     <li><code class="inl">Result&lt;Vec&lt;i32&gt;, _&gt;</code>로 적으면 → fail-fast (하나라도 실패면 전체 Err)</li>
@@ -4229,6 +4583,23 @@ let chars: Vec&lt;char&gt; = words.iter()
       const group = best.sbItem.closest('.sb-group');
       if (group && !group.classList.contains('open')) {
         group.classList.add('open');
+      }
+
+      // 활성 항목이 사이드바 보이는 영역 밖이면, 사이드바만 스크롤해서 보이게 함
+      // (window 스크롤은 건드리지 않음 — 본문 스크롤이 사이드바에 의해 영향받지 않도록)
+      const sbNav = document.getElementById('sb-nav');
+      if (sbNav) {
+        const navRect = sbNav.getBoundingClientRect();
+        const itemRect = best.sbItem.getBoundingClientRect();
+        // 항목이 사이드바 가시 영역 위/아래로 벗어났는지 검사
+        const margin = 40; // 위아래 여유 (그룹 헤더가 가리지 않게)
+        if (itemRect.top < navRect.top + margin) {
+          // 항목이 위로 잘림 → 사이드바를 위로 스크롤
+          sbNav.scrollTop += (itemRect.top - navRect.top - margin);
+        } else if (itemRect.bottom > navRect.bottom - margin) {
+          // 항목이 아래로 잘림 → 사이드바를 아래로 스크롤
+          sbNav.scrollTop += (itemRect.bottom - navRect.bottom + margin);
+        }
       }
     }
   }
