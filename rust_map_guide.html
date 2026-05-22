@@ -2430,19 +2430,24 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화를 다음�
 
     <span class="com">// 1) 클로저 방식</span>
     <span class="kw">let</span> v1: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = a.<span class="fn">iter</span>().<span class="fn">map</span>(|x| x * <span class="num">2</span>).<span class="fn">collect</span>();
-    <span class="mac">println!</span>(<span class="str">"클로저:   {:?}"</span>, v1);
+    <span class="mac">println!</span>(<span class="str">"클로저:    {:?}"</span>, v1);
 
     <span class="com">// 2) named 함수 직접 전달 (함수도 FnMut을 구현함)</span>
     <span class="kw">let</span> v2: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = a.<span class="fn">iter</span>().<span class="fn">map</span>(double).<span class="fn">collect</span>();
-    <span class="mac">println!</span>(<span class="str">"함수 전달: {:?}"</span>, v2);
+    <span class="mac">println!</span>(<span class="str">"함수 전달:  {:?}"</span>, v2);
 
-    <span class="com">// 3) 표준 라이브러리 함수도 그대로 전달 가능</span>
-    <span class="kw">let</span> v3: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = a.<span class="fn">iter</span>().<span class="fn">map</span>(|x| x.<span class="fn">abs</span>()).<span class="fn">collect</span>();
-    <span class="mac">println!</span>(<span class="str">"abs:      {:?}"</span>, v3);
+    <span class="com">// 3) 메서드 호출은 클로저 안에서 — Rust가 자동 deref해서 (*x).abs() 호출</span>
+    <span class="kw">let</span> nums: [<span class="ty">i32</span>; <span class="num">5</span>] = [-<span class="num">3</span>, -<span class="num">1</span>, <span class="num">0</span>, <span class="num">2</span>, <span class="num">4</span>];
+    <span class="kw">let</span> v3: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = nums.<span class="fn">iter</span>().<span class="fn">map</span>(|x| x.<span class="fn">abs</span>()).<span class="fn">collect</span>();
+    <span class="mac">println!</span>(<span class="str">"abs:       {:?}"</span>, v3);
 
-    <span class="com">// 4) i32::to_string 같은 메서드도 전달 가능</span>
-    <span class="kw">let</span> v4: <span class="ty">Vec</span>&lt;<span class="ty">String</span>&gt; = a.<span class="fn">iter</span>().<span class="fn">map</span>(<span class="ty">i32</span>::to_string).<span class="fn">collect</span>();
-    <span class="mac">println!</span>(<span class="str">"to_string:{:?}"</span>, v4);
+    <span class="com">// 4) i32::abs는 self: i32를 받으므로 .copied()로 i32를 만들어 직접 전달</span>
+    <span class="kw">let</span> v4: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = nums.<span class="fn">iter</span>().<span class="fn">copied</span>().<span class="fn">map</span>(<span class="ty">i32</span>::abs).<span class="fn">collect</span>();
+    <span class="mac">println!</span>(<span class="str">"i32::abs:  {:?}"</span>, v4);
+
+    <span class="com">// 5) &amp;self를 받는 메서드는 함수 포인터로 직접 전달 가능 (ToString::to_string은 &amp;self)</span>
+    <span class="kw">let</span> v5: <span class="ty">Vec</span>&lt;<span class="ty">String</span>&gt; = a.<span class="fn">iter</span>().<span class="fn">map</span>(<span class="ty">i32</span>::to_string).<span class="fn">collect</span>();
+    <span class="mac">println!</span>(<span class="str">"to_string: {:?}"</span>, v5);
 }</pre>
   <div class="eb-out" id="out-b7">
     <div class="eb-out-head"><span class="head-left">▶ 출력 <span class="head-spinner"></span></span><span class="src">Wandbox</span></div>
@@ -2451,12 +2456,79 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화를 다음�
   </div>
 </div>
 
-<div class="note ok">
-  <span class="tag">✅ Fn 트레잇 통일</span>
-  공식 <a href="https://doc.rust-lang.org/std/ops/trait.Fn.html" target="_blank">Fn / FnMut / FnOnce</a> 문서에 따르면, 함수 포인터(<code class="inl">fn(T) -&gt; U</code>)와 클로저는 모두 <code class="inl">Fn</code>·<code class="inl">FnMut</code>·<code class="inl">FnOnce</code> 트레잇을 구현합니다. <code class="inl">fn item</code>(예: <code class="inl">i32::to_string</code>)도 함수 포인터로 강제(coercion)될 수 있어, <code class="inl">map</code>의 인자로 직접 전달 가능합니다.
-  <div style="margin-top: 6px; color: var(--muted); font-size: 12px;">
-    출처: <a href="https://doc.rust-lang.org/reference/types/function-pointer.html" target="_blank">The Rust Reference — Function pointer types</a>
-  </div>
+<div class="callout">
+  <div class="callout-head">📘 함수가 map에 전달되는 메커니즘 — 4단계로 정리</div>
+
+  <p style="margin: 8px 0 0;"><strong>① <code class="inl">map&lt;B, F&gt;</code>의 <code class="inl">F</code>는 <code class="inl">FnMut(Self::Item) -&gt; B</code>를 요구</strong></p>
+  <p style="margin: 4px 0 0;">
+    <code class="inl">map</code>의 시그니처는 클로저뿐 아니라 <span class="em"><code class="inl">FnMut</code> 트레잇을 구현하는 무엇이든</span> 받습니다. 함수도 트레잇을 구현하면 받아들여집니다.
+  </p>
+
+  <p style="margin: 12px 0 0;"><strong>② Rust의 호출 가능한 것들은 3가지 형태</strong></p>
+  <table class="tbl" style="margin: 6px 0;">
+    <tr><th>형태</th><th>예시</th><th>크기</th><th>구현하는 트레잇</th></tr>
+    <tr>
+      <td><code class="inl">fn item</code></td>
+      <td><code class="inl">double</code>, <code class="inl">i32::abs</code>, <code class="inl">String::from</code></td>
+      <td>ZST (0바이트)</td>
+      <td><code class="inl">Fn</code>+<code class="inl">FnMut</code>+<code class="inl">FnOnce</code>+<code class="inl">Copy</code></td>
+    </tr>
+    <tr>
+      <td><code class="inl">fn pointer</code></td>
+      <td><code class="inl">fn(&amp;i32) -&gt; i32</code> 타입의 값</td>
+      <td>포인터 1개</td>
+      <td><code class="inl">Fn</code>+<code class="inl">FnMut</code>+<code class="inl">FnOnce</code>+<code class="inl">Copy</code></td>
+    </tr>
+    <tr>
+      <td>클로저</td>
+      <td><code class="inl">|x| x * 2</code></td>
+      <td>캡처에 따라</td>
+      <td>캡처 방식에 따라 <code class="inl">Fn</code> / <code class="inl">FnMut</code> / <code class="inl">FnOnce</code></td>
+    </tr>
+  </table>
+  <p style="margin: 4px 0 0;">
+    <code class="inl">fn item</code>은 함수마다 고유한 타입(예: <code class="inl">fn(&amp;i32) -&gt; i32 {double}</code>)이고 자동으로 <code class="inl">fn pointer</code>로 강제 변환됩니다(<a href="https://doc.rust-lang.org/reference/types/function-pointer.html" target="_blank">The Rust Reference — Function pointer types</a>).
+  </p>
+
+  <p style="margin: 12px 0 0;"><strong>③ <code class="inl">Fn</code>·<code class="inl">FnMut</code>·<code class="inl">FnOnce</code>는 supertrait 계층</strong></p>
+  <p style="margin: 4px 0 0;">
+    공식 정의(<a href="https://doc.rust-lang.org/std/ops/trait.Fn.html" target="_blank">Fn</a>, <a href="https://doc.rust-lang.org/std/ops/trait.FnMut.html" target="_blank">FnMut</a>, <a href="https://doc.rust-lang.org/std/ops/trait.FnOnce.html" target="_blank">FnOnce</a>):
+  </p>
+  <pre style="margin: 6px 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--em-2); padding: 8px 12px; background: var(--bg-2); border-radius: 4px;">pub trait Fn&lt;Args&gt;: <span style="color: var(--em);">FnMut</span>&lt;Args&gt; { ... }      // Fn은 FnMut의 subtrait
+pub trait FnMut&lt;Args&gt;: <span style="color: var(--em);">FnOnce</span>&lt;Args&gt; { ... }   // FnMut은 FnOnce의 subtrait</pre>
+  <p style="margin: 4px 0 0;">
+    즉 <code class="inl">Fn</code>을 구현하면 자동으로 <code class="inl">FnMut</code>도 구현 (blanket impl). 따라서 <code class="inl">map</code>이 <code class="inl">F: FnMut</code>을 요구해도 — <code class="inl">Fn</code>을 구현하는 <code class="inl">fn item</code>·<code class="inl">fn pointer</code>·캡처 없는 클로저 모두 받아들입니다.
+  </p>
+
+  <p style="margin: 12px 0 0;"><strong>④ 직접 전달 가능 vs 클로저로 감싸야 함</strong></p>
+  <p style="margin: 4px 0 0;">
+    핵심은 <span class="em">함수의 시그니처가 이터레이터의 <code class="inl">Item</code>과 일치하는가</span>. <code class="inl">.iter()</code>는 <code class="inl">&amp;T</code>를 yield합니다:
+  </p>
+  <table class="tbl" style="margin: 6px 0;">
+    <tr><th>함수의 self 형태</th><th>예시</th><th>.iter()와 직접 호환?</th><th>방법</th></tr>
+    <tr>
+      <td><code class="inl">fn(&amp;T) -&gt; U</code></td>
+      <td><code class="inl">double(x: &amp;i32)</code>, <code class="inl">ToString::to_string(&amp;self)</code></td>
+      <td>🟢 그대로 전달</td>
+      <td><code class="inl">.iter().map(double)</code></td>
+    </tr>
+    <tr>
+      <td><code class="inl">fn(T) -&gt; U</code> (self by value)</td>
+      <td><code class="inl">i32::abs(self: i32)</code></td>
+      <td>🔴 타입 불일치</td>
+      <td><code class="inl">.iter().copied().map(i32::abs)</code> 또는 클로저</td>
+    </tr>
+    <tr>
+      <td>클로저 안에서 메서드 호출</td>
+      <td><code class="inl">\|x\| x.abs()</code></td>
+      <td>🟢 자동 deref</td>
+      <td>Rust가 <code class="inl">(*x).abs()</code>로 변환</td>
+    </tr>
+  </table>
+
+  <p style="margin: 12px 0 0; color: var(--muted); font-size: 12px;">
+    한 줄 요약: <span class="em">함수도 클로저도 동일하게 <code class="inl">Fn/FnMut/FnOnce</code> 트레잇으로 추상화</span>되며, <code class="inl">map</code>이 받는 건 그 트레잇을 구현하는 것뿐. 시그니처 일치만 챙기면 됩니다.
+  </p>
 </div>
 
 <!-- B-8 -->
@@ -2585,34 +2657,87 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화를 다음�
   </div>
 <pre class="eb-code" id="code-b10"><span class="kw">fn</span> <span class="fn">main</span>() {
     <span class="kw">let</span> v: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = (<span class="num">1</span>..=<span class="num">20</span>).<span class="fn">collect</span>();
+    <span class="com">// v = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]</span>
 
-    <span class="com">// 1) take(n): 앞 n개만</span>
+    <span class="com">// ─────────────────────────────────────────────────────────────</span>
+    <span class="com">// 1) take(n): 앞에서부터 n개만 가져오고 나머지는 버림</span>
+    <span class="com">//    동작: iterator를 n번 next() 호출한 후 None 반환</span>
+    <span class="com">//    take(5) → [1, 2, 3, 4, 5] (앞 5개만)</span>
+    <span class="com">//    이걸 다시 map(|&amp;x| x * 10) → [10, 20, 30, 40, 50]</span>
+    <span class="com">// ─────────────────────────────────────────────────────────────</span>
     <span class="kw">let</span> first5: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = v.<span class="fn">iter</span>().<span class="fn">take</span>(<span class="num">5</span>).<span class="fn">map</span>(|&amp;x| x * <span class="num">10</span>).<span class="fn">collect</span>();
-    <span class="mac">println!</span>(<span class="str">"1) 앞 5개 *10: {:?}"</span>, first5);
+    <span class="mac">println!</span>(<span class="str">"1) 앞 5개 *10:    {:?}"</span>, first5);
+    <span class="com">// 기대: [10, 20, 30, 40, 50]</span>
 
-    <span class="com">// 2) skip(n).take(m): n개 건너뛰고 m개</span>
+    <span class="com">// ─────────────────────────────────────────────────────────────</span>
+    <span class="com">// 2) skip(n).take(m): 앞 n개는 버리고 그 다음 m개만 가져옴</span>
+    <span class="com">//    체이닝 순서가 중요 — skip 먼저 한 후 take를 적용</span>
+    <span class="com">//    skip(5) → [6, 7, 8, 9, 10, 11, ..., 20] (앞 5개 버림)</span>
+    <span class="com">//    .take(3) → [6, 7, 8] (앞 3개만)</span>
+    <span class="com">//    .map(|&amp;x| x * 100) → [600, 700, 800]</span>
+    <span class="com">// ─────────────────────────────────────────────────────────────</span>
     <span class="kw">let</span> after5: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = v.<span class="fn">iter</span>().<span class="fn">skip</span>(<span class="num">5</span>).<span class="fn">take</span>(<span class="num">3</span>).<span class="fn">map</span>(|&amp;x| x * <span class="num">100</span>).<span class="fn">collect</span>();
-    <span class="mac">println!</span>(<span class="str">"2) 6번째부터 3개 *100: {:?}"</span>, after5);
+    <span class="mac">println!</span>(<span class="str">"2) skip 5, take 3 *100: {:?}"</span>, after5);
+    <span class="com">// 기대: [600, 700, 800]</span>
 
-    <span class="com">// 3) take_while: 조건 만족하는 동안만 (만족 안 하는 첫 요소에서 중단)</span>
+    <span class="com">// ─────────────────────────────────────────────────────────────</span>
+    <span class="com">// 3) take_while: 조건이 참인 동안 가져옴 — 첫 거짓에서 즉시 중단</span>
+    <span class="com">//    take(n)은 개수 기반, take_while은 조건 기반</span>
+    <span class="com">//    1, 2, 3, 4, 5는 6 미만 → 통과</span>
+    <span class="com">//    6은 6 미만 거짓 → 여기서 중단 (이후 요소는 검사조차 안 함)</span>
+    <span class="com">//    → [1, 2, 3, 4, 5]를 map(|x| x * x) → [1, 4, 9, 16, 25]</span>
+    <span class="com">// ─────────────────────────────────────────────────────────────</span>
     <span class="kw">let</span> small: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = v.<span class="fn">iter</span>().<span class="fn">copied</span>()
         .<span class="fn">take_while</span>(|&amp;x| x &lt; <span class="num">6</span>).<span class="fn">map</span>(|x| x * x).<span class="fn">collect</span>();
     <span class="mac">println!</span>(<span class="str">"3) 6 미만 동안 제곱: {:?}"</span>, small);
+    <span class="com">// 기대: [1, 4, 9, 16, 25]</span>
 
-    <span class="com">// 4) skip_while: 조건 만족하는 동안 건너뛰기</span>
+    <span class="com">// ─────────────────────────────────────────────────────────────</span>
+    <span class="com">// 4) skip_while: 조건이 참인 동안 건너뛰고, 첫 거짓부터 모두 가져옴</span>
+    <span class="com">//    skip(n)은 개수 기반, skip_while은 조건 기반</span>
+    <span class="com">//    1~14는 15 미만이라 참 → 모두 건너뜀</span>
+    <span class="com">//    15는 15 미만 거짓 → 여기부터 끝까지 모두 가져옴 (이후 조건 재검사 안 함!)</span>
+    <span class="com">//    → [15, 16, ..., 20]을 map(|x| x + 1) → [16, 17, ..., 21]</span>
+    <span class="com">// ─────────────────────────────────────────────────────────────</span>
     <span class="kw">let</span> after: <span class="ty">Vec</span>&lt;<span class="ty">i32</span>&gt; = v.<span class="fn">iter</span>().<span class="fn">copied</span>()
         .<span class="fn">skip_while</span>(|&amp;x| x &lt; <span class="num">15</span>).<span class="fn">map</span>(|x| x + <span class="num">1</span>).<span class="fn">collect</span>();
     <span class="mac">println!</span>(<span class="str">"4) 15 이상부터 +1: {:?}"</span>, after);
+    <span class="com">// 기대: [16, 17, 18, 19, 20, 21]</span>
 
-    <span class="com">// 5) 실용: 페이지네이션 (page 3, 페이지당 5개)</span>
-    <span class="kw">let</span> page = <span class="num">3</span>;
-    <span class="kw">let</span> per_page = <span class="num">5</span>;
-    <span class="kw">let</span> names: <span class="ty">Vec</span>&lt;<span class="ty">String</span>&gt; = (<span class="num">1</span>..=<span class="num">100</span>)
-        .<span class="fn">skip</span>((page - <span class="num">1</span>) * per_page)
-        .<span class="fn">take</span>(per_page)
-        .<span class="fn">map</span>(|n| <span class="mac">format!</span>(<span class="str">"item_{:03}"</span>, n))
-        .<span class="fn">collect</span>();
-    <span class="mac">println!</span>(<span class="str">"5) page {}: {:?}"</span>, page, names);
+    <span class="com">// ═════════════════════════════════════════════════════════════</span>
+    <span class="com">// 5) 실용 예제: 페이지네이션 (페이지 단위로 데이터 자르기)</span>
+    <span class="com">//</span>
+    <span class="com">// 페이지네이션이란? — 데이터가 많을 때 한 번에 다 보여주지 않고</span>
+    <span class="com">//   한 페이지에 N개씩 나눠 보여주는 것 (구글 검색 결과처럼)</span>
+    <span class="com">//</span>
+    <span class="com">// 공식: page번째 페이지의 시작 인덱스 = (page - 1) * per_page</span>
+    <span class="com">//                    가져올 개수 = per_page</span>
+    <span class="com">//</span>
+    <span class="com">// 함수로 만들어 page를 매개변수로 받으면 — 같은 공식으로 어떤 페이지든 자동 계산</span>
+    <span class="com">// ═════════════════════════════════════════════════════════════</span>
+    <span class="kw">fn</span> <span class="fn">get_page</span>(page: <span class="ty">usize</span>, per_page: <span class="ty">usize</span>) -&gt; <span class="ty">Vec</span>&lt;<span class="ty">String</span>&gt; {
+        (<span class="num">1</span>..=<span class="num">100</span>)                            <span class="com">// 전체 데이터: 1~100</span>
+            .<span class="fn">skip</span>((page - <span class="num">1</span>) * per_page)       <span class="com">// 앞 페이지들 건너뜀</span>
+            .<span class="fn">take</span>(per_page)                   <span class="com">// 한 페이지 분량만</span>
+            .<span class="fn">map</span>(|n| <span class="mac">format!</span>(<span class="str">"item_{:03}"</span>, n))  <span class="com">// "item_011" 형식 문자열로</span>
+            .<span class="fn">collect</span>()
+    }
+
+    <span class="com">// page 값에 따라 결과가 달라지는 걸 확인:</span>
+    <span class="com">//   page=1 → (1-1)*5 =  0 → skip(0)  → items  1~5</span>
+    <span class="com">//   page=2 → (2-1)*5 =  5 → skip(5)  → items  6~10</span>
+    <span class="com">//   page=3 → (3-1)*5 = 10 → skip(10) → items 11~15</span>
+    <span class="com">//   page=4 → (4-1)*5 = 15 → skip(15) → items 16~20</span>
+    <span class="com">// 한 번의 함수 호출은 한 페이지만 반환. 매개변수 page가 바뀌면 다른 페이지가 나옴.</span>
+    <span class="mac">println!</span>(<span class="str">"5) page 1: {:?}"</span>, <span class="fn">get_page</span>(<span class="num">1</span>, <span class="num">5</span>));
+    <span class="mac">println!</span>(<span class="str">"   page 2: {:?}"</span>, <span class="fn">get_page</span>(<span class="num">2</span>, <span class="num">5</span>));
+    <span class="mac">println!</span>(<span class="str">"   page 3: {:?}"</span>, <span class="fn">get_page</span>(<span class="num">3</span>, <span class="num">5</span>));
+    <span class="mac">println!</span>(<span class="str">"   page 4: {:?}"</span>, <span class="fn">get_page</span>(<span class="num">4</span>, <span class="num">5</span>));
+    <span class="com">// 기대:</span>
+    <span class="com">//   page 1: ["item_001", "item_002", "item_003", "item_004", "item_005"]</span>
+    <span class="com">//   page 2: ["item_006", "item_007", "item_008", "item_009", "item_010"]</span>
+    <span class="com">//   page 3: ["item_011", "item_012", "item_013", "item_014", "item_015"]</span>
+    <span class="com">//   page 4: ["item_016", "item_017", "item_018", "item_019", "item_020"]</span>
 }</pre>
   <div class="eb-out" id="out-b10">
     <div class="eb-out-head"><span class="head-left">▶ 출력 <span class="head-spinner"></span></span><span class="src">Wandbox</span></div>
@@ -2622,11 +2747,28 @@ The Book은 이 결과를 가능하게 하는 컴파일러 최적화를 다음�
 </div>
 
 <div class="note ok">
-  <span class="tag">✅ 차이 — n 기반 vs 조건 기반</span>
+  <span class="tag">✅ 차이 — 개수 기반 vs 조건 기반</span>
   <ul style="margin: 6px 0;">
-    <li><code class="inl">take(n) / skip(n)</code> — 정확한 개수. 인덱스 기반 페이지네이션.</li>
-    <li><code class="inl">take_while(p) / skip_while(p)</code> — 조건 기반. 첫 조건 위반 지점에서 동작 멈춤/시작. 정렬된 데이터에 유용.</li>
+    <li><code class="inl">take(n) / skip(n)</code> — <span class="em">정확한 개수</span>. 인덱스 기반. 페이지네이션처럼 개수가 분명할 때.</li>
+    <li><code class="inl">take_while(p) / skip_while(p)</code> — <span class="em">조건 기반</span>. <span class="em">첫 조건 위반 지점</span>에서 동작 멈춤/시작. 정렬된 데이터에 유용.</li>
   </ul>
+</div>
+
+<div class="note warn">
+  <span class="tag">⚠️ take_while / skip_while의 함정 — "한 번 멈추면 끝"</span>
+  <p style="margin: 6px 0;">
+    이 둘은 <span class="em">첫 위반 지점만</span> 확인하고 그 뒤로는 조건을 <span class="em">다시 검사하지 않습니다</span>. <code class="inl">filter</code>와는 동작이 완전히 다릅니다.
+  </p>
+  <pre style="margin: 8px 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--em-2); padding: 8px 12px; background: var(--bg-2); border-radius: 4px;"><span style="color: #6a9955;">// 데이터: [1, 2, 3, 100, 4, 5]</span>
+
+<span style="color: #6a9955;">// take_while(|x| x &lt; 10) → [1, 2, 3]</span>
+<span style="color: #6a9955;">// 100을 만나는 순간 멈춤. 뒤의 4, 5는 조건을 만족해도 안 가져옴!</span>
+
+<span style="color: #6a9955;">// filter(|x| x &lt; 10) → [1, 2, 3, 4, 5]</span>
+<span style="color: #6a9955;">// filter는 매 요소를 다 검사. 100만 빠지고 4, 5는 통과.</span></pre>
+  <p style="margin: 6px 0;">
+    👉 <span class="em">정렬된 데이터</span>에서는 <code class="inl">take_while/skip_while</code>이 효율적(중단 시점이 명확). <span class="em">정렬 안 된 데이터</span>에서 조건 필터가 필요하면 <code class="inl">filter</code>를 써야 합니다.
+  </p>
   <div style="margin-top: 6px; color: var(--muted); font-size: 12px;">
     출처: <a style="color: var(--em-2);" href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.take" target="_blank">take</a>, <a style="color: var(--em-2);" href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.skip" target="_blank">skip</a>, <a style="color: var(--em-2);" href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.take_while" target="_blank">take_while</a>, <a style="color: var(--em-2);" href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.skip_while" target="_blank">skip_while</a>
   </div>
