@@ -1,0 +1,4593 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rust String / &amp;str / Lifetime 완벽 가이드</title>
+<style>
+/* ============================================================
+   Rust String/&str/Lifetime 가이드 — 메인 스타일시트
+   ============================================================ */
+
+/* ---------- CSS 변수: 라이트 테마 ---------- */
+:root {
+  /* 본문 색상 */
+  --bg: #ffffff;
+  --bg-elevated: #f8fafc;
+  --bg-sidebar: #f1f5f9;
+  --bg-code: #1f1f1f;          /* VS Code Dark Modern 배경 (라이트 테마에서도 코드는 다크) */
+  --bg-output: #0f172a;
+  --bg-inline-code: #f1f5f9;
+  --bg-callout-info: #eff6ff;
+  --bg-callout-warn: #fef3c7;
+  --bg-callout-error: #fee2e2;
+  --bg-callout-tip: #f0fdf4;
+
+  --fg: #0f172a;
+  --fg-muted: #475569;
+  --fg-strong: #020617;
+  --fg-inline-code: #be185d;
+  --fg-output: #e2e8f0;
+
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --border-code: #404040;
+
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: #dbeafe;
+
+  /* SVG 색상 (라이트 테마) — 명확하게 진한 색만 사용 */
+  --svg-text: #0f172a;
+  --svg-text-strong: #020617;
+  --svg-text-muted: #334155;       /* 라이트에서도 충분히 진함 */
+  --svg-box-bg: #ffffff;
+  --svg-box-bg-alt: #f1f5f9;
+  --svg-box-stroke: #1e40af;
+  --svg-arrow: #1e40af;
+  --svg-accent-1: #dc2626;          /* 빨강 */
+  --svg-accent-2: #059669;          /* 초록 */
+  --svg-accent-3: #7c3aed;          /* 보라 */
+  --svg-accent-4: #ea580c;          /* 주황 */
+  --svg-static-bg: #fef3c7;         /* 정적 영역 */
+  --svg-heap-bg: #dcfce7;           /* 힙 영역 */
+  --svg-stack-bg: #dbeafe;          /* 스택 영역 */
+  --svg-region-stroke: #475569;
+  --svg-grid: #cbd5e1;
+  --svg-error-bg: #fee2e2;
+  --svg-error-stroke: #dc2626;
+
+  /* 신택스 하이라이팅 (VS Code Dark Modern) — 다크 테마와 동일 (코드 영역은 항상 다크) */
+  --code-fg: #d4d4d4;
+  --code-keyword: #569cd6;
+  --code-string: #ce9178;
+  --code-number: #b5cea8;
+  --code-comment: #6a9955;
+  --code-function: #dcdcaa;
+  --code-macro: #c586c0;
+  --code-type: #4ec9b0;
+  --code-variable: #9cdcfe;
+  --code-lifetime: #d7ba7d;
+  --code-attribute: #c8c8c8;
+  --code-operator: #d4d4d4;
+  --code-line-number: #858585;
+}
+
+/* ---------- CSS 변수: 다크 테마 ---------- */
+[data-theme="dark"] {
+  --bg: #0b1220;
+  --bg-elevated: #111827;
+  --bg-sidebar: #0f172a;
+  --bg-output: #020617;
+  --bg-inline-code: #1e293b;
+  --bg-callout-info: rgba(59, 130, 246, 0.12);
+  --bg-callout-warn: rgba(245, 158, 11, 0.12);
+  --bg-callout-error: rgba(239, 68, 68, 0.12);
+  --bg-callout-tip: rgba(16, 185, 129, 0.12);
+
+  --fg: #e2e8f0;
+  --fg-muted: #cbd5e1;            /* 다크에서 흐릿한 텍스트도 슬레이트-300 이상 */
+  --fg-strong: #f8fafc;
+  --fg-inline-code: #f9a8d4;
+
+  --border: #1e293b;
+  --border-strong: #334155;
+
+  --accent: #38bdf8;
+  --accent-hover: #7dd3fc;
+  --accent-soft: rgba(56, 189, 248, 0.15);
+
+  /* SVG 색상 (다크 테마) — 흰색~밝은 슬레이트만 사용, 회색 금지 */
+  --svg-text: #f1f5f9;
+  --svg-text-strong: #ffffff;
+  --svg-text-muted: #cbd5e1;       /* 절대 어두운 회색 안 씀 */
+  --svg-box-bg: #1e293b;
+  --svg-box-bg-alt: #334155;
+  --svg-box-stroke: #38bdf8;
+  --svg-arrow: #7dd3fc;
+  /* accent는 다크에서도 채도 있는 색으로 — 흰 글자와 대비 확보 */
+  --svg-accent-1: #ef4444;          /* 빨강 (밝은 톤이 아닌 채도) */
+  --svg-accent-2: #10b981;          /* 초록 */
+  --svg-accent-3: #8b5cf6;          /* 보라 */
+  --svg-accent-4: #f97316;          /* 주황 */
+  --svg-static-bg: rgba(252, 211, 77, 0.22);
+  --svg-heap-bg: rgba(16, 185, 129, 0.20);
+  --svg-stack-bg: rgba(125, 211, 252, 0.20);
+  --svg-region-stroke: #cbd5e1;
+  --svg-grid: #475569;
+  --svg-error-bg: rgba(239, 68, 68, 0.22);
+  --svg-error-stroke: #f87171;
+}
+
+/* ---------- 기본 ---------- */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--fg);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------- 레이아웃 ---------- */
+.layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+}
+.sidebar {
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  padding: 24px 16px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+.main {
+  padding: 32px 48px 80px;
+  max-width: 920px;
+  width: 100%;
+}
+
+/* 모바일 */
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar {
+    position: fixed;
+    left: -300px;
+    width: 280px;
+    z-index: 100;
+    transition: left 0.25s ease;
+    box-shadow: 2px 0 16px rgba(0,0,0,0.15);
+  }
+  .sidebar.open { left: 0; }
+  .main { padding: 24px 18px 80px; }
+  .menu-toggle { display: flex !important; }
+}
+
+/* ---------- 사이드바 ---------- */
+.sidebar-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.sidebar > ul > li > a {
+  display: block;
+  padding: 8px 10px;
+  margin: 2px 0;
+  border-radius: 6px;
+  color: var(--fg);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+}
+.sidebar > ul > li > a:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.sidebar > ul > li > a.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.sidebar .sub {
+  margin: 2px 0 8px 14px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+}
+.sidebar .sub li a {
+  display: block;
+  padding: 4px 8px;
+  font-size: 13px;
+  color: var(--fg-muted);
+  text-decoration: none;
+  border-radius: 4px;
+}
+.sidebar .sub li a:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.sidebar .sub li a.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---------- 상단 컨트롤 ---------- */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  cursor: pointer;
+  color: var(--fg);
+  font-size: 20px;
+}
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+.theme-toggle:hover { background: var(--accent-soft); }
+
+/* ---------- 타이포 ---------- */
+h1 {
+  font-size: 2.25rem;
+  font-weight: 800;
+  margin: 0 0 8px;
+  color: var(--fg-strong);
+  letter-spacing: -0.02em;
+}
+h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 56px 0 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-strong);
+  color: var(--fg-strong);
+  scroll-margin-top: 20px;
+}
+h3 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 40px 0 12px;
+  color: var(--fg-strong);
+  scroll-margin-top: 20px;
+}
+h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 28px 0 10px;
+  color: var(--accent);
+  scroll-margin-top: 20px;
+}
+p { margin: 12px 0; }
+.lead {
+  font-size: 1.1rem;
+  color: var(--fg-muted);
+  margin-bottom: 24px;
+}
+
+/* ---------- 인라인 코드 ---------- */
+:not(pre) > code, code.inline {
+  font-family: 'JetBrains Mono', 'Fira Code', 'D2Coding', Consolas, 'Courier New', monospace;
+  font-size: 0.92em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg-inline-code);
+  color: var(--fg-inline-code);
+  font-weight: 500;
+}
+
+/* ---------- 콜아웃 ---------- */
+.callout {
+  margin: 20px 0;
+  padding: 14px 18px;
+  border-radius: 8px;
+  border-left: 4px solid;
+}
+.callout-info  { background: var(--bg-callout-info);  border-left-color: #3b82f6; }
+.callout-warn  { background: var(--bg-callout-warn);  border-left-color: #f59e0b; }
+.callout-error { background: var(--bg-callout-error); border-left-color: #ef4444; }
+.callout-tip   { background: var(--bg-callout-tip);   border-left-color: #10b981; }
+.callout > strong:first-child { display: block; margin-bottom: 6px; }
+
+/* ---------- 표 ---------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-size: 0.95em;
+}
+th, td {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+th {
+  background: var(--bg-elevated);
+  font-weight: 600;
+  color: var(--fg-strong);
+}
+tbody tr:nth-child(even) { background: var(--bg-elevated); }
+td code { white-space: nowrap; }
+
+/* ---------- 예제 카드 ---------- */
+.example {
+  margin: 24px 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+}
+.example-header {
+  padding: 12px 18px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.example-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--fg-strong);
+  margin: 0;
+}
+.example-title .ex-num {
+  display: inline-block;
+  padding: 2px 8px;
+  margin-right: 8px;
+  background: var(--accent);
+  color: white;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-weight: 700;
+}
+.example-desc {
+  padding: 14px 18px;
+  font-size: 0.95em;
+  color: var(--fg-muted);
+  border-bottom: 1px solid var(--border);
+}
+.example-body { padding: 0; }
+.run-row {
+  padding: 10px 18px;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ---------- 실행 버튼 ---------- */
+.run-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.run-btn:hover { background: var(--accent-hover); }
+.run-btn:disabled {
+  background: var(--border-strong);
+  cursor: not-allowed;
+}
+.run-status {
+  font-size: 0.85em;
+  color: var(--fg-muted);
+}
+
+/* ---------- 출력창 ---------- */
+.output-box {
+  display: none;
+  margin: 0;
+  padding: 14px 18px;
+  background: var(--bg-output);
+  color: var(--fg-output);
+  font-family: 'JetBrains Mono', 'Fira Code', 'D2Coding', Consolas, monospace;
+  font-size: 0.88em;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-all;
+  border-top: 1px solid var(--border-code);
+  max-height: 320px;
+  overflow-y: auto;
+}
+.output-box.show { display: block; }
+.output-box .out-label {
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: block;
+}
+.output-box .err-label {
+  color: #fca5a5;
+  font-weight: 600;
+  margin: 8px 0 4px;
+  display: block;
+}
+
+/* ---------- 코드 블록 (VS Code Dark Modern) ---------- */
+pre {
+  margin: 0;
+  padding: 16px 20px;
+  background: var(--bg-code);
+  color: var(--code-fg);
+  font-family: 'JetBrains Mono', 'Fira Code', 'D2Coding', Consolas, monospace;
+  font-size: 0.92em;
+  line-height: 1.55;
+  overflow-x: auto;
+  tab-size: 4;
+}
+pre code { background: none; color: inherit; padding: 0; font-size: 1em; }
+
+/* Rust 신택스 하이라이팅 */
+.tok-kw   { color: var(--code-keyword); }
+.tok-str  { color: var(--code-string); }
+.tok-num  { color: var(--code-number); }
+.tok-com  { color: var(--code-comment); font-style: italic; }
+.tok-fn   { color: var(--code-function); }
+.tok-mac  { color: var(--code-macro); }
+.tok-ty   { color: var(--code-type); }
+.tok-var  { color: var(--code-variable); }
+.tok-lt   { color: var(--code-lifetime); }
+.tok-attr { color: var(--code-attribute); }
+.tok-op   { color: var(--code-operator); }
+
+/* ---------- SVG 다이어그램 ---------- */
+.svg-diagram {
+  display: block;
+  margin: 28px auto;
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  padding: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+}
+.svg-diagram text {
+  fill: var(--svg-text);
+  font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
+  font-weight: 500;
+}
+.svg-diagram .svg-title {
+  font-size: 18px;
+  font-weight: 700;
+  fill: var(--svg-text-strong);
+}
+.svg-diagram .svg-label {
+  font-size: 16px;
+  fill: var(--svg-text);
+}
+.svg-diagram .svg-sub {
+  font-size: 14px;
+  fill: var(--svg-text-muted);
+}
+.svg-diagram .svg-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  font-size: 14px;
+  fill: var(--svg-text);
+}
+.svg-diagram .box-fill { fill: var(--svg-box-bg); }
+.svg-diagram .box-fill-alt { fill: var(--svg-box-bg-alt); }
+.svg-diagram .box-stroke { stroke: var(--svg-box-stroke); stroke-width: 2; fill: none; }
+.svg-diagram .arrow { stroke: var(--svg-arrow); stroke-width: 2; fill: none; }
+.svg-diagram .arrow-head { fill: var(--svg-arrow); }
+.svg-diagram .accent-1 { fill: var(--svg-accent-1); }
+.svg-diagram .accent-2 { fill: var(--svg-accent-2); }
+.svg-diagram .accent-3 { fill: var(--svg-accent-3); }
+.svg-diagram .accent-4 { fill: var(--svg-accent-4); }
+.svg-diagram .stroke-1 { stroke: var(--svg-accent-1); fill: none; stroke-width: 2; }
+.svg-diagram .stroke-2 { stroke: var(--svg-accent-2); fill: none; stroke-width: 2; }
+.svg-diagram .stroke-3 { stroke: var(--svg-accent-3); fill: none; stroke-width: 2; }
+.svg-diagram .region-static { fill: var(--svg-static-bg); stroke: var(--svg-region-stroke); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.svg-diagram .region-heap   { fill: var(--svg-heap-bg);   stroke: var(--svg-region-stroke); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.svg-diagram .region-stack  { fill: var(--svg-stack-bg);  stroke: var(--svg-region-stroke); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.svg-diagram .error-fill   { fill: var(--svg-error-bg); }
+.svg-diagram .error-stroke { stroke: var(--svg-error-stroke); stroke-width: 2; fill: none; }
+.svg-diagram .grid-line    { stroke: var(--svg-grid); stroke-width: 0.5; }
+.svg-diagram .label-bg     { fill: var(--bg-elevated); }
+
+/* 다이어그램 캡션 */
+.diagram-caption {
+  text-align: center;
+  font-size: 0.92em;
+  color: var(--fg-muted);
+  margin-top: -16px;
+  margin-bottom: 24px;
+}
+
+/* ---------- 문법 / 시그니처 박스 ---------- */
+.signature {
+  display: block;
+  padding: 12px 18px;
+  margin: 16px 0;
+  background: var(--bg-code);
+  color: var(--code-fg);
+  border-left: 4px solid var(--accent);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.95em;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+/* ---------- 푸터 ---------- */
+.footer {
+  margin-top: 80px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--fg-muted);
+  font-size: 0.9em;
+}
+
+/* ---------- 토글 / 접기 ---------- */
+details {
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: var(--bg-elevated);
+}
+details summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--accent);
+}
+details[open] summary { margin-bottom: 10px; }
+
+/* ---------- 스크롤바 (다크 모드 친화) ---------- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg-elevated); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }
+
+/* ---------- 강조 ---------- */
+.kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85em;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+}
+
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">목차</div>
+    <ul>
+      <li><a href="#intro">서론</a></li>
+      <li><a href="#part0">Part 0. 메모리 모델 기초</a>
+        <ul class="sub">
+          <li><a href="#part0-1">0.1 스택과 힙</a></li>
+          <li><a href="#part0-2">0.2 정적 영역 (rodata)</a></li>
+          <li><a href="#part0-3">0.3 소유와 자동 해제</a></li>
+        </ul>
+      </li>
+      <li><a href="#part1">Part 1. String — 힙 소유 문자열</a>
+        <ul class="sub">
+          <li><a href="#part1-1">1.1 생성 방법들</a></li>
+          <li><a href="#part1-2">1.2 가변성과 push</a></li>
+          <li><a href="#part1-3">1.3 capacity와 재할당</a></li>
+          <li><a href="#part1-4">1.4 + 연산자와 format!</a></li>
+          <li><a href="#part1-5">1.5 인덱싱 불가와 UTF-8</a></li>
+          <li><a href="#part1-6">1.6 가변 API (truncate/drain/...)</a></li>
+          <li><a href="#part1-7">1.7 capacity 관리</a></li>
+          <li><a href="#part1-8b">1.8 Vec&lt;u8&gt; ↔ String</a></li>
+          <li><a href="#part1-9">1.9 Raw / byte string</a></li>
+          <li><a href="#part1-10">1.10 Display vs Debug</a></li>
+        </ul>
+      </li>
+      <li><a href="#part2">Part 2. &amp;str — 빌린 문자열 슬라이스</a>
+        <ul class="sub">
+          <li><a href="#part2-1">2.1 문자열 리터럴</a></li>
+          <li><a href="#part2-2">2.2 fat pointer 구조</a></li>
+          <li><a href="#part2-3">2.3 String → &amp;str 변환</a></li>
+          <li><a href="#part2-4">2.4 슬라이싱</a></li>
+          <li><a href="#part2-5">2.5 &amp;str의 메서드들</a></li>
+        </ul>
+      </li>
+      <li><a href="#part3">Part 3. str / &amp;str / &amp;String 구별</a>
+        <ul class="sub">
+          <li><a href="#part3-1">3.1 str은 DST</a></li>
+          <li><a href="#part3-2">3.2 &amp;String의 이중 간접</a></li>
+          <li><a href="#part3-3">3.3 Deref 강제 변환</a></li>
+          <li><a href="#part3-4">3.4 Box&lt;str&gt;</a></li>
+          <li><a href="#part3-5">3.5 비교 연산</a></li>
+        </ul>
+      </li>
+      <li><a href="#part4">Part 4. 함수 매개변수 패턴</a>
+        <ul class="sub">
+          <li><a href="#part4-1">4.1 &amp;str 받기 (권장)</a></li>
+          <li><a href="#part4-2">4.2 String 받기 (소유 이동)</a></li>
+          <li><a href="#part4-3">4.3 &amp;String 안티패턴</a></li>
+          <li><a href="#part4-4">4.4 String 반환</a></li>
+          <li><a href="#part4-5">4.5 &amp;str 반환</a></li>
+          <li><a href="#part4-6">4.6 &amp;mut String</a></li>
+        </ul>
+      </li>
+      <li><a href="#part5">Part 5. 라이프타임 입문</a>
+        <ul class="sub">
+          <li><a href="#part5-1">5.1 댕글링 참조</a></li>
+          <li><a href="#part5-2">5.2 'a 문법</a></li>
+          <li><a href="#part5-3">5.3 longest 예제</a></li>
+          <li><a href="#part5-4">5.4 입력보다 짧은 반환</a></li>
+          <li><a href="#part5-5">5.5 NLL (Non-Lexical Lifetimes)</a></li>
+          <li><a href="#part5-6">5.6 Reborrow (&amp;mut *x)</a></li>
+        </ul>
+      </li>
+      <li><a href="#part6">Part 6. 라이프타임 생략 3규칙</a>
+        <ul class="sub">
+          <li><a href="#part6-1">6.1 규칙 1: 각 입력</a></li>
+          <li><a href="#part6-2">6.2 규칙 2: 단일 입력</a></li>
+          <li><a href="#part6-3">6.3 규칙 3: &amp;self 우선</a></li>
+          <li><a href="#part6-4">6.4 생략 불가 케이스</a></li>
+          <li><a href="#part6-5">6.5 메서드의 생략</a></li>
+          <li><a href="#part6-6">6.6 반복자 전파</a></li>
+        </ul>
+      </li>
+      <li><a href="#part7">Part 7. 구조체와 impl</a>
+        <ul class="sub">
+          <li><a href="#part7-1">7.1 참조 필드</a></li>
+          <li><a href="#part7-2">7.2 impl 블록 문법</a></li>
+          <li><a href="#part7-3">7.3 self vs &amp;self</a></li>
+          <li><a href="#part7-4">7.4 여러 라이프타임</a></li>
+          <li><a href="#part7-5">7.5 라이프타임 서브타이핑</a></li>
+          <li><a href="#part7-6">7.6 T: 'a 바운드</a></li>
+          <li><a href="#part7-7">7.7 Variance (covariant/invariant)</a></li>
+        </ul>
+      </li>
+      <li><a href="#part8">Part 8. 'static</a>
+        <ul class="sub">
+          <li><a href="#part8-1">8.1 리터럴은 'static</a></li>
+          <li><a href="#part8-2">8.2 'static 두 가지 의미</a></li>
+          <li><a href="#part8-3">8.3 String::leak</a></li>
+          <li><a href="#part8-4">8.4 'static 바운드 함정</a></li>
+        </ul>
+      </li>
+      <li><a href="#part9">Part 9. Cow, AsRef, 실전 패턴</a>
+        <ul class="sub">
+          <li><a href="#part9-1">9.1 Cow&lt;'a, str&gt;</a></li>
+          <li><a href="#part9-2">9.2 AsRef&lt;str&gt;</a></li>
+          <li><a href="#part9-3">9.3 Into&lt;String&gt;</a></li>
+          <li><a href="#part9-4">9.4 4가지 String 변환</a></li>
+          <li><a href="#part9-5">9.5 std::mem::take</a></li>
+          <li><a href="#part9-6b">9.6b Rc&lt;str&gt; / Arc&lt;str&gt;</a></li>
+          <li><a href="#part9-7b">9.7b FromStr / parse</a></li>
+          <li><a href="#part9-8b">9.8b Borrow&lt;str&gt;</a></li>
+        </ul>
+      </li>
+      <li><a href="#part10">Part 10. 자주 만나는 에러</a>
+        <ul class="sub">
+          <li><a href="#part10-1">E0106 / E0597 / E0515</a></li>
+          <li><a href="#part10-4">E0716 임시값 해제</a></li>
+          <li><a href="#part10-5">E0502 가변/불변 충돌</a></li>
+          <li><a href="#part10-6">E0507 / E0382 소유권</a></li>
+          <li><a href="#part10-8">E0521 / 추론 실패</a></li>
+          <li><a href="#part10-11">10.11 자기참조 우회 (인덱스)</a></li>
+        </ul>
+      </li>
+      <li><a href="#part11">Part 11. 트레이트 객체와 라이프타임</a>
+        <ul class="sub">
+          <li><a href="#part11-1">11.1 Box&lt;dyn Trait&gt; 기본값</a></li>
+          <li><a href="#part11-2">11.2 + 'a 명시</a></li>
+          <li><a href="#part11-3">11.3 &amp;dyn Trait</a></li>
+        </ul>
+      </li>
+      <li><a href="#part12">Part 12. HRTB for&lt;'a&gt;</a>
+        <ul class="sub">
+          <li><a href="#part12-1">12.1 클로저와 라이프타임</a></li>
+          <li><a href="#part12-2">12.2 for&lt;'a&gt; 문법</a></li>
+        </ul>
+      </li>
+      <li><a href="#summary">정리 및 체크리스트</a></li>
+    </ul>
+  </aside>
+  <main class="main">
+    <div class="top-bar">
+      <button class="menu-toggle" onclick="toggleMenu()" aria-label="메뉴">☰</button>
+      <button class="theme-toggle" onclick="toggleTheme()">
+        <span class="theme-icon">☾</span>
+        <span class="theme-label">다크</span>
+      </button>
+    </div>
+
+    <h1 id="intro">Rust <code>String</code> / <code>&amp;str</code> / Lifetime 완벽 가이드</h1>
+    <p class="lead">
+      문자열의 세 얼굴 — <code>String</code>, <code>str</code>, <code>&amp;str</code> — 과 그 뒤에 따라붙는 라이프타임을,
+      메모리 모델부터 시작해 75개 이상의 예제로 점진적으로 익힙니다.
+      자바 개발자가 가장 어려워하는 <strong>NLL</strong>, <strong>생략 규칙</strong>, <strong>HRTB</strong>까지 빠짐없이 다룹니다.
+    </p>
+
+    <div class="callout callout-info">
+      <strong>이 가이드를 읽는 법</strong>
+      각 예제 우측 하단의 <span class="kbd">▶ 실행</span> 버튼으로 Wandbox에서 직접 컴파일·실행할 수 있습니다.
+      실행 환경은 <code>rust-1.82.0 (edition 2021)</code>입니다.
+      에러를 의도한 예제는 컴파일 에러가 출력되며, 그것이 학습 포인트입니다.
+    </div>
+
+    <h3 id="intro-mental-model">먼저 한 줄 정리</h3>
+    <table>
+      <thead><tr><th>타입</th><th>소유</th><th>저장 위치</th><th>크기</th><th>변경 가능?</th></tr></thead>
+      <tbody>
+        <tr><td><code>String</code></td><td>소유</td><td>힙</td><td>가변</td><td>예 (가변일 때)</td></tr>
+        <tr><td><code>&amp;str</code></td><td>빌림</td><td>힙/정적/스택 어디든</td><td>고정 (fat ptr)</td><td>아니오</td></tr>
+        <tr><td><code>str</code></td><td>—</td><td>—</td><td>알 수 없음 (DST)</td><td>—</td></tr>
+        <tr><td><code>&amp;String</code></td><td>빌림</td><td>힙 가리키는 포인터</td><td>포인터 1개</td><td>아니오</td></tr>
+        <tr><td><code>Box&lt;str&gt;</code></td><td>소유</td><td>힙</td><td>고정 (fat ptr)</td><td>아니오</td></tr>
+        <tr><td><code>Cow&lt;'a, str&gt;</code></td><td>둘 다 가능</td><td>둘 다 가능</td><td>가변</td><td>필요 시</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-tip">
+      <strong>자바와의 결정적 차이 두 가지</strong>
+      ① 자바 <code>String</code>은 불변, GC가 관리 — Rust <code>String</code>은 가변, 스코프 종료 시 자동 해제.
+      ② 자바에는 "라이프타임"이 없다 (GC가 다 해결). Rust는 컴파일 시점에 모든 참조의 유효 기간을 추적한다.
+    </div>
+
+    <h2 id="part0">Part 0. 메모리 모델 기초</h2>
+    <p>
+      <code>String</code>과 <code>&amp;str</code>의 차이는 "어디 사느냐"와 "누가 책임지느냐"의 차이다.
+      이 둘을 이해하려면 먼저 Rust 프로그램이 사용하는 세 영역 — <strong>스택</strong>, <strong>힙</strong>,
+      <strong>정적 영역(.rodata)</strong> — 을 머릿속에 그려둬야 한다.
+    </p>
+
+    <svg class="svg-diagram" viewBox="0 0 760 460" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="메모리 3영역">
+      <defs>
+        <marker id="arrow-end" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="arrow-head" />
+        </marker>
+      </defs>
+      <text x="380" y="28" text-anchor="middle" class="svg-title">Rust 프로세스 메모리 레이아웃</text>
+      <text x="380" y="50" text-anchor="middle" class="svg-sub">let lit = "Hello"; let s = String::from("World"); 시점</text>
+
+      <!-- 영역 박스 -->
+      <rect x="40"  y="80" width="200" height="340" rx="10" class="region-stack" />
+      <rect x="280" y="80" width="200" height="340" rx="10" class="region-heap" />
+      <rect x="520" y="80" width="200" height="340" rx="10" class="region-static" />
+
+      <!-- 영역 제목 -->
+      <text x="140" y="105" text-anchor="middle" class="svg-label" style="font-weight:700;">스택 (Stack)</text>
+      <text x="380" y="105" text-anchor="middle" class="svg-label" style="font-weight:700;">힙 (Heap)</text>
+      <text x="620" y="105" text-anchor="middle" class="svg-label" style="font-weight:700;">정적 영역 (.rodata)</text>
+      <text x="140" y="128" text-anchor="middle" class="svg-sub">함수 지역 변수</text>
+      <text x="380" y="128" text-anchor="middle" class="svg-sub">실행 중 동적 할당</text>
+      <text x="620" y="128" text-anchor="middle" class="svg-sub">컴파일 시점 결정</text>
+
+      <!-- 스택 안: lit -->
+      <text x="140" y="170" text-anchor="middle" class="svg-label">lit: &amp;str</text>
+      <g>
+        <rect x="60"  y="182" width="80" height="44" class="box-fill" />
+        <rect x="60"  y="182" width="80" height="44" class="box-stroke" />
+        <text x="100" y="209" text-anchor="middle" class="svg-mono">ptr</text>
+        <rect x="140" y="182" width="80" height="44" class="box-fill" />
+        <rect x="140" y="182" width="80" height="44" class="box-stroke" />
+        <text x="180" y="209" text-anchor="middle" class="svg-mono">len=5</text>
+      </g>
+
+      <!-- 스택 안: s -->
+      <text x="140" y="266" text-anchor="middle" class="svg-label">s: String</text>
+      <g>
+        <rect x="60"  y="278" width="54" height="44" class="box-fill" />
+        <rect x="60"  y="278" width="54" height="44" class="box-stroke" />
+        <text x="87"  y="305" text-anchor="middle" class="svg-mono">ptr</text>
+        <rect x="114" y="278" width="54" height="44" class="box-fill" />
+        <rect x="114" y="278" width="54" height="44" class="box-stroke" />
+        <text x="141" y="305" text-anchor="middle" class="svg-mono">len=5</text>
+        <rect x="168" y="278" width="54" height="44" class="box-fill" />
+        <rect x="168" y="278" width="54" height="44" class="box-stroke" />
+        <text x="195" y="305" text-anchor="middle" class="svg-mono">cap=5</text>
+      </g>
+      <text x="140" y="345" text-anchor="middle" class="svg-sub">(가변 — 늘어날 수 있음)</text>
+
+      <!-- 힙 안: World -->
+      <text x="380" y="262" text-anchor="middle" class="svg-sub">malloc된 버퍼</text>
+      <g>
+        <rect x="305" y="276" width="150" height="48" class="box-fill-alt" />
+        <rect x="305" y="276" width="150" height="48" class="box-stroke" />
+        <text x="380" y="307" text-anchor="middle" class="svg-mono">W o r l d</text>
+      </g>
+      <text x="380" y="345" text-anchor="middle" class="svg-sub">drop 시 free</text>
+
+      <!-- 정적 안: Hello -->
+      <text x="620" y="170" text-anchor="middle" class="svg-sub">바이너리 안에 박힘</text>
+      <g>
+        <rect x="545" y="182" width="150" height="48" class="box-fill-alt" />
+        <rect x="545" y="182" width="150" height="48" class="box-stroke" />
+        <text x="620" y="213" text-anchor="middle" class="svg-mono">H e l l o</text>
+      </g>
+      <text x="620" y="252" text-anchor="middle" class="svg-sub">프로그램 종료 시까지 살아있음</text>
+
+      <!-- 화살표 -->
+      <path d="M 100 226 Q 100 195 545 205" class="arrow" marker-end="url(#arrow-end)" />
+      <path d="M 87 322 Q 87 300 305 300" class="arrow" marker-end="url(#arrow-end)" />
+    </svg>
+
+    <h3 id="part0-1">0.1 스택 / 힙 / 정적 영역 한눈에</h3>
+    <p>
+      위 그림에서 핵심 두 가지를 짚는다:
+    </p>
+    <ul>
+      <li><code>&amp;str</code> (위쪽 lit)는 <strong>두 칸짜리 빌림</strong>이다. 어떤 데이터를 가리키기만 할 뿐, 자기가 들고 있지 않다.</li>
+      <li><code>String</code> (아래쪽 s)는 <strong>세 칸짜리 소유자</strong>다. ptr·len·cap을 들고 있고, 힙 데이터의 수명을 책임진다.</li>
+    </ul>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">0.1</span>세 영역에 각각 사는 값</h4></div>
+      <div class="example-desc">스택 정수, 정적 영역을 빌린 <code>&amp;str</code>, 힙을 가진 <code>String</code>을 한자리에서.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="0-1">fn main() {
+    let stack_int: i32 = 42;                       // 스택에 4바이트
+    let static_lit: &amp;str = "Hello";              // 정적 영역을 빌린 fat pointer
+    let heap_str: String = String::from("World");  // 힙에 실제 데이터 + 스택에 핸들
+
+    println!("stack_int = {}", stack_int);
+    println!("static_lit = '{}'  (len={})", static_lit, static_lit.len());
+    println!("heap_str   = '{}'  (len={}, cap={})", heap_str, heap_str.len(), heap_str.capacity());
+
+    // 타입 크기 — &amp;str과 String이 스택에서 차지하는 크기
+    println!("size_of::&lt;&amp;str&gt;()   = {}", std::mem::size_of::&lt;&amp;str&gt;());
+    println!("size_of::&lt;String&gt;()  = {}", std::mem::size_of::&lt;String&gt;());
+    println!("size_of::&lt;i32&gt;()     = {}", std::mem::size_of::&lt;i32&gt;());
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="0-1" onclick="runRust('0-1')">▶ 실행</button>
+        <span class="run-status" data-ex-id="0-1"></span>
+      </div>
+      <div class="output-box" id="out-0-1"></div>
+    </div>
+
+    <div class="callout callout-info">
+      <strong>출력의 핵심</strong>
+      64비트 시스템에서 <code>&amp;str</code>는 16바이트(ptr 8 + len 8), <code>String</code>는 24바이트(ptr 8 + len 8 + cap 8).
+      이 숫자는 <strong>스택 위의 크기</strong>다. 실제 문자 데이터는 힙 또는 정적 영역에 따로 있다.
+    </div>
+
+    <h3 id="part0-2">0.2 정적 영역 — 문자열 리터럴이 사는 곳</h3>
+    <p>
+      <code>"Hello"</code> 같은 문자열 리터럴은 컴파일 결과물(실행 바이너리)의 읽기 전용 데이터 섹션(<code>.rodata</code>)에 들어간다.
+      프로그램이 메모리에 적재되면 이 섹션은 프로세스가 끝날 때까지 살아있다. 그래서 리터럴을 가리키는 <code>&amp;str</code>는 항상
+      <code>&amp;'static str</code> 타입이다 (Part 8에서 다시).
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">0.2</span>String이 자라면서 힙 재할당이 일어나는 모습</h4></div>
+      <div class="example-desc">초기 <code>capacity</code>가 0인 <code>String</code>에 문자를 추가하며 capacity가 어떻게 늘어나는지 본다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="0-2">fn main() {
+    let mut s = String::with_capacity(0);
+    println!("초기      : len={:2}, cap={:2}, '{}'", s.len(), s.capacity(), s);
+    for chunk in ["He", "llo", ", ", "world", "! ", "Rust is here."] {
+        s.push_str(chunk);
+        println!("'{}' 추가: len={:2}, cap={:2}, '{}'",
+                 chunk, s.len(), s.capacity(), s);
+    }
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="0-2" onclick="runRust('0-2')">▶ 실행</button>
+        <span class="run-status" data-ex-id="0-2"></span>
+      </div>
+      <div class="output-box" id="out-0-2"></div>
+    </div>
+
+    <div class="callout callout-tip">
+      <strong>capacity 증가 정책</strong>
+      <code>String</code>(내부 <code>Vec&lt;u8&gt;</code>)의 정책: 첫 할당에서 <strong>최소 8바이트</strong>로 점프하고(요소 크기가 1바이트인 경우),
+      그 뒤로는 가득 찰 때마다 <strong>두 배씩</strong> 늘어난다. 그래서 한 번의 push는 평균적으로 O(1)이 된다 (amortized O(1)).
+      재할당 시에는 새 버퍼 할당 + 기존 데이터 복사 + 옛 버퍼 해제가 일어난다.
+    </div>
+
+    <h3 id="part0-3">0.3 스코프 종료 = 자동 해제</h3>
+    <p>
+      자바와 가장 다른 점이다. Rust는 GC가 없는 대신 <strong>변수가 스코프를 벗어나는 순간 <code>Drop</code> trait의 <code>drop()</code>이 자동 호출되어 힙 메모리가 해제</strong>된다.
+      문자열 리터럴(정적 영역)은 해제되지 않는다 — 영원히 산다.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">0.3</span>안쪽 스코프 종료 시 String이 drop</h4></div>
+      <div class="example-desc">커스텀 타입에 <code>Drop</code>을 구현해서 정확히 언제 해제되는지 눈으로 본다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="0-3">struct Tag(&amp;'static str);
+impl Drop for Tag {
+    fn drop(&amp;mut self) {
+        println!("  [drop] {}", self.0);
+    }
+}
+
+fn main() {
+    println!("바깥 시작");
+    let outer = Tag("outer");
+    {
+        let inner_s = String::from("inner string");
+        let _inner_tag = Tag("inner_tag");
+        println!("  안쪽: '{}'", inner_s);
+    } // ← 여기서 _inner_tag, inner_s 가 역순으로 drop
+    println!("바깥 끝 (outer는 아직 살아있음)");
+    let _ = &amp;outer; // 일부러 사용해서 일찍 drop 방지
+} // ← main 끝에서 outer drop</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="0-3" onclick="runRust('0-3')">▶ 실행</button>
+        <span class="run-status" data-ex-id="0-3"></span>
+      </div>
+      <div class="output-box" id="out-0-3"></div>
+    </div>
+
+    <div class="callout callout-info">
+      <strong>drop 순서 = 선언의 역순</strong>
+      한 스코프에서 여러 변수가 drop될 때는 <strong>나중에 선언된 것이 먼저</strong> drop된다.
+      이 규칙은 라이프타임 추론(Part 5)에서 의외로 자주 사용된다.
+    </div>
+
+    <h2 id="part1">Part 1. <code>String</code> — 힙 소유 문자열</h2>
+    <p>
+      <code>String</code>은 <strong>UTF-8 바이트 시퀀스를 소유하는 가변 힙 버퍼</strong>다.
+      자바의 <code>StringBuilder</code>에 가깝다 (자바 <code>String</code>은 불변이라 다르다).
+      내부는 <code>Vec&lt;u8&gt;</code>의 얇은 래퍼 — 즉 ptr·len·cap 세 워드.
+    </p>
+
+    <svg class="svg-diagram" viewBox="0 0 760 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="String 내부 구조">
+      <defs>
+        <marker id="arrow-end-1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="arrow-head" />
+        </marker>
+      </defs>
+      <text x="380" y="28" text-anchor="middle" class="svg-title">String 의 내부 구조</text>
+      <text x="380" y="52" text-anchor="middle" class="svg-sub">let mut s = String::from("abc"); s.push('d'); 직후</text>
+
+      <!-- 스택 라벨 -->
+      <text x="380" y="92" text-anchor="middle" class="svg-label" style="font-weight:600;">스택 — s가 차지하는 24바이트 (3 워드)</text>
+
+      <!-- 스택 박스 -->
+      <g>
+        <rect x="230" y="108" width="100" height="60" class="box-fill" />
+        <rect x="230" y="108" width="100" height="60" class="box-stroke" />
+        <text x="280" y="135" text-anchor="middle" class="svg-mono" style="font-weight:600;">ptr</text>
+        <text x="280" y="156" text-anchor="middle" class="svg-sub">0x7ff...</text>
+
+        <rect x="330" y="108" width="100" height="60" class="box-fill" />
+        <rect x="330" y="108" width="100" height="60" class="box-stroke" />
+        <text x="380" y="135" text-anchor="middle" class="svg-mono" style="font-weight:600;">len</text>
+        <text x="380" y="156" text-anchor="middle" class="svg-mono">4</text>
+
+        <rect x="430" y="108" width="100" height="60" class="box-fill" />
+        <rect x="430" y="108" width="100" height="60" class="box-stroke" />
+        <text x="480" y="135" text-anchor="middle" class="svg-mono" style="font-weight:600;">cap</text>
+        <text x="480" y="156" text-anchor="middle" class="svg-mono">8</text>
+      </g>
+
+      <!-- 힙 라벨 -->
+      <text x="380" y="218" text-anchor="middle" class="svg-label" style="font-weight:600;">힙 — 실제 UTF-8 바이트 (cap=8 만큼 예약됨)</text>
+
+      <!-- 힙 박스 (8개 셀) -->
+      <g>
+        <rect x="180" y="232" width="50" height="60" class="box-fill-alt" /><rect x="180" y="232" width="50" height="60" class="box-stroke" /><text x="205" y="268" text-anchor="middle" class="svg-mono">'a'</text>
+        <rect x="230" y="232" width="50" height="60" class="box-fill-alt" /><rect x="230" y="232" width="50" height="60" class="box-stroke" /><text x="255" y="268" text-anchor="middle" class="svg-mono">'b'</text>
+        <rect x="280" y="232" width="50" height="60" class="box-fill-alt" /><rect x="280" y="232" width="50" height="60" class="box-stroke" /><text x="305" y="268" text-anchor="middle" class="svg-mono">'c'</text>
+        <rect x="330" y="232" width="50" height="60" class="box-fill-alt" /><rect x="330" y="232" width="50" height="60" class="box-stroke" /><text x="355" y="268" text-anchor="middle" class="svg-mono">'d'</text>
+        <rect x="380" y="232" width="50" height="60" class="box-fill" /><rect x="380" y="232" width="50" height="60" class="box-stroke" stroke-dasharray="3 3" /><text x="405" y="268" text-anchor="middle" class="svg-sub">·</text>
+        <rect x="430" y="232" width="50" height="60" class="box-fill" /><rect x="430" y="232" width="50" height="60" class="box-stroke" stroke-dasharray="3 3" /><text x="455" y="268" text-anchor="middle" class="svg-sub">·</text>
+        <rect x="480" y="232" width="50" height="60" class="box-fill" /><rect x="480" y="232" width="50" height="60" class="box-stroke" stroke-dasharray="3 3" /><text x="505" y="268" text-anchor="middle" class="svg-sub">·</text>
+        <rect x="530" y="232" width="50" height="60" class="box-fill" /><rect x="530" y="232" width="50" height="60" class="box-stroke" stroke-dasharray="3 3" /><text x="555" y="268" text-anchor="middle" class="svg-sub">·</text>
+      </g>
+      <text x="280" y="312" text-anchor="middle" class="svg-sub">len=4 (사용 중)</text>
+      <text x="480" y="312" text-anchor="middle" class="svg-sub">cap-len=4 (여유분)</text>
+
+      <!-- 화살표: ptr → 힙 시작 -->
+      <path d="M 280 168 Q 230 200 195 232" class="arrow" marker-end="url(#arrow-end-1)" />
+
+      <!-- 강조 -->
+      <text x="380" y="350" text-anchor="middle" class="svg-sub">push('d') 후 len이 3→4로 늘었지만 cap은 그대로 (재할당 없음)</text>
+    </svg>
+
+    <h3 id="part1-1">1.1 String 생성 방법들</h3>
+    <p>같은 문자열을 만드는 데에도 네다섯 가지 방법이 있다. 각 함수가 무엇을 반환하는지가 다르다.</p>
+
+    <table>
+      <thead><tr><th>표현</th><th>반환</th><th>특징</th></tr></thead>
+      <tbody>
+        <tr><td><code>String::new()</code></td><td><code>String</code></td><td>힙 할당 없음 (cap=0)</td></tr>
+        <tr><td><code>String::from("a")</code></td><td><code>String</code></td><td>리터럴 복사해 힙에 새 버퍼</td></tr>
+        <tr><td><code>"a".to_string()</code></td><td><code>String</code></td><td>위와 동일 결과</td></tr>
+        <tr><td><code>"a".to_owned()</code></td><td><code>String</code></td><td>위와 동일 결과 (의도가 더 명확)</td></tr>
+        <tr><td><code>String::with_capacity(16)</code></td><td><code>String</code></td><td>힙에 16바이트 예약, len=0</td></tr>
+        <tr><td><code>format!("a{}", x)</code></td><td><code>String</code></td><td>매크로로 즉시 포맷</td></tr>
+      </tbody>
+    </table>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">1.1</span>여섯 가지 방법, 같은 결과</h4></div>
+      <div class="example-desc">표의 6가지를 한 번에 실행해 비교한다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="1-1">fn main() {
+    let a: String = String::new();
+    let b: String = String::from("hello");
+    let c: String = "hello".to_string();
+    let d: String = "hello".to_owned();
+    let e: String = String::with_capacity(16);
+    let f: String = format!("hel{}", "lo");
+
+    println!("a = '{}' (len={}, cap={})", a, a.len(), a.capacity());
+    println!("b = '{}' (len={}, cap={})", b, b.len(), b.capacity());
+    println!("c = '{}' (len={}, cap={})", c, c.len(), c.capacity());
+    println!("d = '{}' (len={}, cap={})", d, d.len(), d.capacity());
+    println!("e = '{}' (len={}, cap={})", e, e.len(), e.capacity());
+    println!("f = '{}' (len={}, cap={})", f, f.len(), f.capacity());
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="1-1" onclick="runRust('1-1')">▶ 실행</button>
+        <span class="run-status" data-ex-id="1-1"></span>
+      </div>
+      <div class="output-box" id="out-1-1"></div>
+    </div>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">1.2</span>소유권 이동 — String은 Copy가 아니다</h4></div>
+      <div class="example-desc">기본 정수와 달리 <code>String</code>은 대입/전달 시 소유권이 옮겨간다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="1-2">fn main() {
+    let s1 = String::from("Rust");
+    let s2 = s1;            // s1의 소유권이 s2로 이동 (move)
+    // println!("{}", s1);  // 컴파일 에러: borrow of moved value
+    println!("s2 = {}", s2);
+
+    // 비교: i32는 Copy 트레이트라 그냥 복사된다
+    let n1: i32 = 42;
+    let n2 = n1;
+    println!("n1 = {}, n2 = {}", n1, n2); // 둘 다 사용 가능
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="1-2" onclick="runRust('1-2')">▶ 실행</button>
+        <span class="run-status" data-ex-id="1-2"></span>
+      </div>
+      <div class="output-box" id="out-1-2"></div>
+    </div>
+
+    <h3 id="part1-2">1.2 가변성과 push 계열</h3>
+    <p>
+      <code>String</code>은 <code>let mut</code> 으로 선언하면 내부 바이트를 수정할 수 있다.
+      네 가지 추가 메서드가 자주 쓰인다.
+    </p>
+
+    <table>
+      <thead><tr><th>메서드</th><th>인자 타입</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td><code>push(c)</code></td><td><code>char</code></td><td>문자 1개 추가</td></tr>
+        <tr><td><code>push_str(&amp;s)</code></td><td><code>&amp;str</code></td><td>슬라이스 추가 (소유권 이동 없음)</td></tr>
+        <tr><td><code>+= "..."</code></td><td><code>&amp;str</code></td><td><code>push_str</code>의 단축형</td></tr>
+        <tr><td><code>insert_str(i, &amp;s)</code></td><td><code>usize, &amp;str</code></td><td>특정 바이트 위치에 삽입</td></tr>
+      </tbody>
+    </table>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">1.3</span>네 가지 변경 메서드</h4></div>
+      <div class="example-desc">push, push_str, +=, insert_str을 차례로.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="1-3">fn main() {
+    let mut s = String::from("Ru");
+    s.push('s');                 // char 1개
+    s.push('t');
+    println!("after push       : {}", s);   // Rust
+
+    s.push_str(" lang");          // &amp;str 추가
+    println!("after push_str   : {}", s);   // Rust lang
+
+    s += " 2025";                  // += 는 push_str과 같다
+    println!("after +=         : {}", s);   // Rust lang 2025
+
+    s.insert_str(0, "[ ");         // 0번 바이트 위치에 삽입
+    s.push_str(" ]");
+    println!("after insert_str : {}", s);   // [ Rust lang 2025 ]
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="1-3" onclick="runRust('1-3')">▶ 실행</button>
+        <span class="run-status" data-ex-id="1-3"></span>
+      </div>
+      <div class="output-box" id="out-1-3"></div>
+    </div>
+
+    <h3 id="part1-3">1.3 capacity와 재할당 비용</h3>
+    <p>
+      매번 한 글자씩 <code>push</code>하면 cap이 가득 찰 때마다 새 힙 버퍼 할당 + 기존 데이터 복사 + 옛 버퍼 해제가 일어난다.
+      미리 <code>with_capacity</code>로 충분한 크기를 잡아두면 이를 피할 수 있다.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">1.4</span>cap이 변하는 순간 추적</h4></div>
+      <div class="example-desc"><code>capacity()</code>가 변하는 지점만 출력 → 재할당이 일어난 횟수를 센다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="1-4">fn main() {
+    let mut s = String::new();
+    let mut last_cap = s.capacity();
+    let mut realloc_count = 0;
+    println!("start: len=0, cap={}", last_cap);
+    for i in 0..32 {
+        s.push('a');
+        let cap = s.capacity();
+        if cap != last_cap {
+            realloc_count += 1;
+            println!("  [realloc #{}] i={:2}: cap {} → {}", realloc_count, i, last_cap, cap);
+            last_cap = cap;
+        }
+    }
+    println!("end  : len={}, cap={}, realloc 횟수={}", s.len(), s.capacity(), realloc_count);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="1-4" onclick="runRust('1-4')">▶ 실행</button>
+        <span class="run-status" data-ex-id="1-4"></span>
+      </div>
+      <div class="output-box" id="out-1-4"></div>
+    </div>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">1.5</span>with_capacity로 재할당 0회</h4></div>
+      <div class="example-desc">미리 cap을 충분히 잡아두면 같은 작업에서 재할당이 일어나지 않는다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="1-5">fn main() {
+    let mut s = String::with_capacity(64);
+    let initial_cap = s.capacity();
+    for _ in 0..32 { s.push('a'); }
+    println!("초기 cap = {}, 최종 cap = {} (변화 없음 = 재할당 0회)",
+             initial_cap, s.capacity());
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="1-5" onclick="runRust('1-5')">▶ 실행</button>
+        <span class="run-status" data-ex-id="1-5"></span>
+      </div>
+      <div class="output-box" id="out-1-5"></div>
+    </div>
+
+    <h3 id="part1-4">1.4 + 연산자, format!, 그리고 그 차이</h3>
+    <p>
+      <code>String + &amp;str</code> 은 가능하지만 <code>String + String</code> 은 안 된다. 왜인가?
+      <code>String</code>의 <code>Add</code> 구현이 다음 시그니처이기 때문이다:
+    </p>
+    <pre class="signature">impl Add&lt;&amp;str&gt; for String {
+    type Output = String;
+    fn add(self, other: &amp;str) -&gt; String { ... }
+}</pre>
+    <p>
+      ① 왼쪽 <code>String</code>의 소유권을 가져가고 ② 오른쪽은 <code>&amp;str</code>만 받는다. 그래서 <code>a + b</code>에서 <code>a</code>는 사라지고,
+      <code>b</code>는 <code>String</code>이면 <code>&amp;b</code>로 빌려서 넘겨야 한다 (Deref로 <code>&amp;str</code>이 됨).
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">1.6</span>+ 연산자의 소유권 동작</h4></div>
+      <div class="example-desc">왼쪽은 사라지고 오른쪽은 살아남는다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="1-6">fn main() {
+    let hello = String::from("Hello, ");
+    let world = String::from("World!");
+    let combined = hello + &amp;world;    // hello는 move, world는 빌림
+    println!("combined = {}", combined);
+    // println!("hello = {}", hello); // 에러: hello는 이미 move됨
+    println!("world  = {} (여전히 살아있음)", world);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="1-6" onclick="runRust('1-6')">▶ 실행</button>
+        <span class="run-status" data-ex-id="1-6"></span>
+      </div>
+      <div class="output-box" id="out-1-6"></div>
+    </div>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">1.7</span>format! — 모두 빌리고 새 String 반환</h4></div>
+      <div class="example-desc"><code>+</code>와 달리 어느 쪽도 소유권을 잃지 않는다. 다인자 조합도 자연스럽다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="1-7">fn main() {
+    let name = String::from("베이스한");
+    let lang = String::from("Rust");
+    let year = 2025;
+
+    // 모두 빌리기만 함
+    let msg = format!("{}님은 {} {}년차 개발자", name, lang, year);
+    println!("{}", msg);
+    println!("name = {}, lang = {} (둘 다 살아있음)", name, lang);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="1-7" onclick="runRust('1-7')">▶ 실행</button>
+        <span class="run-status" data-ex-id="1-7"></span>
+      </div>
+      <div class="output-box" id="out-1-7"></div>
+    </div>
+
+    <h3 id="part1-5">1.5 인덱싱 불가 — UTF-8과의 정직한 타협</h3>
+    <p>
+      Rust에서 <code>s[0]</code> 같은 정수 인덱싱은 <strong>컴파일 에러</strong>다. 왜냐하면 UTF-8에서 한 바이트가
+      한 글자가 아니기 때문이다. <code>"한"</code>은 3바이트, <code>"a"</code>는 1바이트, 이모지는 4바이트 등.
+      대신 네 가지 뷰가 제공된다.
+    </p>
+
+    <table>
+      <thead><tr><th>메서드</th><th>반환</th><th>단위</th></tr></thead>
+      <tbody>
+        <tr><td><code>.bytes()</code></td><td><code>Bytes</code> 반복자</td><td>UTF-8 바이트(<code>u8</code>)</td></tr>
+        <tr><td><code>.chars()</code></td><td><code>Chars</code> 반복자</td><td>유니코드 코드 포인트(<code>char</code>)</td></tr>
+        <tr><td><code>.char_indices()</code></td><td><code>CharIndices</code></td><td>(바이트 인덱스, <code>char</code>)</td></tr>
+        <tr><td><code>.as_bytes()</code></td><td><code>&amp;[u8]</code></td><td>바이트 슬라이스 (인덱싱 가능)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">1.8</span>s[0]은 에러, 네 가지 뷰는 OK</h4></div>
+      <div class="example-desc">한글이 섞인 문자열에서 바이트와 char를 비교한다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="1-8">fn main() {
+    let s = String::from("Hi한글");
+    // let c = s[0]; // 에러: the type `String` cannot be indexed by `{integer}`
+
+    println!("문자열       : '{}'", s);
+    println!("바이트 개수  : {}", s.len());        // 8 (H i 한[3] 글[3])
+    println!("문자 개수    : {}", s.chars().count()); // 4
+
+    print!("바이트들  : ");
+    for b in s.bytes() { print!("{:3} ", b); }
+    println!();
+
+    print!("chars()   : ");
+    for c in s.chars() { print!("'{}' ", c); }
+    println!();
+
+    print!("char_indices(): ");
+    for (i, c) in s.char_indices() { print!("({},'{}') ", i, c); }
+    println!();
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="1-8" onclick="runRust('1-8')">▶ 실행</button>
+        <span class="run-status" data-ex-id="1-8"></span>
+      </div>
+      <div class="output-box" id="out-1-8"></div>
+    </div>
+
+    <div class="callout callout-warn">
+      <strong>"문자열 길이"의 함정</strong>
+      <code>s.len()</code>은 <strong>바이트 길이</strong>다. 사용자에게 보여줄 문자 수가 필요하면 <code>s.chars().count()</code>를 쓴다.
+      그것도 한국어처럼 결합 문자가 없는 경우의 이야기다. 진짜 "사용자가 보는 글자 수"는 <code>unicode-segmentation</code> 크레이트의 grapheme 클러스터까지 가야 한다.
+    </div>
+
+    <h3 id="part1-6">1.6 가변 변경 API — truncate, clear, drain, replace_range</h3>
+    <p>
+      <code>push</code> 계열 외에도 가변 String을 다루는 메서드가 더 있다. 실무에서 자주 등장.
+    </p>
+
+    <table>
+      <thead><tr><th>메서드</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td><code>truncate(n)</code></td><td>n바이트까지로 길이 줄임 (UTF-8 경계 아니면 panic)</td></tr>
+        <tr><td><code>clear()</code></td><td>비움. cap은 유지</td></tr>
+        <tr><td><code>drain(range)</code></td><td>범위를 빼냄 (반복자 반환). 원본에선 제거</td></tr>
+        <tr><td><code>replace_range(range, &amp;str)</code></td><td>범위를 다른 문자열로 교체</td></tr>
+        <tr><td><code>pop()</code></td><td>마지막 char 제거 후 반환 (<code>Option&lt;char&gt;</code>)</td></tr>
+        <tr><td><code>retain(|c| ...)</code></td><td>조건에 맞는 char만 유지</td></tr>
+      </tbody>
+    </table>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">1.9</span>6가지 변경 메서드</h4></div>
+      <div class="example-desc">한자리에서 비교.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="1-9">fn main() {
+    let mut s = String::from("Hello, Rust!");
+    s.truncate(5);
+    println!("truncate(5)    : '{}'", s);            // "Hello"
+
+    s.push_str(", world!");
+    s.replace_range(5..7, " from ");
+    println!("replace_range  : '{}'", s);            // "Hello from world!"
+
+    let drained: String = s.drain(0..5).collect();
+    println!("drained        : '{}', 남은 s: '{}'", drained, s);
+
+    let last = s.pop();
+    println!("pop            : {:?}, 남은 s: '{}'", last, s);
+
+    s.retain(|c| c.is_alphabetic());
+    println!("retain alpha   : '{}'", s);
+
+    s.clear();
+    println!("clear          : '{}', len={}, cap={} (cap 유지)",
+             s, s.len(), s.capacity());
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="1-9" onclick="runRust('1-9')">▶ 실행</button>
+        <span class="run-status" data-ex-id="1-9"></span>
+      </div>
+      <div class="output-box" id="out-1-9"></div>
+    </div>
+
+    <h3 id="part1-7">1.7 capacity 명시적 관리 — reserve, shrink_to_fit</h3>
+
+    <table>
+      <thead><tr><th>메서드</th><th>의미</th></tr></thead>
+      <tbody>
+        <tr><td><code>reserve(n)</code></td><td>cap이 <code>len + n</code> 이상이 되게 (오버할당 가능)</td></tr>
+        <tr><td><code>reserve_exact(n)</code></td><td>cap이 정확히 <code>len + n</code>이 되도록 (오버할당 최소화)</td></tr>
+        <tr><td><code>shrink_to_fit()</code></td><td>cap을 len에 맞게 축소</td></tr>
+        <tr><td><code>shrink_to(n)</code></td><td>cap을 최소 <code>max(len, n)</code>까지 축소</td></tr>
+      </tbody>
+    </table>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">1.10</span>예약과 축소</h4></div>
+      <div class="example-desc">cap 직접 제어.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="1-10">fn main() {
+    let mut s = String::new();
+    println!("초기           : cap={}", s.capacity());
+
+    s.reserve(100);
+    println!("reserve(100)   : cap={} (≥ 100)", s.capacity());
+
+    s.push_str("hi");
+    println!("push 후        : len={}, cap={}", s.len(), s.capacity());
+
+    s.shrink_to_fit();
+    println!("shrink_to_fit  : len={}, cap={}", s.len(), s.capacity());
+
+    let mut t = String::from("abc");
+    t.reserve_exact(50);
+    println!("reserve_exact50: cap={} (정확히 또는 거의 53)", t.capacity());
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="1-10" onclick="runRust('1-10')">▶ 실행</button>
+        <span class="run-status" data-ex-id="1-10"></span>
+      </div>
+      <div class="output-box" id="out-1-10"></div>
+    </div>
+
+    <h3 id="part1-8b">1.8b <code>Vec&lt;u8&gt;</code> ↔ <code>String</code> 상호 변환</h3>
+    <p>
+      파일·소켓에서 읽은 바이트를 문자열로 만들거나, 문자열을 바이트로 분해할 때 쓴다.
+      <code>String::from_utf8</code>은 검증한 뒤 <code>Result</code>를 돌려준다 (UTF-8 아니면 에러).
+    </p>
+
+    <pre class="signature">pub fn from_utf8(vec: Vec&lt;u8&gt;) -&gt; Result&lt;String, FromUtf8Error&gt;
+pub fn into_bytes(self) -&gt; Vec&lt;u8&gt;</pre>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">1.11</span>바이트 ↔ String</h4></div>
+      <div class="example-desc">유효 UTF-8과 무효 UTF-8 둘 다 시도.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="1-11">fn main() {
+    // Vec&lt;u8&gt; -&gt; String
+    let bytes: Vec&lt;u8&gt; = vec![72, 101, 108, 108, 111]; // "Hello"
+    match String::from_utf8(bytes) {
+        Ok(s)  =&gt; println!("성공: '{}'", s),
+        Err(e) =&gt; println!("실패: {}", e),
+    }
+
+    // 무효 UTF-8
+    let invalid: Vec&lt;u8&gt; = vec![0xff, 0xfe, 0x80];
+    match String::from_utf8(invalid) {
+        Ok(_)  =&gt; println!("성공"),
+        Err(e) =&gt; println!("무효: {:?}", e.utf8_error()),
+    }
+
+    // &amp;[u8] -&gt; &amp;str
+    let arr = [72u8, 105];
+    let view: &amp;str = std::str::from_utf8(&amp;arr).unwrap();
+    println!("&amp;[u8] -&gt; &amp;str  : '{}'", view);
+
+    // String -&gt; Vec&lt;u8&gt; (소유권 이동, 할당 없음)
+    let owned = String::from("Rust");
+    let v: Vec&lt;u8&gt; = owned.into_bytes();
+    println!("into_bytes      : {:?}", v);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="1-11" onclick="runRust('1-11')">▶ 실행</button>
+        <span class="run-status" data-ex-id="1-11"></span>
+      </div>
+      <div class="output-box" id="out-1-11"></div>
+    </div>
+
+    <h3 id="part1-9">1.9 Raw string과 byte string 리터럴</h3>
+    <p>
+      소스 코드에서 escape를 비활성화하거나 (정규식, 윈도우 경로),
+      바이트 배열을 직접 만들 때 (네트워크 프로토콜, 매직 헤더) 쓰는 리터럴 종류.
+    </p>
+
+    <table>
+      <thead><tr><th>리터럴</th><th>타입</th><th>특징</th></tr></thead>
+      <tbody>
+        <tr><td><code>"Hello\n"</code></td><td><code>&amp;'static str</code></td><td>일반 — escape 활성</td></tr>
+        <tr><td><code>r"C:\path"</code></td><td><code>&amp;'static str</code></td><td>raw — 백슬래시 그대로</td></tr>
+        <tr><td><code>r#"She said "hi""#</code></td><td><code>&amp;'static str</code></td><td>raw + 따옴표 포함 가능</td></tr>
+        <tr><td><code>b"hello"</code></td><td><code>&amp;'static [u8; 5]</code></td><td>byte string</td></tr>
+        <tr><td><code>br"\n"</code></td><td><code>&amp;'static [u8; 2]</code></td><td>raw byte string</td></tr>
+        <tr><td><code>b'A'</code></td><td><code>u8</code></td><td>byte literal (65)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">1.12</span>5가지 리터럴 형태</h4></div>
+      <div class="example-desc">실제 차이를 한자리에서.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="1-12">fn main() {
+    // 일반 — escape 활성
+    let normal = "Hello\n\tworld";
+    println!("normal  : {}", normal);
+
+    // raw — escape 비활성
+    let path = r"C:\Users\name";
+    let regex = r"\d+\.\d+";
+    println!("path    : {}", path);
+    println!("regex   : {}", regex);
+
+    // raw + 따옴표
+    let quoted = r#"She said "hi""#;
+    println!("quoted  : {}", quoted);
+
+    // byte string — 타입은 &amp;[u8; N]
+    let bs: &amp;[u8; 5] = b"Hello";
+    println!("bytes   : {:?}", bs);
+
+    // byte literal
+    let c: u8 = b'A';
+    println!("b'A'    : {}", c);   // 65
+
+    // raw byte string
+    let brs: &amp;[u8] = br"\n is not a newline";
+    println!("br      : {:?}", brs);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="1-12" onclick="runRust('1-12')">▶ 실행</button>
+        <span class="run-status" data-ex-id="1-12"></span>
+      </div>
+      <div class="output-box" id="out-1-12"></div>
+    </div>
+
+    <h3 id="part1-10">1.10 Display vs Debug, format flags</h3>
+    <p>
+      <code>println!("{}", x)</code>는 <code>Display</code> 호출, <code>{:?}</code>는 <code>Debug</code> 호출.
+      Display는 "사용자용 표현", Debug는 "개발자용 표현". 일반 타입을 출력하려면 둘 중 하나는 구현되어 있어야 한다.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">1.13</span>Display 구현 + format flags 총정리</h4></div>
+      <div class="example-desc">정렬, 폭, 패딩, 진수, 부동소수점.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="1-13">use std::fmt;
+
+struct Point { x: i32, y: i32 }
+impl fmt::Display for Point {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -&gt; fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
+
+#[derive(Debug)]
+struct Tagged { name: String, count: u32 }
+
+fn main() {
+    let p = Point { x: 3, y: 4 };
+    let t = Tagged { name: "rust".into(), count: 42 };
+
+    println!("Display: {}",   p);          // (3, 4)
+    println!("Debug  : {:?}", t);          // Tagged { name: "rust", count: 42 }
+    println!("Pretty : {:#?}", t);          // 줄바꿈된 Debug
+
+    // 정렬과 폭
+    println!("[{:&gt;10}]",   "right");        // [     right]
+    println!("[{:&lt;10}]",   "left");         // [left      ]
+    println!("[{:^10}]",   "center");       // [  center  ]
+    println!("[{:*&gt;10}]",  "pad");          // [*******pad]
+
+    // 숫자 진수
+    println!("hex   : {:x}",   255);        // ff
+    println!("HEX   : {:08X}", 255);        // 000000FF
+    println!("oct   : {:o}",   255);        // 377
+    println!("bin   : {:b}",   255);        // 11111111
+
+    // 부동소수점
+    println!("float : {:.3}",   3.14159);    // 3.142
+    println!("scien : {:.2e}", 12345.6);    // 1.23e4
+
+    // 위치 인자
+    println!("{1} {0}", "world", "hello");  // hello world
+
+    // 명명 인자
+    println!("{name}={val}", name = "n", val = 42);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="1-13" onclick="runRust('1-13')">▶ 실행</button>
+        <span class="run-status" data-ex-id="1-13"></span>
+      </div>
+      <div class="output-box" id="out-1-13"></div>
+    </div>
+
+
+    <h2 id="part2">Part 2. <code>&amp;str</code> — 빌린 문자열 슬라이스</h2>
+    <p>
+      <code>&amp;str</code>는 "<strong>이미 어딘가에 있는 UTF-8 바이트 시퀀스의 일부를 빌린 뷰</strong>"다.
+      소유하지 않는다. 들고 다니는 건 <strong>두 개</strong>: 시작 포인터와 길이. 이것을 <em>fat pointer</em>라 한다.
+    </p>
+
+    <svg class="svg-diagram" viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="&amp;str fat pointer 구조">
+      <defs>
+        <marker id="arrow-end-2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="arrow-head" />
+        </marker>
+      </defs>
+      <text x="380" y="28" text-anchor="middle" class="svg-title">&amp;str 은 fat pointer (ptr + len)</text>
+      <text x="380" y="52" text-anchor="middle" class="svg-sub">let s: &amp;str = "Hello"; — 데이터는 .rodata, 변수는 스택에서 fat ptr만 들고 있음</text>
+
+      <!-- 스택 라벨 -->
+      <text x="380" y="92" text-anchor="middle" class="svg-label" style="font-weight:600;">스택 — s가 차지하는 16바이트 (2 워드)</text>
+
+      <!-- 스택 박스 -->
+      <g>
+        <rect x="280" y="108" width="100" height="60" class="box-fill" />
+        <rect x="280" y="108" width="100" height="60" class="box-stroke" />
+        <text x="330" y="135" text-anchor="middle" class="svg-mono" style="font-weight:600;">ptr</text>
+        <text x="330" y="156" text-anchor="middle" class="svg-sub">→ rodata</text>
+
+        <rect x="380" y="108" width="100" height="60" class="box-fill" />
+        <rect x="380" y="108" width="100" height="60" class="box-stroke" />
+        <text x="430" y="135" text-anchor="middle" class="svg-mono" style="font-weight:600;">len</text>
+        <text x="430" y="156" text-anchor="middle" class="svg-mono">5</text>
+      </g>
+
+      <!-- 정적 영역 라벨 -->
+      <text x="380" y="218" text-anchor="middle" class="svg-label" style="font-weight:600;">정적 영역 (.rodata) — 바이너리에 박힌 리터럴</text>
+
+      <!-- rodata 박스 -->
+      <g>
+        <rect x="230" y="232" width="60" height="60" class="region-static" /><text x="260" y="268" text-anchor="middle" class="svg-mono">'H'</text>
+        <rect x="290" y="232" width="60" height="60" class="region-static" /><text x="320" y="268" text-anchor="middle" class="svg-mono">'e'</text>
+        <rect x="350" y="232" width="60" height="60" class="region-static" /><text x="380" y="268" text-anchor="middle" class="svg-mono">'l'</text>
+        <rect x="410" y="232" width="60" height="60" class="region-static" /><text x="440" y="268" text-anchor="middle" class="svg-mono">'l'</text>
+        <rect x="470" y="232" width="60" height="60" class="region-static" /><text x="500" y="268" text-anchor="middle" class="svg-mono">'o'</text>
+      </g>
+
+      <!-- 화살표 -->
+      <path d="M 330 168 Q 260 200 245 232" class="arrow" marker-end="url(#arrow-end-2)" />
+
+      <text x="380" y="320" text-anchor="middle" class="svg-sub">cap이 없는 이유: &amp;str은 빌림이라 늘릴 수 없다 (해당 메모리를 책임지지 않음)</text>
+    </svg>
+
+    <h3 id="part2-1">2.1 문자열 리터럴의 정체</h3>
+    <p>
+      소스 코드에 적힌 <code>"hello"</code>는 컴파일 시점에 <code>.rodata</code>에 박히고, 그것을 가리키는 <code>&amp;str</code> 핸들이 만들어진다.
+      이 핸들의 타입은 정확히 <code>&amp;'static str</code> 이다. 라이프타임이 'static' — 즉 프로그램 전체 — 인 이유는 .rodata가 끝까지 살아있기 때문이다.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">2.1</span>리터럴은 &amp;'static str</h4></div>
+      <div class="example-desc">함수 끝나도 살아남는다 — 그러니까 반환해도 안전하다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="2-1">fn get_literal() -&gt; &amp;'static str {
+    "I will live forever"  // .rodata에 박힌 데이터를 가리킴
+}
+
+fn main() {
+    let s: &amp;'static str = get_literal();
+    println!("{}", s);
+    println!("len = {}", s.len());
+
+    // 명시적 타입
+    let lit = "type test";
+    let _: &amp;'static str = lit;  // OK
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="2-1" onclick="runRust('2-1')">▶ 실행</button>
+        <span class="run-status" data-ex-id="2-1"></span>
+      </div>
+      <div class="output-box" id="out-2-1"></div>
+    </div>
+
+    <h3 id="part2-2">2.2 fat pointer 크기 검증</h3>
+    <p>이론을 코드로 확인한다. <code>&amp;i32</code>는 8바이트(주소 하나)지만 <code>&amp;str</code>는 16바이트다.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">2.2</span>size_of로 fat pointer 입증</h4></div>
+      <div class="example-desc">일반 참조와 슬라이스 참조의 크기 차이.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="2-2">use std::mem::size_of;
+
+fn main() {
+    println!("size_of::&lt;&amp;i32&gt;()   = {} (얇은 포인터: 주소만)", size_of::&lt;&amp;i32&gt;());
+    println!("size_of::&lt;&amp;str&gt;()   = {} (fat: ptr + len)",      size_of::&lt;&amp;str&gt;());
+    println!("size_of::&lt;&amp;[i32]&gt;() = {} (fat: ptr + len)",      size_of::&lt;&amp;[i32]&gt;());
+    println!("size_of::&lt;String&gt;()  = {} (ptr + len + cap)",      size_of::&lt;String&gt;());
+    println!("size_of::&lt;Vec&lt;i32&gt;&gt;()= {} (ptr + len + cap)",      size_of::&lt;Vec&lt;i32&gt;&gt;());
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="2-2" onclick="runRust('2-2')">▶ 실행</button>
+        <span class="run-status" data-ex-id="2-2"></span>
+      </div>
+      <div class="output-box" id="out-2-2"></div>
+    </div>
+
+    <h3 id="part2-3">2.3 String을 &amp;str로 빌리기</h3>
+    <p>이게 가장 자주 쓰는 변환이다. 세 가지 방법이 있고 결과는 모두 같다.</p>
+
+    <pre class="signature">// 1) &amp;s              (Deref 강제 변환, 가장 흔함)
+// 2) s.as_str()       (명시적 메서드, 의도가 또렷함)
+// 3) &amp;s[..]           (전체 슬라이싱)</pre>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">2.3</span>같은 결과, 다른 표현</h4></div>
+      <div class="example-desc">세 방법 모두 <code>&amp;str</code>가 된다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="2-3">fn print_str(x: &amp;str) {
+    println!("받음: '{}'", x);
+}
+
+fn main() {
+    let s = String::from("Rust");
+    print_str(&amp;s);           // &amp;String → &amp;str (Deref)
+    print_str(s.as_str());    // 명시적
+    print_str(&amp;s[..]);        // 전체 슬라이스
+
+    // 변수 바인딩으로도
+    let borrowed: &amp;str = &amp;s;
+    println!("borrowed: {}", borrowed);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="2-3" onclick="runRust('2-3')">▶ 실행</button>
+        <span class="run-status" data-ex-id="2-3"></span>
+      </div>
+      <div class="output-box" id="out-2-3"></div>
+    </div>
+
+    <h3 id="part2-4">2.4 슬라이싱 — 부분 빌리기</h3>
+    <p>
+      <code>&amp;s[start..end]</code>로 부분 문자열을 빌릴 수 있다. 단 인덱스는 <strong>바이트</strong> 단위이며,
+      <strong>문자 경계가 아닌 위치를 넣으면 런타임 panic</strong>이 발생한다.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">2.4</span>아스키 문자열의 부분 빌림</h4></div>
+      <div class="example-desc">표준적인 [start..end] 슬라이싱.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="2-4">fn main() {
+    let s = String::from("Hello, World!");
+    let hello: &amp;str = &amp;s[0..5];      // "Hello"
+    let world: &amp;str = &amp;s[7..12];     // "World"
+    let from7: &amp;str = &amp;s[7..];        // "World!"
+    let upto5: &amp;str = &amp;s[..5];        // "Hello"
+    let all:   &amp;str = &amp;s[..];         // "Hello, World!"
+    println!("hello = '{}'", hello);
+    println!("world = '{}'", world);
+    println!("from7 = '{}'", from7);
+    println!("upto5 = '{}'", upto5);
+    println!("all   = '{}'", all);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="2-4" onclick="runRust('2-4')">▶ 실행</button>
+        <span class="run-status" data-ex-id="2-4"></span>
+      </div>
+      <div class="output-box" id="out-2-4"></div>
+    </div>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">2.5</span>UTF-8 경계 미준수 → panic</h4></div>
+      <div class="example-desc">"한"은 3바이트. <code>&amp;s[0..1]</code>은 "한"의 첫 바이트만 자르려 해서 panic 한다. (의도된 런타임 에러)</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="2-5">fn main() {
+    let s = String::from("한글ABC");
+    println!("바이트 길이: {}", s.len());  // 9 (한=3, 글=3, A=1, B=1, C=1)
+
+    // 안전한 슬라이싱 (3바이트 경계)
+    let han = &amp;s[0..3]; // "한"
+    println!("{}", han);
+
+    // 의도된 panic: 한의 중간 바이트(1)에서 자르려고 함
+    let _broken = &amp;s[0..1];
+    println!("이 줄은 출력되지 않음");
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="2-5" onclick="runRust('2-5')">▶ 실행</button>
+        <span class="run-status" data-ex-id="2-5"></span>
+      </div>
+      <div class="output-box" id="out-2-5"></div>
+    </div>
+
+    <div class="callout callout-tip">
+      <strong>안전한 다국어 처리</strong>
+      바이트 인덱스를 직접 다루는 대신 <code>s.char_indices()</code>로 경계를 찾거나, <code>s.chars().take(n).collect::&lt;String&gt;()</code>을 쓴다.
+      혹은 <code>s.split_at_checked(i)</code>(1.80+) 같은 안전한 API를 활용한다.
+    </div>
+
+    <h3 id="part2-5">2.5 &amp;str이 제공하는 자주 쓰는 메서드</h3>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">2.6</span>String도 &amp;str 메서드를 그대로 쓴다</h4></div>
+      <div class="example-desc"><code>String</code>은 <code>Deref&lt;Target=str&gt;</code>이라 <code>&amp;str</code>의 모든 메서드를 자동으로 쓸 수 있다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="2-6">fn main() {
+    let s = String::from("  Rust is awesome  ");
+
+    println!("len             = {}", s.len());
+    println!("is_empty        = {}", s.is_empty());
+    println!("trim            = '{}'", s.trim());
+    println!("to_uppercase    = '{}'", s.to_uppercase());
+    println!("to_lowercase    = '{}'", s.to_lowercase());
+    println!("contains 'Rust' = {}", s.contains("Rust"));
+    println!("starts_with     = {}", s.trim().starts_with("Rust"));
+    println!("ends_with       = {}", s.trim().ends_with("awesome"));
+    println!("replace         = '{}'", s.trim().replace("Rust", "Ruby"));
+    println!("find 'is'       = {:?}", s.find("is"));
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="2-6" onclick="runRust('2-6')">▶ 실행</button>
+        <span class="run-status" data-ex-id="2-6"></span>
+      </div>
+      <div class="output-box" id="out-2-6"></div>
+    </div>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">2.7</span>split / lines — 반환된 슬라이스는 원본을 빌린다</h4></div>
+      <div class="example-desc">중요: <code>split</code>이 반환하는 각 <code>&amp;str</code>는 원본 메모리를 가리킨다. 원본이 살아있어야 결과도 살아있다 (라이프타임 전파, Part 6).</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="2-7">fn main() {
+    let csv = String::from("name,age,role");
+    let parts: Vec&lt;&amp;str&gt; = csv.split(',').collect();
+    println!("parts = {:?}", parts);
+    println!("parts[1] = '{}'", parts[1]);
+
+    let log = "INFO: start\nWARN: slow\nERROR: failed";
+    for (i, line) in log.lines().enumerate() {
+        println!("  line[{}] = '{}'", i, line);
+    }
+
+    // splitn — 최대 n개로 자르기
+    let pair: Vec&lt;&amp;str&gt; = "key=value=extra".splitn(2, '=').collect();
+    println!("splitn 2: {:?}", pair);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="2-7" onclick="runRust('2-7')">▶ 실행</button>
+        <span class="run-status" data-ex-id="2-7"></span>
+      </div>
+      <div class="output-box" id="out-2-7"></div>
+    </div>
+
+    <h2 id="part3">Part 3. <code>str</code> / <code>&amp;str</code> / <code>&amp;String</code> 구별</h2>
+    <p>
+      세 가지가 헷갈리는 진짜 이유는 <code>str</code> 자체를 직접 쓸 일이 거의 없기 때문이다.
+      이번 파트에서 셋을 명확히 갈라낸다.
+    </p>
+
+    <svg class="svg-diagram" viewBox="0 0 760 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="&amp;String vs &amp;str 비교">
+      <defs>
+        <marker id="arrow-end-3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="arrow-head" />
+        </marker>
+      </defs>
+      <text x="380" y="28" text-anchor="middle" class="svg-title">&amp;String 은 한 번 더 가서야 데이터에 닿는다</text>
+      <text x="380" y="52" text-anchor="middle" class="svg-sub">왼쪽: &amp;String (이중 간접)  ·  오른쪽: &amp;str (직접 fat ptr)</text>
+
+      <!-- 왼쪽: &String 흐름 -->
+      <text x="190" y="92" text-anchor="middle" class="svg-label" style="font-weight:600;">let s = String::from("ab");</text>
+      <text x="190" y="112" text-anchor="middle" class="svg-label" style="font-weight:600;">let r1: &amp;String = &amp;s;</text>
+
+      <!-- r1: 단일 포인터 -->
+      <rect x="140" y="130" width="100" height="50" class="box-fill" /><rect x="140" y="130" width="100" height="50" class="box-stroke" />
+      <text x="190" y="152" text-anchor="middle" class="svg-sub">r1: &amp;String</text>
+      <text x="190" y="170" text-anchor="middle" class="svg-mono">ptr</text>
+
+      <!-- s: ptr, len, cap (스택 상의 String) -->
+      <rect x="100" y="220" width="60" height="50" class="box-fill" /><rect x="100" y="220" width="60" height="50" class="box-stroke" />
+      <text x="130" y="244" text-anchor="middle" class="svg-mono">ptr</text>
+      <rect x="160" y="220" width="60" height="50" class="box-fill" /><rect x="160" y="220" width="60" height="50" class="box-stroke" />
+      <text x="190" y="244" text-anchor="middle" class="svg-mono">len</text>
+      <rect x="220" y="220" width="60" height="50" class="box-fill" /><rect x="220" y="220" width="60" height="50" class="box-stroke" />
+      <text x="250" y="244" text-anchor="middle" class="svg-mono">cap</text>
+      <text x="190" y="285" text-anchor="middle" class="svg-sub">스택의 s (String 본체)</text>
+
+      <!-- 힙 데이터 -->
+      <rect x="120" y="320" width="60" height="50" class="region-heap" /><text x="150" y="350" text-anchor="middle" class="svg-mono">'a'</text>
+      <rect x="180" y="320" width="60" height="50" class="region-heap" /><text x="210" y="350" text-anchor="middle" class="svg-mono">'b'</text>
+      <text x="190" y="395" text-anchor="middle" class="svg-sub">힙 데이터</text>
+
+      <!-- 화살표: r1 → s, s.ptr → heap -->
+      <path d="M 190 180 L 190 220" class="arrow" marker-end="url(#arrow-end-3)" />
+      <path d="M 130 270 L 130 320" class="arrow" marker-end="url(#arrow-end-3)" />
+
+      <!-- 구분선 -->
+      <line x1="380" y1="80" x2="380" y2="400" class="grid-line" stroke-dasharray="5 5" />
+
+      <!-- 오른쪽: &str 흐름 -->
+      <text x="570" y="92" text-anchor="middle" class="svg-label" style="font-weight:600;">let s = String::from("ab");</text>
+      <text x="570" y="112" text-anchor="middle" class="svg-label" style="font-weight:600;">let r2: &amp;str = &amp;s;</text>
+
+      <!-- r2: fat pointer -->
+      <rect x="490" y="130" width="80" height="50" class="box-fill" /><rect x="490" y="130" width="80" height="50" class="box-stroke" />
+      <text x="530" y="152" text-anchor="middle" class="svg-sub">ptr</text>
+      <text x="530" y="170" text-anchor="middle" class="svg-mono">→</text>
+      <rect x="570" y="130" width="80" height="50" class="box-fill" /><rect x="570" y="130" width="80" height="50" class="box-stroke" />
+      <text x="610" y="152" text-anchor="middle" class="svg-sub">len=2</text>
+      <text x="610" y="170" text-anchor="middle" class="svg-mono">2</text>
+      <text x="570" y="200" text-anchor="middle" class="svg-sub">r2: &amp;str (16바이트)</text>
+
+      <!-- 힙 데이터 (오른쪽) - r2가 직접 가리킴 -->
+      <rect x="500" y="320" width="60" height="50" class="region-heap" /><text x="530" y="350" text-anchor="middle" class="svg-mono">'a'</text>
+      <rect x="560" y="320" width="60" height="50" class="region-heap" /><text x="590" y="350" text-anchor="middle" class="svg-mono">'b'</text>
+      <text x="560" y="395" text-anchor="middle" class="svg-sub">힙 데이터 (s가 소유)</text>
+
+      <!-- r2 ptr → heap 직접 -->
+      <path d="M 530 180 Q 510 250 515 320" class="arrow" marker-end="url(#arrow-end-3)" />
+    </svg>
+    <p class="diagram-caption">&amp;String은 두 번 따라가야 데이터에 닿는다. &amp;str는 한 번. 함수 매개변수로 &amp;str를 선호하는 이유다.</p>
+
+    <h3 id="part3-1">3.1 <code>str</code>는 DST — 직접 변수에 담을 수 없다</h3>
+    <p>
+      <code>str</code>는 컴파일러가 크기를 알 수 없는 타입이다 (Dynamically Sized Type, DST).
+      <code>"hello"</code>는 5바이트, <code>"hi"</code>는 2바이트 — 같은 <code>str</code>이라도 크기가 다르다.
+      Rust는 모든 변수의 크기를 컴파일 시점에 알아야 하므로, <code>str</code>를 직접 변수에 담는 건 불가능하다.
+      반드시 어떤 종류의 <strong>참조나 박스</strong>를 거쳐야 한다.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">3.1</span>str을 직접 담으려 하면 에러</h4></div>
+      <div class="example-desc">의도된 컴파일 에러. 메시지에서 "doesn't have a size known at compile-time"을 확인한다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="3-1">fn main() {
+    // 의도된 에러: str은 Sized가 아니다
+    let x: str = *"hello";
+    println!("{}", x);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="3-1" onclick="runRust('3-1')">▶ 실행</button>
+        <span class="run-status" data-ex-id="3-1"></span>
+      </div>
+      <div class="output-box" id="out-3-1"></div>
+    </div>
+
+    <h3 id="part3-2">3.2 &amp;String 은 거의 안 쓰는 이유</h3>
+    <p>
+      <code>&amp;String</code>은 "<strong>String의 핸들을 가리키는 포인터</strong>"다. 그림에서 보듯 데이터에 도달하려면 두 번 따라가야 한다.
+      함수 매개변수로 <code>&amp;String</code>을 받으면 호출자가 반드시 <code>String</code>을 들고 있어야 하므로 호출 가능 범위가 좁아진다.
+      그래서 거의 항상 <code>&amp;str</code>를 받는다.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">3.2</span>&amp;String 받는 함수의 한계</h4></div>
+      <div class="example-desc"><code>&amp;String</code>을 받는 함수에는 리터럴을 그대로 넘길 수 없다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="3-2">fn takes_string_ref(s: &amp;String) {
+    println!("len = {}", s.len());
+}
+fn takes_str(s: &amp;str) {
+    println!("len = {}", s.len());
+}
+
+fn main() {
+    let owned = String::from("hello");
+
+    takes_string_ref(&amp;owned);   // OK
+    takes_str(&amp;owned);          // OK (&amp;String → &amp;str 자동 변환)
+    takes_str("literal");        // OK (리터럴은 &amp;'static str)
+
+    // takes_string_ref("literal"); // 에러! 리터럴은 &amp;str이지 &amp;String이 아님
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="3-2" onclick="runRust('3-2')">▶ 실행</button>
+        <span class="run-status" data-ex-id="3-2"></span>
+      </div>
+      <div class="output-box" id="out-3-2"></div>
+    </div>
+
+    <div class="callout callout-info">
+      <strong>실용 규칙</strong>
+      읽기만 할 거면 매개변수 타입을 <code>&amp;str</code>로 잡는다.
+      가변 변경이 필요하면 <code>&amp;mut String</code>, 소유권이 필요하면 <code>String</code>을 받는다.
+      <code>&amp;String</code>은 거의 안 쓴다.
+    </div>
+
+    <h3 id="part3-3">3.3 Deref 강제 변환 — &amp;String 이 &amp;str 처럼 동작하는 마법</h3>
+    <p>
+      <code>String</code>은 <code>Deref&lt;Target = str&gt;</code> 트레이트를 구현한다. 그래서 <code>&amp;String</code>이 필요한 자리에 있어야 할
+      <code>&amp;str</code>가 자동으로 만들어진다. 메서드 호출 시에도 마찬가지로 <code>String</code> 위에서 <code>&amp;str</code>의 메서드를 그대로 쓸 수 있다.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">3.3</span>Deref 강제 변환 시연</h4></div>
+      <div class="example-desc">컴파일러가 자동으로 <code>&amp;String → &amp;str</code>를 끼워 넣는다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="3-3">fn count_chars(s: &amp;str) -&gt; usize {
+    s.chars().count()
+}
+
+fn main() {
+    let owned = String::from("한글");
+
+    // 다음 4줄은 모두 같은 결과 — 컴파일러가 알아서 변환
+    println!("{}", count_chars(&amp;owned));
+    println!("{}", count_chars(owned.as_str()));
+    println!("{}", count_chars(&amp;owned[..]));
+    println!("{}", count_chars(&amp;*owned));     // 명시적 deref (잘 안 씀)
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="3-3" onclick="runRust('3-3')">▶ 실행</button>
+        <span class="run-status" data-ex-id="3-3"></span>
+      </div>
+      <div class="output-box" id="out-3-3"></div>
+    </div>
+
+    <h3 id="part3-4">3.4 <code>Box&lt;str&gt;</code> — 잘 안 보이는 형태</h3>
+    <p>
+      <code>String</code>의 cap이 더 이상 필요 없을 때 (값을 만든 뒤 변경하지 않을 때) <code>Box&lt;str&gt;</code>로 줄이면 24바이트 → 16바이트로 핸들이 작아진다.
+      <code>String</code>은 가변, <code>Box&lt;str&gt;</code>은 고정 길이 힙 소유.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">3.4</span>String을 Box&lt;str&gt;로 줄이기</h4></div>
+      <div class="example-desc">생성 후 변경하지 않을 문자열에 메모리 절약 패턴.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="3-4">use std::mem::size_of;
+
+fn main() {
+    let s: String = String::from("hello");
+    let b: Box&lt;str&gt; = s.into_boxed_str();   // cap 정보 폐기
+
+    println!("Box&lt;str&gt; = '{}'", b);
+    println!("len = {}", b.len());
+    println!("size_of::&lt;String&gt;()    = {}", size_of::&lt;String&gt;());
+    println!("size_of::&lt;Box&lt;str&gt;&gt;()  = {}", size_of::&lt;Box&lt;str&gt;&gt;());
+
+    // Box&lt;str&gt;도 &amp;str로 빌릴 수 있다 (Deref 동일)
+    let view: &amp;str = &amp;b;
+    println!("view = '{}'", view);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="3-4" onclick="runRust('3-4')">▶ 실행</button>
+        <span class="run-status" data-ex-id="3-4"></span>
+      </div>
+      <div class="output-box" id="out-3-4"></div>
+    </div>
+
+    <h3 id="part3-5">3.5 비교 연산 — 다른 타입끼리 ==이 되는 이유</h3>
+    <p>
+      <code>String == &amp;str</code> 이 가능한 이유는 <code>String</code>이 <code>PartialEq&lt;str&gt;</code>, <code>PartialEq&lt;&amp;str&gt;</code> 등을
+      여러 개 구현하기 때문이다. 일반 사용자 입장에선 그냥 <em>"문자 내용이 같으면 같음"</em> 으로 작동한다.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">3.5</span>가능한 모든 조합의 == 비교</h4></div>
+      <div class="example-desc">String/&amp;str/리터럴 사이 비교가 다 된다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="3-5">fn main() {
+    let owned   = String::from("rust");
+    let slice: &amp;str = "rust";
+    let other   = String::from("rust");
+
+    println!("String == &amp;str           : {}", owned == slice);
+    println!("&amp;str == String           : {}", slice == owned);
+    println!("String == String          : {}", owned == other);
+    println!("String == 리터럴(&amp;str)   : {}", owned == "rust");
+    println!("리터럴 == String          : {}", "rust" == owned);
+    println!("&amp;str == &amp;str            : {}", slice == "rust");
+
+    // 정렬도 가능
+    let mut v = vec!["banana", "apple", "cherry"];
+    v.sort();
+    println!("sorted: {:?}", v);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="3-5" onclick="runRust('3-5')">▶ 실행</button>
+        <span class="run-status" data-ex-id="3-5"></span>
+      </div>
+      <div class="output-box" id="out-3-5"></div>
+    </div>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">3.6</span>주의 — &amp;&amp;String 같은 다중 참조도 통한다</h4></div>
+      <div class="example-desc">메서드 호출 시 컴파일러는 필요한 만큼 자동 deref한다 (auto-deref).</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="3-6">fn main() {
+    let s = String::from("abc");
+    let r: &amp;String = &amp;s;
+    let rr: &amp;&amp;String = &amp;r;
+    let rrr: &amp;&amp;&amp;String = &amp;rr;
+
+    // 메서드 호출 시 자동으로 deref 됨
+    println!("len through &amp;&amp;&amp;String = {}", rrr.len());
+    println!("upper = {}", rrr.to_uppercase());
+
+    // 명시적으로도 가능
+    println!("explicit deref: {}", ***rrr);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="3-6" onclick="runRust('3-6')">▶ 실행</button>
+        <span class="run-status" data-ex-id="3-6"></span>
+      </div>
+      <div class="output-box" id="out-3-6"></div>
+    </div>
+
+    <h2 id="part4">Part 4. 함수 매개변수 패턴</h2>
+    <p>
+      문자열을 함수에 넘기는 방법은 네 가지다. 어떤 것을 쓰느냐가 함수의 호출 가능 범위와 효율을 결정한다.
+    </p>
+
+    <table>
+      <thead><tr><th>매개변수 타입</th><th>호출자 의미</th><th>언제 쓰는가</th></tr></thead>
+      <tbody>
+        <tr><td><code>&amp;str</code></td><td>읽기만 빌려줌</td><td>읽기만 할 때 (대부분)</td></tr>
+        <tr><td><code>&amp;mut String</code></td><td>가변 빌려줌</td><td>함수가 String을 변경할 때</td></tr>
+        <tr><td><code>String</code></td><td>소유권 넘김</td><td>함수가 보관하거나 변형 후 반환할 때</td></tr>
+        <tr><td><code>&amp;String</code></td><td>String 핸들 빌려줌</td><td>거의 안 씀 (3.2에서 본 이유)</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="part4-1">4.1 <code>&amp;str</code> 받기 — 가장 유연하다</h3>
+    <p>리터럴, <code>String</code>, <code>Box&lt;str&gt;</code>, 슬라이스 — 모두 받을 수 있다.</p>
+
+    <svg class="svg-diagram" viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="함수 매개변수 호환성 매트릭스">
+      <text x="380" y="28" text-anchor="middle" class="svg-title">함수 매개변수가 받는 호출 형태</text>
+      <text x="380" y="52" text-anchor="middle" class="svg-sub">초록 = OK, 빨강 = 컴파일 에러</text>
+
+      <!-- 헤더 행 -->
+      <text x="180" y="100" text-anchor="middle" class="svg-label" style="font-weight:700;">매개변수 →</text>
+      <text x="360" y="100" text-anchor="middle" class="svg-label" style="font-weight:700;">fn(&amp;str)</text>
+      <text x="500" y="100" text-anchor="middle" class="svg-label" style="font-weight:700;">fn(&amp;String)</text>
+      <text x="640" y="100" text-anchor="middle" class="svg-label" style="font-weight:700;">fn(String)</text>
+
+      <!-- 행: 리터럴 -->
+      <text x="180" y="148" text-anchor="middle" class="svg-mono">"literal"</text>
+      <circle cx="360" cy="143" r="14" class="accent-2" /><text x="360" y="149" text-anchor="middle" class="svg-mono" style="fill: white; font-weight:700;">✓</text>
+      <circle cx="500" cy="143" r="14" class="accent-1" /><text x="500" y="149" text-anchor="middle" class="svg-mono" style="fill: white; font-weight:700;">✗</text>
+      <circle cx="640" cy="143" r="14" class="accent-1" /><text x="640" y="149" text-anchor="middle" class="svg-mono" style="fill: white; font-weight:700;">✗</text>
+
+      <!-- 행: &owned -->
+      <text x="180" y="198" text-anchor="middle" class="svg-mono">&amp;owned</text>
+      <circle cx="360" cy="193" r="14" class="accent-2" /><text x="360" y="199" text-anchor="middle" class="svg-mono" style="fill: white; font-weight:700;">✓</text>
+      <circle cx="500" cy="193" r="14" class="accent-2" /><text x="500" y="199" text-anchor="middle" class="svg-mono" style="fill: white; font-weight:700;">✓</text>
+      <circle cx="640" cy="193" r="14" class="accent-1" /><text x="640" y="199" text-anchor="middle" class="svg-mono" style="fill: white; font-weight:700;">✗</text>
+
+      <!-- 행: owned (move) -->
+      <text x="180" y="248" text-anchor="middle" class="svg-mono">owned</text>
+      <circle cx="360" cy="243" r="14" class="accent-1" /><text x="360" y="249" text-anchor="middle" class="svg-mono" style="fill: white; font-weight:700;">✗</text>
+      <circle cx="500" cy="243" r="14" class="accent-1" /><text x="500" y="249" text-anchor="middle" class="svg-mono" style="fill: white; font-weight:700;">✗</text>
+      <circle cx="640" cy="243" r="14" class="accent-2" /><text x="640" y="249" text-anchor="middle" class="svg-mono" style="fill: white; font-weight:700;">✓</text>
+
+      <!-- 행: owned.as_str() -->
+      <text x="180" y="298" text-anchor="middle" class="svg-mono">owned.as_str()</text>
+      <circle cx="360" cy="293" r="14" class="accent-2" /><text x="360" y="299" text-anchor="middle" class="svg-mono" style="fill: white; font-weight:700;">✓</text>
+      <circle cx="500" cy="293" r="14" class="accent-1" /><text x="500" y="299" text-anchor="middle" class="svg-mono" style="fill: white; font-weight:700;">✗</text>
+      <circle cx="640" cy="293" r="14" class="accent-1" /><text x="640" y="299" text-anchor="middle" class="svg-mono" style="fill: white; font-weight:700;">✗</text>
+
+      <!-- 그리드 -->
+      <line x1="280" y1="115" x2="720" y2="115" class="grid-line" />
+      <line x1="280" y1="165" x2="720" y2="165" class="grid-line" />
+      <line x1="280" y1="215" x2="720" y2="215" class="grid-line" />
+      <line x1="280" y1="265" x2="720" y2="265" class="grid-line" />
+      <line x1="280" y1="315" x2="720" y2="315" class="grid-line" />
+      <line x1="280" y1="115" x2="280" y2="315" class="grid-line" />
+      <line x1="420" y1="115" x2="420" y2="315" class="grid-line" />
+      <line x1="560" y1="115" x2="560" y2="315" class="grid-line" />
+      <line x1="720" y1="115" x2="720" y2="315" class="grid-line" />
+
+      <text x="380" y="345" text-anchor="middle" class="svg-sub">결론: <tspan style="font-weight:700; fill: var(--svg-accent-2);">fn(&amp;str)</tspan> 이 가장 유연하다 — 거의 항상 정답</text>
+    </svg>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">4.1</span>&amp;str 매개변수가 받는 다섯 가지 호출</h4></div>
+      <div class="example-desc">한 함수에 다양한 형태로 호출.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="4-1">fn word_count(s: &amp;str) -&gt; usize {
+    s.split_whitespace().count()
+}
+
+fn main() {
+    let owned = String::from("one two three");
+    let boxed: Box&lt;str&gt; = Box::from("a b c d");
+    let slice = "i  am  whitespaced";
+
+    println!("리터럴       : {}", word_count("hello rust world"));
+    println!("&amp;String      : {}", word_count(&amp;owned));
+    println!("String.as_str: {}", word_count(owned.as_str()));
+    println!("&amp;owned[..]   : {}", word_count(&amp;owned[..]));
+    println!("Box&lt;str&gt;     : {}", word_count(&amp;boxed));
+    println!("&amp;str 변수    : {}", word_count(slice));
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="4-1" onclick="runRust('4-1')">▶ 실행</button>
+        <span class="run-status" data-ex-id="4-1"></span>
+      </div>
+      <div class="output-box" id="out-4-1"></div>
+    </div>
+
+    <h3 id="part4-2">4.2 <code>String</code> 받기 — 소유권 이동</h3>
+    <p>함수 내에서 보관하거나 (구조체 필드에 넣거나) 변형해 새 String을 만들 때 쓴다. 호출자는 변수를 잃는다.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">4.2</span>String 받아서 보관하기</h4></div>
+      <div class="example-desc">호출 후엔 원래 변수를 쓸 수 없다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="4-2">struct User { name: String }
+
+fn create_user(name: String) -&gt; User {
+    User { name }   // name을 그대로 가져가서 필드에 넣는다
+}
+
+fn main() {
+    let n = String::from("Alice");
+    let u = create_user(n);
+    println!("user.name = {}", u.name);
+    // println!("{}", n); // 에러: n은 move됨
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="4-2" onclick="runRust('4-2')">▶ 실행</button>
+        <span class="run-status" data-ex-id="4-2"></span>
+      </div>
+      <div class="output-box" id="out-4-2"></div>
+    </div>
+
+    <h3 id="part4-3">4.3 <code>&amp;String</code> 안티패턴</h3>
+    <p>이미 3.2에서 본 이야기. 한 번 더 명시적으로 — 이렇게 쓰지 마라.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">4.3</span>&amp;String을 받으면 호출 형태가 좁아진다</h4></div>
+      <div class="example-desc">의도된 컴파일 에러 비교.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="4-3">fn anti(s: &amp;String) {
+    println!("{}", s);
+}
+fn good(s: &amp;str) {
+    println!("{}", s);
+}
+
+fn main() {
+    let owned = String::from("rust");
+    anti(&amp;owned);    // OK
+    good(&amp;owned);    // OK
+    good("literal"); // OK
+    anti("literal"); // 에러: expected `&amp;String`, found `&amp;str`
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="4-3" onclick="runRust('4-3')">▶ 실행</button>
+        <span class="run-status" data-ex-id="4-3"></span>
+      </div>
+      <div class="output-box" id="out-4-3"></div>
+    </div>
+
+    <h3 id="part4-4">4.4 <code>String</code> 반환</h3>
+    <p>새로 만든 문자열을 호출자에게 넘기는 가장 일반적인 방법.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">4.4</span>새 String을 만들어 반환</h4></div>
+      <div class="example-desc">소유권이 호출자에게 이동.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="4-4">fn greet(name: &amp;str) -&gt; String {
+    format!("Hello, {}!", name)
+}
+
+fn shout(s: &amp;str) -&gt; String {
+    s.to_uppercase()
+}
+
+fn main() {
+    let msg = greet("Rust");
+    let loud = shout(&amp;msg);
+    println!("{}", msg);
+    println!("{}", loud);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="4-4" onclick="runRust('4-4')">▶ 실행</button>
+        <span class="run-status" data-ex-id="4-4"></span>
+      </div>
+      <div class="output-box" id="out-4-4"></div>
+    </div>
+
+    <h3 id="part4-5">4.5 <code>&amp;str</code> 반환 — 라이프타임 미리보기</h3>
+    <p>
+      참조를 반환하면 컴파일러가 묻는다: "그 참조가 누구의 데이터를 가리키지?" 이 질문에 답하는 게 <strong>라이프타임</strong>이다 (Part 5에서 본격).
+      미리 두 가지 흔한 패턴만 본다.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">4.5</span>입력에서 잘라낸 &amp;str 반환</h4></div>
+      <div class="example-desc">반환 슬라이스는 입력 슬라이스의 일부 — 같은 라이프타임을 갖는다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="4-5">fn first_word(s: &amp;str) -&gt; &amp;str {
+    match s.find(' ') {
+        Some(i) =&gt; &amp;s[..i],
+        None    =&gt; s,
+    }
+}
+
+fn main() {
+    let sentence = String::from("Hello Rust world");
+    let w = first_word(&amp;sentence);
+    println!("first word = '{}'", w);
+
+    // 직접 리터럴에도
+    println!("from literal = '{}'", first_word("foo bar baz"));
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="4-5" onclick="runRust('4-5')">▶ 실행</button>
+        <span class="run-status" data-ex-id="4-5"></span>
+      </div>
+      <div class="output-box" id="out-4-5"></div>
+    </div>
+
+    <h3 id="part4-6">4.6 <code>&amp;mut String</code> — 함수가 직접 변경</h3>
+    <p>함수가 호출자의 String을 그 자리에서 변경하고 싶을 때.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">4.6</span>&amp;mut String으로 in-place 변형</h4></div>
+      <div class="example-desc">함수 호출 후에도 변수는 그대로 사용 가능 (소유권이 안 바뀜).</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="4-6">fn append_bang(s: &amp;mut String) {
+    s.push('!');
+}
+
+fn surround(s: &amp;mut String, left: &amp;str, right: &amp;str) {
+    s.insert_str(0, left);
+    s.push_str(right);
+}
+
+fn main() {
+    let mut greeting = String::from("hi");
+    append_bang(&amp;mut greeting);
+    surround(&amp;mut greeting, "[ ", " ]");
+    println!("{}", greeting);   // [ hi! ]
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="4-6" onclick="runRust('4-6')">▶ 실행</button>
+        <span class="run-status" data-ex-id="4-6"></span>
+      </div>
+      <div class="output-box" id="out-4-6"></div>
+    </div>
+
+    <div class="callout callout-tip">
+      <strong>매개변수 선택 결정 트리</strong>
+      ① 함수가 값을 보관/소비하나? → <code>String</code>.
+      ② 함수가 변경하나? → <code>&amp;mut String</code>.
+      ③ 그 외 (읽기 뿐) → 무조건 <code>&amp;str</code>.
+    </div>
+
+    <h2 id="part5">Part 5. 라이프타임 입문</h2>
+    <p>
+      라이프타임은 <strong>참조가 가리키는 데이터가 그 참조보다 오래 살아있다</strong>는 사실을 컴파일러가 검증하는 도구다.
+      자바는 GC가 이걸 런타임에 해주지만, Rust는 컴파일 시점에 정적으로 해결한다.
+    </p>
+
+    <svg class="svg-diagram" viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="라이프타임 범위">
+      <defs>
+        <marker id="arrow-end-5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="arrow-head" />
+        </marker>
+      </defs>
+      <text x="380" y="28" text-anchor="middle" class="svg-title">라이프타임 = 참조가 유효한 코드 범위</text>
+      <text x="380" y="52" text-anchor="middle" class="svg-sub">참조의 'a 는 원본 데이터의 'a 안에 끼어 있어야 한다</text>
+
+      <!-- 시간축 -->
+      <line x1="80" y1="320" x2="700" y2="320" class="grid-line" stroke="var(--svg-region-stroke)" stroke-width="2" />
+      <text x="80" y="340" text-anchor="middle" class="svg-sub">스코프 시작</text>
+      <text x="700" y="340" text-anchor="middle" class="svg-sub">스코프 종료</text>
+
+      <!-- 원본 데이터 라이프타임 (긴 막대) -->
+      <rect x="100" y="100" width="560" height="40" class="accent-2" rx="6" opacity="0.85" />
+      <text x="380" y="125" text-anchor="middle" class="svg-label" style="fill: var(--svg-text-strong); font-weight:700;">원본 데이터 (String s) — 'long</text>
+
+      <!-- 참조 라이프타임 (짧은 막대, 안에 있어야 함) -->
+      <rect x="200" y="170" width="350" height="40" class="accent-3" rx="6" opacity="0.85" />
+      <text x="375" y="195" text-anchor="middle" class="svg-label" style="fill: var(--svg-text-strong); font-weight:700;">참조 (let r: &amp;str = &amp;s) — 'short</text>
+
+      <!-- 화살표: r의 시작/끝 안내선 -->
+      <line x1="200" y1="170" x2="200" y2="320" class="grid-line" stroke-dasharray="4 4" />
+      <line x1="550" y1="170" x2="550" y2="320" class="grid-line" stroke-dasharray="4 4" />
+      <line x1="100" y1="100" x2="100" y2="320" class="grid-line" stroke-dasharray="4 4" />
+      <line x1="660" y1="100" x2="660" y2="320" class="grid-line" stroke-dasharray="4 4" />
+
+      <!-- 라벨 -->
+      <text x="200" y="240" text-anchor="middle" class="svg-sub">참조 생성</text>
+      <text x="550" y="240" text-anchor="middle" class="svg-sub">마지막 사용 (NLL)</text>
+      <text x="100" y="270" text-anchor="middle" class="svg-sub">let s 시작</text>
+      <text x="660" y="270" text-anchor="middle" class="svg-sub">s 해제</text>
+
+      <text x="380" y="290" text-anchor="middle" class="svg-label" style="font-weight:600;">규칙: 'short ⊆ 'long</text>
+    </svg>
+
+    <h3 id="part5-1">5.1 댕글링 참조 — 컴파일러가 막는 것</h3>
+    <p>가장 단순한 라이프타임 위반. 함수 안에서 만든 <code>String</code>의 참조를 반환하면, 함수가 끝나는 순간 그 String이 drop되어 참조가 허공을 가리키게 된다. Rust는 이를 컴파일 시점에 잡는다.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">5.1</span>댕글링 참조 시도 — 컴파일 에러</h4></div>
+      <div class="example-desc">의도된 에러 E0515 (returns a reference to data owned by current function).</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="5-1">fn dangle() -&gt; &amp;'static String {
+    let s = String::from("inner");
+    &amp;s   // s는 함수 끝에서 drop. 그 참조를 반환할 수 없다.
+}
+
+fn main() {
+    let r = dangle();
+    println!("{}", r);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="5-1" onclick="runRust('5-1')">▶ 실행</button>
+        <span class="run-status" data-ex-id="5-1"></span>
+      </div>
+      <div class="output-box" id="out-5-1"></div>
+    </div>
+
+    <h3 id="part5-2">5.2 <code>'a</code> 문법</h3>
+    <p>라이프타임 매개변수는 <code>'</code> + 소문자 이름이다. 관례적으로 <code>'a</code>, <code>'b</code>, <code>'static</code> 같은 이름을 쓴다. 함수 시그니처에 한 번, 매개변수와 반환 타입에 또 한 번 쓴다.</p>
+
+    <pre class="signature">fn f&lt;'a&gt;(x: &amp;'a str) -&gt; &amp;'a str { ... }
+//   ─┬─  ─┬─        ─┬─
+//   선언  사용       사용 (반환이 x와 같은 'a 만큼 산다)</pre>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">5.2</span>가장 단순한 'a 함수</h4></div>
+      <div class="example-desc">입력 라이프타임을 그대로 반환에 묶는다 (사실 이건 생략 가능 — Part 6).</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="5-2">fn echo&lt;'a&gt;(s: &amp;'a str) -&gt; &amp;'a str {
+    s
+}
+
+fn main() {
+    let owned = String::from("hello");
+    let r: &amp;str = echo(&amp;owned);
+    println!("{}", r);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="5-2" onclick="runRust('5-2')">▶ 실행</button>
+        <span class="run-status" data-ex-id="5-2"></span>
+      </div>
+      <div class="output-box" id="out-5-2"></div>
+    </div>
+
+    <h3 id="part5-3">5.3 longest — 두 입력의 라이프타임 묶기</h3>
+    <p>The Rust Book의 고전 예제. 두 입력 중 어느 쪽이 반환될지 컴파일러가 알 수 없으므로 <strong>둘 다 같은 'a여야 한다</strong>고 선언한다. 그러면 반환값은 둘 중 더 짧은 쪽만큼 산다.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">5.3</span>longest — 두 입력 라이프타임 통일</h4></div>
+      <div class="example-desc">두 매개변수에 같은 <code>'a</code>를 붙인다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="5-3">fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str {
+    if x.len() &gt;= y.len() { x } else { y }
+}
+
+fn main() {
+    let s1 = String::from("long string is long");
+    {
+        let s2 = String::from("short");
+        let r = longest(&amp;s1, &amp;s2);
+        println!("longest = '{}'", r);
+    }
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="5-3" onclick="runRust('5-3')">▶ 실행</button>
+        <span class="run-status" data-ex-id="5-3"></span>
+      </div>
+      <div class="output-box" id="out-5-3"></div>
+    </div>
+
+    <h3 id="part5-4">5.4 입력보다 짧은 반환 — 라이프타임 위반</h3>
+    <p>반환을 외부 스코프에서 쓰려는데 둘 중 한 입력이 그보다 짧으면 컴파일 에러.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">5.4</span>짧은 입력 때문에 외부에서 못 씀 — 컴파일 에러</h4></div>
+      <div class="example-desc">의도된 에러 E0597.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="5-4">fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str {
+    if x.len() &gt;= y.len() { x } else { y }
+}
+
+fn main() {
+    let s1 = String::from("long string is long");
+    let result;
+    {
+        let s2 = String::from("short");
+        result = longest(&amp;s1, &amp;s2);
+    } // s2 drop
+    println!("{}", result); // s2가 죽은 뒤 result를 쓰려 함 → 에러
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="5-4" onclick="runRust('5-4')">▶ 실행</button>
+        <span class="run-status" data-ex-id="5-4"></span>
+      </div>
+      <div class="output-box" id="out-5-4"></div>
+    </div>
+
+    <h3 id="part5-5">5.5 NLL (Non-Lexical Lifetimes) — 자바 개발자가 가장 헷갈리는 부분</h3>
+    <p>
+      예전 Rust에선 빌림이 <strong>스코프 끝</strong>까지 유지됐다. 지금은 다르다. <strong>마지막으로 사용된 지점까지만</strong> 빌림이 유지된다.
+      이게 NLL이다. 그래서 같은 변수를 한 번 빌렸다가 그 빌림이 더 이상 쓰이지 않으면, 같은 스코프 안에서 다시 빌릴 수 있다.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">5.5</span>NLL — 같은 스코프에서 가변/불변 교차 빌림</h4></div>
+      <div class="example-desc">불변 빌림 r1이 더 이상 안 쓰이는 시점부터 가변 빌림이 시작된다. 예전 같으면 에러였을 코드가 NLL 덕분에 컴파일된다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="5-5">fn main() {
+    let mut s = String::from("hello");
+
+    let r1 = &amp;s;
+    let r2 = &amp;s;
+    println!("불변 빌림: {} {}", r1, r2);
+    // 이 시점부터 r1, r2는 더 사용되지 않음 → 빌림 종료 (NLL)
+
+    let m = &amp;mut s;     // 가변 빌림 OK
+    m.push_str(", world");
+    println!("가변 빌림 후: {}", m);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="5-5" onclick="runRust('5-5')">▶ 실행</button>
+        <span class="run-status" data-ex-id="5-5"></span>
+      </div>
+      <div class="output-box" id="out-5-5"></div>
+    </div>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">5.6</span>NLL이 없으면 에러였을 패턴</h4></div>
+      <div class="example-desc">루프 안에서 불변 빌림 → 사용 → 가변 빌림. NLL 덕분에 가능하다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="5-6">fn main() {
+    let mut v: Vec&lt;String&gt; = vec![
+        String::from("a"),
+        String::from("b"),
+        String::from("c"),
+    ];
+
+    // 불변 빌림으로 길이 읽기
+    let n = v.len();
+    println!("len = {}", n);
+    // n은 더 안 쓰임 → 불변 빌림 종료
+
+    v.push(String::from("d"));   // 가변 빌림 OK
+    println!("{:?}", v);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="5-6" onclick="runRust('5-6')">▶ 실행</button>
+        <span class="run-status" data-ex-id="5-6"></span>
+      </div>
+      <div class="output-box" id="out-5-6"></div>
+    </div>
+
+    <div class="callout callout-info">
+      <strong>NLL이 중요한 이유</strong>
+      자바 개발자가 Rust에서 "왜 이게 에러야?" 라고 가장 자주 만나는 패턴이 NLL 이전의 빌림 충돌이다.
+      현재 Rust는 사용 지점까지만 추적하므로 직관에 가깝게 동작한다. 그래도 헷갈리면 "<strong>마지막 사용 지점</strong>" 을 떠올리면 된다.
+    </div>
+
+    <h3 id="part5-6">5.6 재빌림 (Reborrow) — <code>&amp;mut *x</code></h3>
+    <p>
+      <code>&amp;mut String</code>을 받은 함수가 그것을 또 다른 함수에 <code>&amp;mut</code>로 넘기는 패턴. 단순해 보이지만
+      소유권을 옮긴 게 아니라 <strong>재빌림</strong>이다. 컴파일러가 거의 자동으로 처리하지만,
+      <em>왜 자동인지</em>를 알아두면 빌림 충돌을 만났을 때 답이 보인다.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">5.7</span>암묵적 reborrow와 명시적 reborrow</h4></div>
+      <div class="example-desc">컴파일러의 자동 처리와 직접 표기.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="5-7">fn add_bang(s: &amp;mut String) { s.push('!'); }
+
+fn shout(s: &amp;mut String) {
+    // 둘 다 작동 — 자동 reborrow
+    add_bang(&amp;mut *s);   // 명시적 reborrow (&amp;mut *s)
+    add_bang(s);          // 컴파일러가 알아서 &amp;mut *s로 reborrow
+
+    // 핵심: 위 두 호출이 끝나면 s는 다시 "온전한 &amp;mut"으로 돌아온다
+    s.push_str(" ZZZ");
+}
+
+fn main() {
+    let mut greeting = String::from("hi");
+    shout(&amp;mut greeting);
+    println!("{}", greeting);   // "hi!! ZZZ"
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="5-7" onclick="runRust('5-7')">▶ 실행</button>
+        <span class="run-status" data-ex-id="5-7"></span>
+      </div>
+      <div class="output-box" id="out-5-7"></div>
+    </div>
+
+    <div class="callout callout-tip">
+      <strong>왜 reborrow가 필요한가</strong>
+      <code>&amp;mut T</code>는 <em>Copy가 아니다</em>. 그냥 <code>add_bang(s)</code>로 넘기면 소유권 이동인데,
+      그러면 다음 줄 <code>s.push_str</code>에서 s를 못 쓰게 된다.
+      컴파일러는 이 상황을 알아서 <code>&amp;mut *s</code>(임시 reborrow)로 변환한다 — 호출이 끝나면 s 사용권이 돌아온다.
+    </div>
+
+    <h2 id="part6">Part 6. 라이프타임 생략 3규칙</h2>
+    <p>
+      <code>fn first_word(s: &amp;str) -&gt; &amp;str</code> 같은 함수에 <code>'a</code>가 안 보이는 이유는 <strong>컴파일러가 자동으로 채워주기 때문</strong>이다.
+      그 규칙이 정확히 세 가지다. 이 규칙으로 라이프타임이 결정되지 않으면 직접 명시해야 한다.
+    </p>
+
+    <table>
+      <thead><tr><th>#</th><th>규칙</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><strong>각 입력 참조</strong>에 서로 다른 라이프타임을 부여한다.</td></tr>
+        <tr><td>2</td><td>입력 참조가 <strong>정확히 하나뿐</strong>이면, 그 라이프타임을 모든 출력에 부여한다.</td></tr>
+        <tr><td>3</td><td>입력에 <strong><code>&amp;self</code> 또는 <code>&amp;mut self</code>가 있으면</strong>, self의 라이프타임을 모든 출력에 부여한다.</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="part6-1">6.1 규칙 1 — 각 입력에 다른 'a</h3>
+
+    <pre class="signature">// 원본
+fn foo(x: &amp;str, y: &amp;str) -&gt; ?
+// 규칙 1 적용 후
+fn foo&lt;'a, 'b&gt;(x: &amp;'a str, y: &amp;'b str) -&gt; ?</pre>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">6.1</span>입력만 있고 반환이 참조가 아닐 때 — 생략 OK</h4></div>
+      <div class="example-desc">반환 타입이 참조가 아니면 출력 라이프타임 결정 문제가 없다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="6-1">// 생략된 형태 — 컴파일 통과
+fn print_two(x: &amp;str, y: &amp;str) {
+    println!("{} {}", x, y);
+}
+
+fn main() {
+    let a = String::from("hello");
+    let b = String::from("world");
+    print_two(&amp;a, &amp;b);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="6-1" onclick="runRust('6-1')">▶ 실행</button>
+        <span class="run-status" data-ex-id="6-1"></span>
+      </div>
+      <div class="output-box" id="out-6-1"></div>
+    </div>
+
+    <h3 id="part6-2">6.2 규칙 2 — 단일 입력 → 출력에 전파</h3>
+    <pre class="signature">// 원본
+fn first(s: &amp;str) -&gt; &amp;str
+// 규칙 1 적용
+fn first&lt;'a&gt;(s: &amp;'a str) -&gt; &amp;str
+// 규칙 2 적용 (입력 1개)
+fn first&lt;'a&gt;(s: &amp;'a str) -&gt; &amp;'a str   ← 완성</pre>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">6.2</span>입력이 하나면 출력 라이프타임이 자동 결정</h4></div>
+      <div class="example-desc"><code>'a</code> 없이 작성해도 컴파일러가 채운다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="6-2">fn first_word(s: &amp;str) -&gt; &amp;str {
+    s.split_whitespace().next().unwrap_or("")
+}
+
+fn main() {
+    let phrase = String::from("Rust is fun");
+    println!("first = '{}'", first_word(&amp;phrase));
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="6-2" onclick="runRust('6-2')">▶ 실행</button>
+        <span class="run-status" data-ex-id="6-2"></span>
+      </div>
+      <div class="output-box" id="out-6-2"></div>
+    </div>
+
+    <h3 id="part6-3">6.3 규칙 3 — 메서드의 &amp;self 우선</h3>
+    <pre class="signature">impl Foo {
+    fn name(&amp;self, _hint: &amp;str) -&gt; &amp;str { ... }
+    //         ↑                       ↑
+    //      &amp;'a self 이면         반환도 'a (self의 라이프타임)
+}</pre>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">6.3</span>self가 있으면 반환은 self의 라이프타임</h4></div>
+      <div class="example-desc">힌트 매개변수 라이프타임이 아니라 self의 라이프타임이 반환에 묶인다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="6-3">struct Holder { data: String }
+
+impl Holder {
+    fn name(&amp;self, _hint: &amp;str) -&gt; &amp;str {
+        &amp;self.data
+    }
+}
+
+fn main() {
+    let h = Holder { data: String::from("backed by self") };
+    let hint = String::from("ignored");
+    let r = h.name(&amp;hint);   // r은 h를 빌림 (hint가 아님)
+    drop(hint);              // hint는 일찍 죽어도 OK
+    println!("{}", r);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="6-3" onclick="runRust('6-3')">▶ 실행</button>
+        <span class="run-status" data-ex-id="6-3"></span>
+      </div>
+      <div class="output-box" id="out-6-3"></div>
+    </div>
+
+    <h3 id="part6-4">6.4 생략 불가 — 명시 강제</h3>
+    <p>입력이 두 개 이상인데 반환이 참조이고 self가 없으면, 어느 입력의 라이프타임을 써야 할지 컴파일러가 알 수 없다. 직접 써줘야 한다.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">6.4</span>생략하면 에러 (E0106)</h4></div>
+      <div class="example-desc">의도된 에러. 메시지에 "missing lifetime specifier"가 보일 것이다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="6-4">// 'a 없이 작성 — 컴파일 에러
+fn longest(x: &amp;str, y: &amp;str) -&gt; &amp;str {
+    if x.len() &gt; y.len() { x } else { y }
+}
+
+fn main() {
+    let a = String::from("hi");
+    let b = String::from("hello");
+    println!("{}", longest(&amp;a, &amp;b));
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="6-4" onclick="runRust('6-4')">▶ 실행</button>
+        <span class="run-status" data-ex-id="6-4"></span>
+      </div>
+      <div class="output-box" id="out-6-4"></div>
+    </div>
+
+    <h3 id="part6-5">6.5 메서드에서 self가 아닌 라이프타임 명시</h3>
+    <p>규칙 3이 적용되면 self의 라이프타임이 자동으로 반환에 묶인다. 만약 self가 아닌 다른 입력의 라이프타임을 반환에 묶고 싶다면, 그 라이프타임을 직접 명시해야 한다.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">6.5</span>self가 아닌 input의 라이프타임을 반환에 묶기</h4></div>
+      <div class="example-desc"><code>'b</code>를 명시해서 input의 라이프타임이 반환에 묶이게. self는 메서드 호출 후 바로 drop되어도 반환값은 input 만큼 산다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="6-5">struct Parser;
+
+impl Parser {
+    // self의 라이프타임이 아닌 input의 'b를 반환에 묶는다
+    fn first_word&lt;'b&gt;(&amp;self, input: &amp;'b str) -&gt; &amp;'b str {
+        input.split_whitespace().next().unwrap_or("")
+    }
+}
+
+fn main() {
+    let s = String::from("hello world");
+    let w;
+    {
+        let p = Parser;
+        w = p.first_word(&amp;s);
+    } // p는 여기서 drop되어도 w는 s 만큼 살아남는다
+    println!("first = '{}'", w);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="6-5" onclick="runRust('6-5')">▶ 실행</button>
+        <span class="run-status" data-ex-id="6-5"></span>
+      </div>
+      <div class="output-box" id="out-6-5"></div>
+    </div>
+
+    <h3 id="part6-6">6.6 반복자에서 라이프타임 전파</h3>
+    <p><code>str::split</code>은 <code>&amp;str</code>를 반환하는 반복자다. 그 결과 <code>&amp;str</code>들은 모두 원본 슬라이스의 라이프타임을 그대로 빌려간다.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">6.6</span>split이 반환한 &amp;str는 원본의 일부</h4></div>
+      <div class="example-desc">원본이 살아있는 동안만 결과를 쓸 수 있다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="6-6">fn collect_words&lt;'a&gt;(s: &amp;'a str) -&gt; Vec&lt;&amp;'a str&gt; {
+    s.split(' ').collect()
+}
+
+fn main() {
+    let sentence = String::from("alpha beta gamma");
+    let words = collect_words(&amp;sentence);
+    println!("{:?}", words);
+    // sentence가 drop되면 words도 더 못 씀
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="6-6" onclick="runRust('6-6')">▶ 실행</button>
+        <span class="run-status" data-ex-id="6-6"></span>
+      </div>
+      <div class="output-box" id="out-6-6"></div>
+    </div>
+
+    <h2 id="part7">Part 7. 구조체와 impl</h2>
+    <p>
+      구조체가 참조 필드를 가지면 라이프타임 매개변수를 선언해야 한다.
+      "이 구조체 인스턴스는 자기가 빌린 데이터보다 오래 살 수 없다"는 사실을 명시하는 작업이다.
+    </p>
+
+    <svg class="svg-diagram" viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="구조체 참조 필드">
+      <defs>
+        <marker id="arrow-end-7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="arrow-head" />
+        </marker>
+      </defs>
+      <text x="380" y="28" text-anchor="middle" class="svg-title">struct Excerpt&lt;'a&gt; { part: &amp;'a str }</text>
+      <text x="380" y="52" text-anchor="middle" class="svg-sub">구조체가 빌린 데이터(원본)보다 오래 살면 안 됨</text>
+
+      <!-- 원본 -->
+      <rect x="40"  y="100" width="280" height="80" class="box-fill-alt" />
+      <rect x="40"  y="100" width="280" height="80" class="box-stroke" />
+      <text x="180" y="130" text-anchor="middle" class="svg-label" style="font-weight:600;">원본: let story = String::from("...")</text>
+      <text x="180" y="155" text-anchor="middle" class="svg-mono">"first sentence. second."</text>
+
+      <!-- 구조체 -->
+      <rect x="440" y="100" width="280" height="80" class="box-fill" />
+      <rect x="440" y="100" width="280" height="80" class="box-stroke" />
+      <text x="580" y="130" text-anchor="middle" class="svg-label" style="font-weight:600;">Excerpt&lt;'a&gt; { part: &amp;'a str }</text>
+      <text x="580" y="155" text-anchor="middle" class="svg-mono">part → "first sentence"</text>
+
+      <!-- 화살표 -->
+      <path d="M 440 140 Q 380 140 320 140" class="arrow" marker-end="url(#arrow-end-7)" stroke-dasharray="6 4" />
+      <text x="380" y="200" text-anchor="middle" class="svg-sub">part가 원본의 일부를 빌리고 있음</text>
+
+      <!-- 라이프타임 막대 -->
+      <rect x="40" y="240" width="280" height="20" class="accent-2" rx="4" opacity="0.85" />
+      <text x="180" y="280" text-anchor="middle" class="svg-sub">story 라이프타임</text>
+      <rect x="440" y="240" width="220" height="20" class="accent-3" rx="4" opacity="0.85" />
+      <text x="550" y="280" text-anchor="middle" class="svg-sub">Excerpt 라이프타임 ⊆ story</text>
+    </svg>
+
+    <h3 id="part7-1">7.1 참조 필드와 라이프타임 선언</h3>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">7.1</span>참조 필드를 가진 구조체</h4></div>
+      <div class="example-desc">기본형 — 한 라이프타임 매개변수 <code>'a</code>.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="7-1">struct Excerpt&lt;'a&gt; {
+    part: &amp;'a str,
+}
+
+fn main() {
+    let novel = String::from("Call me Ishmael. Some years ago...");
+    let first_sentence = novel.split('.').next().expect("문장 없음");
+    let ex = Excerpt { part: first_sentence };
+    println!("excerpt: '{}'", ex.part);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="7-1" onclick="runRust('7-1')">▶ 실행</button>
+        <span class="run-status" data-ex-id="7-1"></span>
+      </div>
+      <div class="output-box" id="out-7-1"></div>
+    </div>
+
+    <h3 id="part7-2">7.2 impl 블록 문법</h3>
+    <p><code>impl</code>에도 라이프타임 매개변수를 두 번 적어야 한다. 한 번은 선언, 한 번은 사용.</p>
+
+    <pre class="signature">impl&lt;'a&gt; Excerpt&lt;'a&gt; { ... }
+//   ─┬─        ─┬─
+//   선언       사용</pre>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">7.2</span>impl에서 메서드 정의</h4></div>
+      <div class="example-desc">메서드 안에서 self.part를 그대로 반환해도 OK (규칙 3).</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="7-2">struct Excerpt&lt;'a&gt; { part: &amp;'a str }
+
+impl&lt;'a&gt; Excerpt&lt;'a&gt; {
+    fn part(&amp;self) -&gt; &amp;str { self.part }
+    fn len(&amp;self) -&gt; usize { self.part.len() }
+    fn starts_with(&amp;self, p: &amp;str) -&gt; bool { self.part.starts_with(p) }
+}
+
+fn main() {
+    let n = String::from("Hello Rust!");
+    let e = Excerpt { part: &amp;n[..5] };
+    println!("'{}' (len={}, starts_with H: {})",
+             e.part(), e.len(), e.starts_with("H"));
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="7-2" onclick="runRust('7-2')">▶ 실행</button>
+        <span class="run-status" data-ex-id="7-2"></span>
+      </div>
+      <div class="output-box" id="out-7-2"></div>
+    </div>
+
+    <h3 id="part7-3">7.3 <code>self</code> vs <code>&amp;self</code> vs <code>&amp;mut self</code></h3>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">7.3</span>세 가지 receiver의 의미</h4></div>
+      <div class="example-desc">소비, 불변 빌림, 가변 빌림.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="7-3">struct Buf { data: String }
+
+impl Buf {
+    fn new(s: &amp;str) -&gt; Self { Buf { data: s.to_string() } }
+    fn view(&amp;self) -&gt; &amp;str { &amp;self.data }                 // 빌려 보기
+    fn append(&amp;mut self, s: &amp;str) { self.data.push_str(s); } // 변경
+    fn into_string(self) -&gt; String { self.data }              // 소비, 알맹이만 가져감
+}
+
+fn main() {
+    let mut b = Buf::new("hi");
+    b.append("!");
+    println!("view = '{}'", b.view());
+    let s = b.into_string();      // b는 여기서 소비
+    // b.view(); // 에러: b는 이미 move됨
+    println!("owned = '{}'", s);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="7-3" onclick="runRust('7-3')">▶ 실행</button>
+        <span class="run-status" data-ex-id="7-3"></span>
+      </div>
+      <div class="output-box" id="out-7-3"></div>
+    </div>
+
+    <h3 id="part7-4">7.4 여러 라이프타임 매개변수</h3>
+    <p>두 참조의 라이프타임이 다를 수 있다면 각각 따로 선언한다.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">7.4</span>'a 와 'b 분리</h4></div>
+      <div class="example-desc">서로 다른 라이프타임을 가진 두 슬라이스.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="7-4">struct Pair&lt;'a, 'b&gt; {
+    left:  &amp;'a str,
+    right: &amp;'b str,
+}
+
+impl&lt;'a, 'b&gt; Pair&lt;'a, 'b&gt; {
+    fn show(&amp;self) {
+        println!("L='{}', R='{}'", self.left, self.right);
+    }
+}
+
+fn main() {
+    let s1 = String::from("outer");
+    let p;
+    {
+        let s2 = String::from("inner");
+        p = Pair { left: &amp;s1, right: &amp;s2 };
+        p.show();   // 안쪽 스코프에서만 사용
+    }
+    // p.show(); // 여기서 쓰면 에러 (s2가 죽음)
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="7-4" onclick="runRust('7-4')">▶ 실행</button>
+        <span class="run-status" data-ex-id="7-4"></span>
+      </div>
+      <div class="output-box" id="out-7-4"></div>
+    </div>
+
+    <h3 id="part7-5">7.5 라이프타임 서브타이핑 — <code>'a: 'b</code></h3>
+    <p><code>'a: 'b</code> 는 "<code>'a</code>가 <code>'b</code>만큼 또는 그 이상으로 산다"는 뜻. <code>'static: 'a</code>는 항상 참이다.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">7.5</span>"오래 사는 'a 는 짧게 사는 'b 자리에 쓸 수 있다"</h4></div>
+      <div class="example-desc">하위 타이핑 규칙.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="7-5">fn take_short&lt;'b&gt;(_x: &amp;'b str) {}
+
+fn main() {
+    let lit: &amp;'static str = "I live forever";
+    take_short(lit);    // 'static : 'b, 자동 변환
+
+    let owned = String::from("short");
+    {
+        let short_ref: &amp;str = &amp;owned;
+        take_short(short_ref);
+    }
+    println!("done");
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="7-5" onclick="runRust('7-5')">▶ 실행</button>
+        <span class="run-status" data-ex-id="7-5"></span>
+      </div>
+      <div class="output-box" id="out-7-5"></div>
+    </div>
+
+    <h3 id="part7-6">7.6 <code>T: 'a</code> 바운드 — 제네릭 구조체가 참조를 들 때</h3>
+    <p>제네릭 타입 <code>T</code>가 라이프타임 <code>'a</code>인 참조보다 오래 살아야 한다는 제약.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">7.6</span>제네릭 + 라이프타임 결합</h4></div>
+      <div class="example-desc"><code>T: 'a</code> 바운드 명시.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="7-6">use std::fmt::Display;
+
+struct Wrap&lt;'a, T: 'a + Display&gt; {
+    inner: &amp;'a T,
+}
+
+impl&lt;'a, T: 'a + Display&gt; Wrap&lt;'a, T&gt; {
+    fn show(&amp;self) {
+        println!("wrapped: {}", self.inner);
+    }
+}
+
+fn main() {
+    let n = 42;
+    let s = String::from("hi");
+    Wrap { inner: &amp;n }.show();
+    Wrap { inner: &amp;s }.show();
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="7-6" onclick="runRust('7-6')">▶ 실행</button>
+        <span class="run-status" data-ex-id="7-6"></span>
+      </div>
+      <div class="output-box" id="out-7-6"></div>
+    </div>
+
+    <h3 id="part7-7">7.7 분산 (Variance) — covariant vs invariant</h3>
+    <p>
+      Part 7.5의 "긴 'a를 짧은 'b 자리에 쓸 수 있다"는 사실은 <strong>covariance</strong>의 한 사례다.
+      Rust 라이프타임 변환 규칙을 정확히 알면 라이프타임 추론이 막힐 때 답이 보인다.
+    </p>
+
+    <svg class="svg-diagram" viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Variance">
+      <defs>
+        <marker id="arrow-end-v" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="arrow-head" />
+        </marker>
+      </defs>
+      <text x="380" y="28" text-anchor="middle" class="svg-title">&amp;T 는 covariant · &amp;mut T 는 invariant</text>
+      <text x="380" y="52" text-anchor="middle" class="svg-sub">covariant = "긴 라이프타임 → 짧은 자리" 가능</text>
+
+      <!-- 왼쪽: &T covariant -->
+      <text x="190" y="92" text-anchor="middle" class="svg-label" style="font-weight:700;">&amp;'static T  →  &amp;'a T</text>
+      <text x="190" y="112" text-anchor="middle" class="svg-sub">(covariant — 자유로움)</text>
+
+      <rect x="60"  y="140" width="260" height="60" class="accent-2" opacity="0.85" rx="6" />
+      <text x="190" y="170" text-anchor="middle" class="svg-label" style="font-weight:700; fill: var(--svg-text-strong);">&amp;'static str</text>
+      <text x="190" y="190" text-anchor="middle" class="svg-sub" style="fill: var(--svg-text-strong);">(가장 김)</text>
+
+      <path d="M 190 200 L 190 250" class="arrow" marker-end="url(#arrow-end-v)" />
+      <text x="240" y="228" class="svg-label" style="font-weight:700; fill: var(--svg-accent-2);">OK</text>
+
+      <rect x="100" y="260" width="180" height="50" class="accent-2" opacity="0.55" rx="6" />
+      <text x="190" y="290" text-anchor="middle" class="svg-label" style="font-weight:700; fill: var(--svg-text-strong);">&amp;'a str (짧음)</text>
+
+      <!-- 구분선 -->
+      <line x1="380" y1="80" x2="380" y2="340" class="grid-line" stroke-dasharray="5 5" />
+
+      <!-- 오른쪽: &mut T invariant -->
+      <text x="570" y="92" text-anchor="middle" class="svg-label" style="font-weight:700;">&amp;mut &amp;'static str ↛ &amp;mut &amp;'a str</text>
+      <text x="570" y="112" text-anchor="middle" class="svg-sub">(invariant — 정확히 같은 라이프타임만)</text>
+
+      <rect x="440" y="140" width="260" height="60" class="accent-1" opacity="0.85" rx="6" />
+      <text x="570" y="170" text-anchor="middle" class="svg-label" style="font-weight:700; fill: var(--svg-text-strong);">&amp;mut &amp;'static str</text>
+      <text x="570" y="190" text-anchor="middle" class="svg-sub" style="fill: var(--svg-text-strong);">(내부 ref가 'static)</text>
+
+      <path d="M 570 200 L 570 250" class="arrow" marker-end="url(#arrow-end-v)" stroke-dasharray="4 4" />
+      <text x="620" y="228" class="svg-label" style="font-weight:700; fill: var(--svg-accent-1);">에러</text>
+
+      <rect x="480" y="260" width="180" height="50" class="accent-1" opacity="0.55" rx="6" />
+      <text x="570" y="290" text-anchor="middle" class="svg-label" style="font-weight:700; fill: var(--svg-text-strong);">&amp;mut &amp;'a str</text>
+    </svg>
+
+    <p class="diagram-caption">왜 invariant? &amp;mut를 통해 내부 ref에 더 짧은 라이프타임의 값을 쓸 위험이 있기 때문 (메모리 안전성 위반 가능).</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">7.7</span>covariant — &amp;T는 라이프타임을 줄일 수 있다</h4></div>
+      <div class="example-desc"><code>&amp;'static T</code>를 <code>&amp;'a T</code> 받는 함수에 그대로 넘길 수 있다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="7-7">fn takes_short<'a>(_: &'a str) {}
+
+fn main() {
+    let global: &'static str = "I live forever";
+    takes_short(global);   // 'static → 'a 자동 변환
+
+    let owned = String::from("owned");
+    let local: &str = &owned;
+    takes_short(local);    // 일반적
+
+    // Vec<&'a T>도 covariant — 'static 들어있는 Vec을 'a Vec으로 줄여서 사용 가능
+    let v: Vec<&'static str> = vec!["a", "b", "c"];
+    fn print_all<'a>(items: &Vec<&'a str>) {
+        for s in items { print!("{} ", s); }
+        println!();
+    }
+    print_all(&v);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="7-7" onclick="runRust('7-7')">▶ 실행</button>
+        <span class="run-status" data-ex-id="7-7"></span>
+      </div>
+      <div class="output-box" id="out-7-7"></div>
+    </div>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">7.8</span>invariant — &amp;mut T는 라이프타임 변환 불가 (의도된 에러)</h4></div>
+      <div class="example-desc"><code>&amp;mut &amp;'static str</code>는 <code>&amp;mut &amp;'a str</code> 자리에 안 들어간다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="7-8">// 함수는 &mut &'a str 받음
+fn store_short<'a>(slot: &mut &'a str, value: &'a str) {
+    *slot = value;
+}
+
+fn main() {
+    let mut global: &'static str = "first";
+
+    // 같은 스코프 안의 짧은 라이프타임 값
+    let temp = String::from("temp"); // <- 'a (main 안)
+    let local: &str = &temp;
+
+    // 다음 줄은 컴파일 에러:
+    //   global을 &mut &'a str로 reborrow 하려고 함
+    //   → 'static을 'a로 *변형* 하는 것은 invariant 위반
+    store_short(&mut global, local);
+    println!("{}", global);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="7-8" onclick="runRust('7-8')">▶ 실행</button>
+        <span class="run-status" data-ex-id="7-8"></span>
+      </div>
+      <div class="output-box" id="out-7-8"></div>
+    </div>
+
+    <div class="callout callout-info">
+      <strong>Variance 한 줄 요약</strong>
+      <code>&amp;T</code>는 covariant (자유롭게 줄임), <code>&amp;mut T</code>는 T에 대해 invariant (정확 일치),
+      <code>fn(T) -&gt; U</code>는 T contravariant·U covariant. 자세한 표는 <a href="https://doc.rust-lang.org/nomicon/subtyping.html" target="_blank" rel="noopener">Rustonomicon — Subtyping</a> 참고.
+    </div>
+
+    <h2 id="part8">Part 8. <code>'static</code></h2>
+    <p>
+      <code>'static</code>은 "프로그램 전체 기간 동안 유효함"을 뜻한다. 두 가지 의미가 있고, 둘이 헷갈리지 않게 구분해야 한다.
+    </p>
+
+    <table>
+      <thead><tr><th>형태</th><th>의미</th><th>예시</th></tr></thead>
+      <tbody>
+        <tr><td><code>&amp;'static T</code></td><td>참조가 'static 동안 유효</td><td>리터럴 <code>&amp;'static str</code></td></tr>
+        <tr><td><code>T: 'static</code></td><td>타입 안에 'static이 아닌 참조가 없음</td><td><code>String</code>, <code>i32</code>, <code>Box&lt;str&gt;</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="part8-1">8.1 리터럴은 <code>&amp;'static str</code></h3>
+    <p>이미 여러 번 봤다. 한 번만 더 명시적으로.</p>
+
+    <svg class="svg-diagram" viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="'static vs 지역 String 수명 비교">
+      <text x="380" y="28" text-anchor="middle" class="svg-title">'static 리터럴 vs 지역 String 수명</text>
+      <text x="380" y="52" text-anchor="middle" class="svg-sub">왼쪽: 프로그램 전체 동안 살아있음  ·  오른쪽: 스코프 끝나면 drop</text>
+
+      <!-- 왼쪽: 'static (rodata) -->
+      <rect x="40" y="90" width="320" height="200" class="region-static" />
+      <text x="200" y="115" text-anchor="middle" class="svg-label" style="font-weight:700;">정적 영역 (.rodata)</text>
+      <text x="200" y="135" text-anchor="middle" class="svg-sub">"hello" — 바이너리에 박힘</text>
+
+      <rect x="100" y="160" width="200" height="50" class="box-fill" />
+      <rect x="100" y="160" width="200" height="50" class="box-stroke" />
+      <text x="200" y="190" text-anchor="middle" class="svg-mono">"hello"</text>
+
+      <rect x="80" y="230" width="240" height="36" class="accent-2" opacity="0.85" rx="6" />
+      <text x="200" y="254" text-anchor="middle" class="svg-label" style="font-weight:700; fill: var(--svg-text-strong);">수명: 'static (영원)</text>
+
+      <!-- 구분선 -->
+      <line x1="400" y1="80" x2="400" y2="300" class="grid-line" stroke-dasharray="5 5" />
+
+      <!-- 오른쪽: 지역 String (힙) -->
+      <rect x="440" y="90" width="280" height="200" class="region-heap" />
+      <text x="580" y="115" text-anchor="middle" class="svg-label" style="font-weight:700;">힙 (지역 String)</text>
+      <text x="580" y="135" text-anchor="middle" class="svg-sub">String::from("hi") — 함수 안</text>
+
+      <rect x="500" y="160" width="160" height="50" class="box-fill" />
+      <rect x="500" y="160" width="160" height="50" class="box-stroke" />
+      <text x="580" y="190" text-anchor="middle" class="svg-mono">"hi"</text>
+
+      <rect x="480" y="230" width="200" height="36" class="accent-1" opacity="0.85" rx="6" />
+      <text x="580" y="254" text-anchor="middle" class="svg-label" style="font-weight:700; fill: var(--svg-text-strong);">수명: 함수 끝까지만</text>
+    </svg>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">8.1</span>리터럴의 진짜 타입</h4></div>
+      <div class="example-desc">정적 영역에 박혀 영원히 산다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="8-1">fn make() -&gt; &amp;'static str {
+    "compiled into rodata"
+}
+
+fn main() {
+    let s: &amp;'static str = "i am static";
+    println!("{}", s);
+    println!("{}", make());
+
+    // const도 'static
+    const GREETING: &amp;str = "hello (const)";
+    println!("{}", GREETING);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="8-1" onclick="runRust('8-1')">▶ 실행</button>
+        <span class="run-status" data-ex-id="8-1"></span>
+      </div>
+      <div class="output-box" id="out-8-1"></div>
+    </div>
+
+    <h3 id="part8-2">8.2 두 의미 구분</h3>
+    <p>
+      <code>String</code>은 <strong><code>T: 'static</code> 이지만 <code>&amp;'static String</code>은 아니다</strong>.
+      <code>String</code> 안에 다른 참조가 없으니 타입 자체는 'static 바운드를 만족하지만, 그 인스턴스 자체는 보통 지역 변수라 영원하지 않다.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">8.2</span>T: 'static과 &amp;'static T 의 차이</h4></div>
+      <div class="example-desc"><code>where T: 'static</code> 바운드는 "타입이 참조를 빌리고 있지 않다"는 뜻일 뿐, 인스턴스가 영원하다는 뜻이 아니다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="8-2">fn takes_static_bound&lt;T: 'static&gt;(_: T) {
+    println!("T: 'static OK");
+}
+
+fn main() {
+    takes_static_bound(42_i32);                  // i32: 'static
+    takes_static_bound(String::from("hello"));   // String: 'static (내부 참조 없음)
+    takes_static_bound(vec![1, 2, 3]);           // Vec&lt;i32&gt;: 'static
+
+    // 반면 빌림이 들어가면 'static 만족 못 함
+    // let s = String::from("hi");
+    // takes_static_bound(&amp;s); // 에러: &amp;String의 라이프타임이 'static이 아님
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="8-2" onclick="runRust('8-2')">▶ 실행</button>
+        <span class="run-status" data-ex-id="8-2"></span>
+      </div>
+      <div class="output-box" id="out-8-2"></div>
+    </div>
+
+    <h3 id="part8-3">8.3 <code>String::leak</code> — 런타임에 'static 만들기</h3>
+    <p>이건 거의 안 쓰지만 알면 좋다. 런타임에 만든 <code>String</code>을 의도적으로 <code>&amp;'static str</code>로 누출시킨다. 메모리는 회수되지 않으니 신중히.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">8.3</span>String::leak으로 'static 만들기 (Rust 1.72+)</h4></div>
+      <div class="example-desc">런타임에 만든 문자열을 영구화. 사용 사례는 매우 제한적이다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="8-3">fn build_static() -&gt; &amp;'static str {
+    let s = String::from("forged at runtime");
+    s.leak()    // 힙 메모리를 안 돌려주고 'static 참조로 변환
+}
+
+fn main() {
+    let s: &amp;'static str = build_static();
+    println!("{}", s);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="8-3" onclick="runRust('8-3')">▶ 실행</button>
+        <span class="run-status" data-ex-id="8-3"></span>
+      </div>
+      <div class="output-box" id="out-8-3"></div>
+    </div>
+
+    <div class="callout callout-warn">
+      <strong>leak의 단점</strong>
+      반환된 메모리는 프로그램이 끝날 때까지 해제되지 않는다. 동적으로 누출하는 경우 메모리 누수가 된다.
+      플러그인 시스템에서 한 번만 만들어 두는 설정 문자열 같은 데에만 쓴다.
+    </div>
+
+    <h3 id="part8-4">8.4 <code>'static</code> 바운드 함정</h3>
+    <p>스레드(spawn)는 <code>F: Send + 'static</code> 바운드를 요구한다. 클로저가 빌림을 캡처하면 <code>'static</code>을 못 만족해 컴파일 에러가 난다.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">8.4</span>thread::spawn과 'static 바운드</h4></div>
+      <div class="example-desc"><code>move</code> 키워드로 소유권을 클로저 안으로 이동시켜야 한다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="8-4">use std::thread;
+
+fn main() {
+    let s = String::from("from outer");
+
+    // move 없이는 &amp;s가 캡처되어 'static을 만족 못 함 → 에러
+    let handle = thread::spawn(move || {
+        println!("스레드: {}", s);
+    });
+
+    handle.join().unwrap();
+    // println!("{}", s); // 에러: s는 move됨
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="8-4" onclick="runRust('8-4')">▶ 실행</button>
+        <span class="run-status" data-ex-id="8-4"></span>
+      </div>
+      <div class="output-box" id="out-8-4"></div>
+    </div>
+
+    <h2 id="part9">Part 9. Cow, AsRef, 실전 패턴</h2>
+    <p>
+      현실 코드에서 가장 자주 보는 문자열 추상화 세 가지를 묶었다.
+    </p>
+
+    <h3 id="part9-1">9.1 <code>Cow&lt;'a, str&gt;</code> — Clone-on-Write</h3>
+    <p>
+      "<strong>입력을 변경할 필요가 없으면 빌리고, 필요하면 그때만 복제한다</strong>". <code>String</code>과 <code>&amp;str</code>의 절충안.
+      대표 사용 사례: <code>str::to_uppercase</code> 같은 변환을 사용자에 따라 적용할 때, 변경이 없는 경우엔 굳이 새 버퍼를 할당하지 않는다.
+    </p>
+
+    <svg class="svg-diagram" viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cow 분기">
+      <defs>
+        <marker id="arrow-end-9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="arrow-head" />
+        </marker>
+      </defs>
+      <text x="380" y="28" text-anchor="middle" class="svg-title">Cow&lt;'a, str&gt; 의 두 갈래</text>
+      <text x="380" y="52" text-anchor="middle" class="svg-sub">입력을 그대로 빌리거나, 필요한 경우에만 새로 할당</text>
+
+      <!-- 입력 -->
+      <rect x="300" y="80" width="160" height="60" class="box-fill-alt" />
+      <rect x="300" y="80" width="160" height="60" class="box-stroke" />
+      <text x="380" y="105" text-anchor="middle" class="svg-label" style="font-weight:600;">입력 &amp;str</text>
+      <text x="380" y="128" text-anchor="middle" class="svg-mono">"some input"</text>
+
+      <!-- 분기선 -->
+      <path d="M 380 140 L 200 200" class="arrow" marker-end="url(#arrow-end-9)" />
+      <path d="M 380 140 L 560 200" class="arrow" marker-end="url(#arrow-end-9)" />
+
+      <!-- 왼쪽: Borrowed -->
+      <rect x="60"  y="210" width="280" height="80" class="region-static" />
+      <text x="200" y="238" text-anchor="middle" class="svg-label" style="font-weight:700;">Cow::Borrowed(&amp;'a str)</text>
+      <text x="200" y="262" text-anchor="middle" class="svg-sub">할당 없음, 원본을 그대로 가리킴</text>
+      <text x="200" y="282" text-anchor="middle" class="svg-sub">조건: 변경할 필요 없음</text>
+
+      <!-- 오른쪽: Owned -->
+      <rect x="420" y="210" width="280" height="80" class="region-heap" />
+      <text x="560" y="238" text-anchor="middle" class="svg-label" style="font-weight:700;">Cow::Owned(String)</text>
+      <text x="560" y="262" text-anchor="middle" class="svg-sub">힙 할당, 변형된 새 버퍼</text>
+      <text x="560" y="282" text-anchor="middle" class="svg-sub">조건: 변경이 필요한 경우</text>
+    </svg>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">9.1</span>Cow — 필요할 때만 할당</h4></div>
+      <div class="example-desc">탭이 없으면 빌림 그대로 반환, 있으면 새 String 만들어 반환.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="9-1">use std::borrow::Cow;
+
+fn normalize(input: &amp;str) -&gt; Cow&lt;'_, str&gt; {
+    if input.contains('\t') {
+        Cow::Owned(input.replace('\t', "    "))   // 할당 발생
+    } else {
+        Cow::Borrowed(input)                      // 할당 없음 (빌림 그대로)
+    }
+}
+
+fn main() {
+    let a = "no tabs here";
+    let b = "with\ttab\there";
+
+    let na = normalize(a);
+    let nb = normalize(b);
+    println!("a: '{}' (borrowed? {})", na, matches!(na, Cow::Borrowed(_)));
+    println!("b: '{}' (owned?    {})", nb, matches!(nb, Cow::Owned(_)));
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="9-1" onclick="runRust('9-1')">▶ 실행</button>
+        <span class="run-status" data-ex-id="9-1"></span>
+      </div>
+      <div class="output-box" id="out-9-1"></div>
+    </div>
+
+    <h3 id="part9-2">9.2 <code>AsRef&lt;str&gt;</code> — "문자열 비슷한 것" 모두 받기</h3>
+    <p>
+      <code>String</code>, <code>&amp;str</code>, <code>Box&lt;str&gt;</code>, <code>Cow&lt;str&gt;</code>, <code>&amp;String</code> ... 어떤 것이든 받고 싶을 때.
+      <code>impl AsRef&lt;str&gt;</code>가 정답.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">9.2</span>AsRef&lt;str&gt;로 다 받기</h4></div>
+      <div class="example-desc">하나의 함수, 여섯 가지 호출.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="9-2">fn shout&lt;S: AsRef&lt;str&gt;&gt;(s: S) -&gt; String {
+    s.as_ref().to_uppercase()
+}
+
+fn main() {
+    let owned   = String::from("rust");
+    let boxed: Box&lt;str&gt; = Box::from("ruby");
+    let slice = "go";
+
+    println!("{}", shout("literal"));         // &amp;'static str
+    println!("{}", shout(&amp;owned));            // &amp;String
+    println!("{}", shout(owned.clone()));     // String (소비)
+    println!("{}", shout(slice));             // &amp;str
+    println!("{}", shout(&amp;boxed));            // &amp;Box&lt;str&gt;
+    println!("{}", shout(boxed));             // Box&lt;str&gt; (소비)
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="9-2" onclick="runRust('9-2')">▶ 실행</button>
+        <span class="run-status" data-ex-id="9-2"></span>
+      </div>
+      <div class="output-box" id="out-9-2"></div>
+    </div>
+
+    <h3 id="part9-3">9.3 <code>Into&lt;String&gt;</code> — 소유권이 필요할 때</h3>
+    <p>읽기만 할 거면 <code>AsRef&lt;str&gt;</code>, 함수가 새 String을 만들어 보관해야 한다면 <code>Into&lt;String&gt;</code>이 자연스럽다.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">9.3</span>구조체 빌더 패턴</h4></div>
+      <div class="example-desc">호출자는 <code>&amp;str</code>이든 <code>String</code>이든 자유롭게 넘긴다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="9-3">struct User { name: String, email: String }
+
+impl User {
+    fn new(name: impl Into&lt;String&gt;, email: impl Into&lt;String&gt;) -&gt; Self {
+        User { name: name.into(), email: email.into() }
+    }
+}
+
+fn main() {
+    let u1 = User::new("Alice", String::from("a@x.com"));
+    let u2 = User::new(String::from("Bob"), "b@x.com");
+    println!("{} &lt;{}&gt;", u1.name, u1.email);
+    println!("{} &lt;{}&gt;", u2.name, u2.email);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="9-3" onclick="runRust('9-3')">▶ 실행</button>
+        <span class="run-status" data-ex-id="9-3"></span>
+      </div>
+      <div class="output-box" id="out-9-3"></div>
+    </div>
+
+    <h3 id="part9-4">9.4 String 변환 4가지 비교</h3>
+    <p>네 가지가 모두 같은 결과를 만든다. 미묘한 차이는 의도 표현뿐이다.</p>
+
+    <table>
+      <thead><tr><th>표현</th><th>관용 의미</th></tr></thead>
+      <tbody>
+        <tr><td><code>String::from(s)</code></td><td>"From 트레이트로 만든다"</td></tr>
+        <tr><td><code>s.to_string()</code></td><td>"Display 통해 문자열로" (실제로는 더 빠른 경로 사용)</td></tr>
+        <tr><td><code>s.to_owned()</code></td><td>"빌림을 소유로 바꾼다" (의도 명확)</td></tr>
+        <tr><td><code>s.into()</code></td><td>"문맥상 적절한 변환" (반환 타입으로 추론)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">9.4</span>네 방법 비교</h4></div>
+      <div class="example-desc">결과 동일.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="9-4">fn main() {
+    let lit = "rust";
+
+    let a = String::from(lit);
+    let b = lit.to_string();
+    let c = lit.to_owned();
+    let d: String = lit.into();
+
+    println!("{} {} {} {}", a, b, c, d);
+    println!("같다: {}", a == b &amp;&amp; b == c &amp;&amp; c == d);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="9-4" onclick="runRust('9-4')">▶ 실행</button>
+        <span class="run-status" data-ex-id="9-4"></span>
+      </div>
+      <div class="output-box" id="out-9-4"></div>
+    </div>
+
+    <h3 id="part9-5">9.5 <code>std::mem::take</code> — 빌린 자리에서 값 빼내기</h3>
+    <p>구조체 필드에서 <code>String</code>을 가져가고 그 자리는 빈 String으로 채우고 싶을 때.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">9.5</span>&amp;mut self에서 필드 String 꺼내기</h4></div>
+      <div class="example-desc"><code>std::mem::take</code>는 <code>Default::default()</code>로 자리를 채우고 옛 값을 반환한다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="9-5">use std::mem;
+
+struct Buffer { data: String }
+
+impl Buffer {
+    fn drain(&amp;mut self) -&gt; String {
+        mem::take(&amp;mut self.data)  // self.data는 빈 String이 됨
+    }
+}
+
+fn main() {
+    let mut b = Buffer { data: String::from("collected logs") };
+    let taken = b.drain();
+    println!("taken     : '{}'", taken);
+    println!("남은 data: '{}' (빈 String)", b.data);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="9-5" onclick="runRust('9-5')">▶ 실행</button>
+        <span class="run-status" data-ex-id="9-5"></span>
+      </div>
+      <div class="output-box" id="out-9-5"></div>
+    </div>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">9.6</span>std::mem::replace — 임의 값으로 교체</h4></div>
+      <div class="example-desc"><code>take</code>는 <code>Default::default()</code>로 채우지만 <code>replace</code>는 임의 값으로 교체.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="9-6">use std::mem;
+
+fn main() {
+    let mut s = String::from("old");
+    let old = mem::replace(&amp;mut s, String::from("new"));
+    println!("old = '{}'", old);
+    println!("s   = '{}'", s);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="9-6" onclick="runRust('9-6')">▶ 실행</button>
+        <span class="run-status" data-ex-id="9-6"></span>
+      </div>
+      <div class="output-box" id="out-9-6"></div>
+    </div>
+
+    <h3 id="part9-6b"><code>Rc&lt;str&gt;</code> / <code>Arc&lt;str&gt;</code> — 공유 소유 문자열</h3>
+    <p>
+      여러 곳에서 같은 문자열을 들어야 할 때, <code>String::clone</code>은 매번 힙 복사가 발생한다.
+      <code>Rc&lt;str&gt;</code>(단일 스레드) / <code>Arc&lt;str&gt;</code>(멀티 스레드)을 쓰면 <strong>clone이 카운터 증가만</strong> —
+      데이터는 한 번만 할당된다. 불변이라 가변 변경은 불가.
+    </p>
+
+    <svg class="svg-diagram" viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Arc 공유">
+      <defs>
+        <marker id="arrow-end-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="arrow-head" />
+        </marker>
+      </defs>
+      <text x="380" y="28" text-anchor="middle" class="svg-title">Arc&lt;str&gt; 공유 — 데이터 1개, 카운터 N개</text>
+      <text x="380" y="52" text-anchor="middle" class="svg-sub">String::clone은 매번 힙 복사, Arc::clone은 카운터만 +1</text>
+
+      <!-- 3개의 핸들 -->
+      <rect x="60"  y="100" width="140" height="60" class="box-fill" />
+      <rect x="60"  y="100" width="140" height="60" class="box-stroke" />
+      <text x="130" y="125" text-anchor="middle" class="svg-label" style="font-weight:600;">a: Arc&lt;str&gt;</text>
+      <text x="130" y="148" text-anchor="middle" class="svg-mono">ptr</text>
+
+      <rect x="310" y="100" width="140" height="60" class="box-fill" />
+      <rect x="310" y="100" width="140" height="60" class="box-stroke" />
+      <text x="380" y="125" text-anchor="middle" class="svg-label" style="font-weight:600;">b = a.clone()</text>
+      <text x="380" y="148" text-anchor="middle" class="svg-mono">ptr (같은 곳)</text>
+
+      <rect x="560" y="100" width="140" height="60" class="box-fill" />
+      <rect x="560" y="100" width="140" height="60" class="box-stroke" />
+      <text x="630" y="125" text-anchor="middle" class="svg-label" style="font-weight:600;">c = a.clone()</text>
+      <text x="630" y="148" text-anchor="middle" class="svg-mono">ptr (같은 곳)</text>
+
+      <!-- 화살표 → 힙 -->
+      <path d="M 130 160 Q 130 200 380 220" class="arrow" marker-end="url(#arrow-end-a)" />
+      <path d="M 380 160 L 380 220" class="arrow" marker-end="url(#arrow-end-a)" />
+      <path d="M 630 160 Q 630 200 380 220" class="arrow" marker-end="url(#arrow-end-a)" />
+
+      <!-- 힙 영역 -->
+      <rect x="240" y="220" width="280" height="70" class="region-heap" />
+      <text x="380" y="246" text-anchor="middle" class="svg-label" style="font-weight:700;">힙 — 단 한 번 할당</text>
+      <text x="380" y="270" text-anchor="middle" class="svg-mono">[strong=3] "shared data"</text>
+    </svg>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">9.7</span>Rc / Arc로 cheap clone</h4></div>
+      <div class="example-desc">카운터를 직접 확인해본다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="9-7">use std::rc::Rc;
+use std::sync::Arc;
+
+fn main() {
+    // Rc<str> — 단일 스레드 공유
+    let s: Rc<str> = Rc::from("shared data");
+    println!("count = {}", Rc::strong_count(&s));    // 1
+    let s2 = Rc::clone(&s);
+    let s3 = s.clone();                                // 같은 효과
+    println!("count = {}", Rc::strong_count(&s));    // 3
+    println!("s = '{}', s2 = '{}', s3 = '{}'", s, s2, s3);
+
+    // Arc<str> — 멀티 스레드
+    let a: Arc<str> = Arc::from("thread shared");
+    let a2 = Arc::clone(&a);
+    let handle = std::thread::spawn(move || {
+        println!("스레드: {}", a2);
+    });
+    handle.join().unwrap();
+    println!("메인  : {} (count={})", a, Arc::strong_count(&a));
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="9-7" onclick="runRust('9-7')">▶ 실행</button>
+        <span class="run-status" data-ex-id="9-7"></span>
+      </div>
+      <div class="output-box" id="out-9-7"></div>
+    </div>
+
+    <div class="callout callout-tip">
+      <strong>언제 String, 언제 Arc&lt;str&gt;</strong>
+      자주 clone하고 변경 안 한다 → <code>Arc&lt;str&gt;</code> (또는 <code>Rc&lt;str&gt;</code>).
+      가변 변경 → <code>String</code>.
+      가변 + 공유가 둘 다 필요하면 <code>Arc&lt;Mutex&lt;String&gt;&gt;</code> (성능 비용 큼).
+    </div>
+
+    <h3 id="part9-7b"><code>FromStr</code> / <code>parse::&lt;T&gt;()</code> — 문자열 파싱</h3>
+    <p>
+      <code>"42".parse::&lt;i32&gt;()</code> 같은 패턴의 메커니즘. <code>parse</code>는 <code>str::parse</code>의 메서드인데
+      내부적으로 <code>T: FromStr</code> 트레이트를 호출한다. 자신만의 타입에 <code>FromStr</code>를 구현하면 같은 문법으로 파싱 가능.
+    </p>
+
+    <pre class="signature">pub trait FromStr: Sized {
+    type Err;
+    fn from_str(s: &str) -&gt; Result&lt;Self, Self::Err&gt;;
+}</pre>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">9.8</span>표준 타입 + 사용자 정의 타입 파싱</h4></div>
+      <div class="example-desc">i32, f64, 그리고 Point 직접 구현.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="9-8">use std::str::FromStr;
+
+#[derive(Debug)]
+struct Point { x: i32, y: i32 }
+
+impl FromStr for Point {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<&str> = s.split(',').collect();
+        if parts.len() != 2 {
+            return Err(format!("'{}' is not 'x,y'", s));
+        }
+        let x = parts[0].trim().parse::<i32>().map_err(|e| e.to_string())?;
+        let y = parts[1].trim().parse::<i32>().map_err(|e| e.to_string())?;
+        Ok(Point { x, y })
+    }
+}
+
+fn main() {
+    // 표준 타입
+    let n: i32 = "42".parse().unwrap();
+    let f: f64 = "3.14".parse().unwrap();
+    println!("n = {}, f = {}", n, f);
+
+    let bad: Result<i32, _> = "not a number".parse();
+    println!("bad   : {:?}", bad);
+
+    // 사용자 정의
+    let p: Point = "10, 20".parse().unwrap();
+    println!("point : {:?}", p);
+
+    let bad_p: Result<Point, _> = "10".parse();
+    println!("bad p : {:?}", bad_p);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="9-8" onclick="runRust('9-8')">▶ 실행</button>
+        <span class="run-status" data-ex-id="9-8"></span>
+      </div>
+      <div class="output-box" id="out-9-8"></div>
+    </div>
+
+    <h3 id="part9-8b"><code>Borrow&lt;str&gt;</code> — HashMap 키 lookup의 비밀</h3>
+    <p>
+      <code>HashMap&lt;String, V&gt;</code>에 <code>map.get("apple")</code>처럼 <code>&amp;str</code>로 조회가 가능한 이유.
+      이게 작동하지 않으면 매번 <code>"apple".to_string()</code>으로 키를 만들어야 한다 (할당 발생).
+      <code>String: Borrow&lt;str&gt;</code> 구현 덕분이다.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">9.9</span>HashMap에서 &amp;str 키로 조회</h4></div>
+      <div class="example-desc">String 키 맵을 &amp;str로 조회 — 할당 없음.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="9-9">use std::collections::HashMap;
+
+fn main() {
+    let mut map: HashMap<String, i32> = HashMap::new();
+    map.insert("apple".to_string(), 1);
+    map.insert("banana".to_string(), 2);
+    map.insert("cherry".to_string(), 3);
+
+    // 셋 다 동일하게 작동, 셋 다 새 String을 만들지 않음
+    println!("'apple'  : {:?}", map.get("apple"));         // &str 직접
+    let key: &str = "banana";
+    println!("'banana' : {:?}", map.get(key));             // &str 변수
+    let owned = String::from("cherry");
+    println!("'cherry' : {:?}", map.get(&owned));          // &String → &str
+
+    // 이게 가능한 이유:
+    // pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
+    //     where K: Borrow<Q>, Q: Hash + Eq
+    // 그리고 impl Borrow<str> for String 이 표준 라이브러리에 있음
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="9-9" onclick="runRust('9-9')">▶ 실행</button>
+        <span class="run-status" data-ex-id="9-9"></span>
+      </div>
+      <div class="output-box" id="out-9-9"></div>
+    </div>
+
+    <h2 id="part10">Part 10. 자주 만나는 에러</h2>
+    <p>
+      라이프타임 관련 에러는 처음엔 어렵지만, 사실 같은 패턴 열 개가 반복될 뿐이다. 각 코드를 실행해보면 컴파일러가 정확히 어떤 메시지를 내는지 확인할 수 있다.
+    </p>
+
+    <h3 id="part10-1">E0106 — missing lifetime specifier</h3>
+    <p>참조를 반환하는데 어느 입력의 라이프타임을 따라야 할지 추론 불가.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">10.1</span>E0106 — 입력 두 개, 'a 누락</h4></div>
+      <div class="example-desc">의도된 에러.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="10-1">fn longer(a: &amp;str, b: &amp;str) -&gt; &amp;str {
+    if a.len() &gt; b.len() { a } else { b }
+}
+
+fn main() {
+    println!("{}", longer("hi", "hello"));
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="10-1" onclick="runRust('10-1')">▶ 실행</button>
+        <span class="run-status" data-ex-id="10-1"></span>
+      </div>
+      <div class="output-box" id="out-10-1"></div>
+    </div>
+
+    <h3 id="part10-2">E0597 — borrowed value does not live long enough</h3>
+    <p>참조가 가리키는 값이 참조보다 먼저 죽음.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">10.2</span>E0597 — 안쪽 변수의 참조를 바깥까지</h4></div>
+      <div class="example-desc">의도된 에러.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="10-2">fn main() {
+    let r;
+    {
+        let inner = String::from("temp");
+        r = &amp;inner;
+    } // inner drop
+    println!("{}", r); // 죽은 값 참조
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="10-2" onclick="runRust('10-2')">▶ 실행</button>
+        <span class="run-status" data-ex-id="10-2"></span>
+      </div>
+      <div class="output-box" id="out-10-2"></div>
+    </div>
+
+    <h3 id="part10-3">E0515 — returns a reference to data owned by current function</h3>
+    <p>함수 안에서 만든 값의 참조를 반환.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">10.3</span>E0515 — 댕글링 반환</h4></div>
+      <div class="example-desc">의도된 에러. 라이프타임을 명시하지 않으면 E0106이 먼저 보이므로 'static을 적어 E0515를 정확히 유도한다. 해결: 참조 대신 <code>String</code>을 반환.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="10-3">fn make() -&gt; &amp;'static str {
+    let s = String::from("local");
+    &amp;s
+}
+
+fn main() {
+    println!("{}", make());
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="10-3" onclick="runRust('10-3')">▶ 실행</button>
+        <span class="run-status" data-ex-id="10-3"></span>
+      </div>
+      <div class="output-box" id="out-10-3"></div>
+    </div>
+
+    <h3 id="part10-4">E0716 — temporary value dropped while borrowed</h3>
+    <p>임시값(rvalue)을 빌렸는데 그 표현식 끝에서 임시값이 사라짐. 가장 자주 만나는 에러 중 하나.</p>
+
+    <svg class="svg-diagram" viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="E0716 타임라인">
+      <text x="380" y="28" text-anchor="middle" class="svg-title">E0716 — 임시값이 표현식 끝에 즉시 drop</text>
+      <text x="380" y="52" text-anchor="middle" class="svg-sub">let r: &amp;str = &amp;String::from("temp");  ← 이 한 줄 안에서 String 생성/소멸</text>
+
+      <!-- 시간축 -->
+      <line x1="60" y1="200" x2="700" y2="200" class="grid-line" stroke="var(--svg-region-stroke)" stroke-width="2" />
+      <text x="380" y="225" text-anchor="middle" class="svg-sub">시간 →</text>
+
+      <!-- 임시 String 라이프타임 (매우 짧음) -->
+      <rect x="120" y="100" width="120" height="40" class="error-fill" rx="6" />
+      <rect x="120" y="100" width="120" height="40" class="error-stroke" rx="6" />
+      <text x="180" y="125" text-anchor="middle" class="svg-label" style="font-weight:700; fill: var(--svg-text-strong);">임시 String</text>
+
+      <line x1="180" y1="140" x2="180" y2="200" class="grid-line" stroke-dasharray="3 3" />
+      <text x="180" y="245" text-anchor="middle" class="svg-sub">표현식 끝에서 즉시 drop</text>
+
+      <!-- r 라이프타임 (훨씬 김) -->
+      <rect x="280" y="160" width="380" height="20" class="accent-3" rx="4" opacity="0.85" />
+      <text x="470" y="175" text-anchor="middle" class="svg-label" style="font-weight:700; fill: var(--svg-text-strong);">r: &amp;str  (참조)</text>
+      <line x1="280" y1="180" x2="280" y2="200" class="grid-line" stroke-dasharray="3 3" />
+      <text x="280" y="245" text-anchor="middle" class="svg-sub">r 생성</text>
+
+      <!-- 댕글링 표시 -->
+      <text x="470" y="100" text-anchor="middle" class="svg-label" style="fill: var(--svg-accent-1); font-weight:700;">⚠ r은 이미 죽은 String을 가리킴</text>
+    </svg>
+
+    <p class="diagram-caption">해결: 임시 String을 변수에 먼저 바인딩하면 그 변수의 라이프타임만큼 산다.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">10.4</span>E0716 — 임시 String의 참조 저장</h4></div>
+      <div class="example-desc"><code>String::from("x").as_str()</code> 결과만 저장해두려고 하면 임시 String이 즉시 죽는다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="10-4">fn main() {
+    let r: &amp;str = &amp;String::from("temp"); // String은 이 문장 끝에서 drop
+    println!("{}", r);                    // 댕글링
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="10-4" onclick="runRust('10-4')">▶ 실행</button>
+        <span class="run-status" data-ex-id="10-4"></span>
+      </div>
+      <div class="output-box" id="out-10-4"></div>
+    </div>
+
+    <div class="callout callout-tip">
+      <strong>해결</strong>
+      임시값을 변수에 먼저 바인딩하라.
+      <code>let owned = String::from("temp"); let r: &amp;str = &amp;owned;</code> 로 바꾸면 통과.
+    </div>
+
+    <h3 id="part10-5">E0502 — cannot borrow as mutable because also borrowed as immutable</h3>
+    <p>불변 빌림과 가변 빌림이 동시에 존재.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">10.5</span>E0502 — 불변/가변 충돌</h4></div>
+      <div class="example-desc">불변 빌림 r이 println 이후까지 살아있는 동안 가변 push 시도 → 충돌.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="10-5">fn main() {
+    let mut s = String::from("hello");
+    let r = &amp;s;          // 불변 빌림 시작
+    s.push_str(", world"); // 가변 빌림 시도 → 충돌
+    println!("{}", r);     // r이 여기서도 쓰이므로 NLL 적용 안 됨
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="10-5" onclick="runRust('10-5')">▶ 실행</button>
+        <span class="run-status" data-ex-id="10-5"></span>
+      </div>
+      <div class="output-box" id="out-10-5"></div>
+    </div>
+
+    <h3 id="part10-6">E0507 — cannot move out of borrowed content</h3>
+    <p>빌린 자리에서 소유권을 빼내려 함.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">10.6</span>E0507 — 빌림 통해서 move 시도</h4></div>
+      <div class="example-desc">해결: <code>.clone()</code> 또는 <code>std::mem::take</code>.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="10-6">struct Holder { name: String }
+
+fn take_name(h: &amp;Holder) -&gt; String {
+    h.name  // 빌림(&amp;h)을 통해 name(String, !Copy)을 move하려 함
+}
+
+fn main() {
+    let h = Holder { name: String::from("x") };
+    let n = take_name(&amp;h);
+    println!("{}", n);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="10-6" onclick="runRust('10-6')">▶ 실행</button>
+        <span class="run-status" data-ex-id="10-6"></span>
+      </div>
+      <div class="output-box" id="out-10-6"></div>
+    </div>
+
+    <h3 id="part10-7">E0382 — use of moved value</h3>
+    <p>이미 소유권이 이동한 변수를 또 쓰려고 함.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">10.7</span>E0382 — move 후 재사용</h4></div>
+      <div class="example-desc">해결: <code>clone()</code>이나 빌려서 넘기기.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="10-7">fn consume(s: String) { println!("받음: {}", s); }
+
+fn main() {
+    let s = String::from("once");
+    consume(s);
+    consume(s); // 두 번째: s는 이미 move됨
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="10-7" onclick="runRust('10-7')">▶ 실행</button>
+        <span class="run-status" data-ex-id="10-7"></span>
+      </div>
+      <div class="output-box" id="out-10-7"></div>
+    </div>
+
+    <h3 id="part10-8">E0521 — borrowed data escapes outside of function</h3>
+    <p>지역 라이프타임이 'static을 요구하는 자리에 들어감. 자주 등장: 스레드, 콜백, 트레이트 객체.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">10.8</span>E0521 — thread::spawn에서 빌림 캡처</h4></div>
+      <div class="example-desc">해결: <code>move</code> 또는 <code>Arc</code>로 공유.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="10-8">use std::thread;
+
+fn main() {
+    let s = String::from("borrowed");
+    let handle = thread::spawn(|| {
+        println!("{}", s);   // s를 빌림으로 캡처 → 'static 안 됨
+    });
+    handle.join().unwrap();
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="10-8" onclick="runRust('10-8')">▶ 실행</button>
+        <span class="run-status" data-ex-id="10-8"></span>
+      </div>
+      <div class="output-box" id="out-10-8"></div>
+    </div>
+
+    <h3 id="part10-9">자동 추론 실패 — 명시가 필요</h3>
+    <p>입력이 여러 개이고 자기 자신을 가리키는 참조를 반환할 때, 컴파일러가 어떤 'a를 따라야 할지 못 정함.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">10.9</span>여러 입력 라이프타임 명시 필요</h4></div>
+      <div class="example-desc">의도된 에러. 입력 두 개 + 참조 반환 + self 없음 → 명시 필요.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="10-9">struct Pair { a: String, b: String }
+
+// 'a 없이는 컴파일 안 됨
+fn pick(p: &amp;Pair, hint: &amp;str) -&gt; &amp;str {
+    if p.a.contains(hint) { &amp;p.a } else { &amp;p.b }
+}
+
+fn main() {
+    let p = Pair { a: "rust lang".into(), b: "ruby lang".into() };
+    println!("{}", pick(&amp;p, "rust"));
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="10-9" onclick="runRust('10-9')">▶ 실행</button>
+        <span class="run-status" data-ex-id="10-9"></span>
+      </div>
+      <div class="output-box" id="out-10-9"></div>
+    </div>
+
+    <h3 id="part10-10">소유와 빌림 동시 보관 시도 (자기 참조 구조체)</h3>
+    <p>구조체 안에 <code>String</code>과 그것을 가리키는 <code>&amp;str</code>를 동시에 두는 것은 안전한 Rust로는 불가능. 이 패턴이 필요하면 <code>Rc</code>, <code>Pin</code>, 또는 인덱스(usize)로 우회.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">10.10</span>자기 참조 구조체는 만들 수 없다</h4></div>
+      <div class="example-desc">의도된 에러. <code>Parsed</code>가 자기 안의 <code>raw</code>를 가리키려 함.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="10-10">struct Parsed&lt;'a&gt; {
+    raw: String,
+    head: &amp;'a str,  // raw의 일부를 가리킨다고 가정
+}
+
+fn make() -&gt; Parsed&lt;'static&gt; {
+    let raw = String::from("hello world");
+    let head = &amp;raw[..5];
+    Parsed { raw, head } // raw를 move하는 순간 head는 무효
+}
+
+fn main() {
+    let p = make();
+    println!("{} | {}", p.raw, p.head);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="10-10" onclick="runRust('10-10')">▶ 실행</button>
+        <span class="run-status" data-ex-id="10-10"></span>
+      </div>
+      <div class="output-box" id="out-10-10"></div>
+    </div>
+
+    <div class="callout callout-info">
+      <strong>자기 참조 우회법</strong>
+      ① <strong>인덱스로</strong>: <code>head: Range&lt;usize&gt;</code> 만 저장하고 사용 시 <code>&amp;self.raw[range.clone()]</code>.
+      ② <strong>ouroboros / yoke 크레이트</strong>: 자기 참조 매크로 지원.
+      ③ <strong>Rc&lt;str&gt;</strong>로 데이터 공유.
+    </div>
+
+    <h3 id="part10-11">10.11 자기참조 우회 — 인덱스 패턴 실제 구현</h3>
+    <p>
+      10.10에서 만들 수 없었던 "원본 + 그 일부를 가리키는 참조" 구조체.
+      <code>&amp;str</code> 대신 <code>Range&lt;usize&gt;</code>를 저장하면 깨끗하게 해결된다.
+    </p>
+
+    <svg class="svg-diagram" viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="인덱스 자기참조">
+      <defs>
+        <marker id="arrow-end-i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="arrow-head" />
+        </marker>
+      </defs>
+      <text x="380" y="28" text-anchor="middle" class="svg-title">참조 대신 Range&lt;usize&gt; 저장</text>
+      <text x="380" y="52" text-anchor="middle" class="svg-sub">struct Parsed { raw: String, head: Range&lt;usize&gt; }</text>
+
+      <!-- 구조체 -->
+      <rect x="60" y="90" width="280" height="140" class="box-fill" />
+      <rect x="60" y="90" width="280" height="140" class="box-stroke" />
+      <text x="200" y="115" text-anchor="middle" class="svg-label" style="font-weight:700;">Parsed</text>
+
+      <rect x="80"  y="130" width="240" height="40" class="region-heap" />
+      <text x="200" y="155" text-anchor="middle" class="svg-mono">raw: "hello rust world"</text>
+
+      <rect x="80"  y="180" width="240" height="40" class="region-static" />
+      <text x="200" y="205" text-anchor="middle" class="svg-mono">head: 0..5</text>
+
+      <!-- 화살표 → 결과 -->
+      <path d="M 340 160 L 420 160" class="arrow" marker-end="url(#arrow-end-i)" />
+      <text x="380" y="150" text-anchor="middle" class="svg-sub">사용 시</text>
+
+      <!-- 결과 -->
+      <rect x="440" y="130" width="280" height="60" class="box-fill" />
+      <rect x="440" y="130" width="280" height="60" class="box-stroke" />
+      <text x="580" y="155" text-anchor="middle" class="svg-label" style="font-weight:600;">&amp;self.raw[self.head.start..self.head.end]</text>
+      <text x="580" y="178" text-anchor="middle" class="svg-mono">→ "hello"</text>
+
+      <text x="380" y="260" text-anchor="middle" class="svg-sub">라이프타임 매개변수 없음 — Parsed: 'static 가능</text>
+    </svg>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">10.11</span>Range 저장으로 자기참조 깔끔하게</h4></div>
+      <div class="example-desc">10.10이 안 되는 패턴을 인덱스로 해결.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="10-11">use std::ops::Range;
+
+struct Parsed {
+    raw: String,
+    head: Range<usize>,
+    rest: Range<usize>,
+}
+
+impl Parsed {
+    fn new(s: String) -> Self {
+        let split_at = s.find(' ').unwrap_or(s.len());
+        let head = 0..split_at;
+        let rest = if split_at < s.len() { (split_at + 1)..s.len() } else { 0..0 };
+        Parsed { raw: s, head, rest }
+    }
+
+    fn head(&self) -> &str { &self.raw[self.head.start..self.head.end] }
+    fn rest(&self) -> &str { &self.raw[self.rest.start..self.rest.end] }
+}
+
+fn main() {
+    let p = Parsed::new(String::from("hello rust world"));
+    println!("head = '{}'", p.head());
+    println!("rest = '{}'", p.rest());
+
+    // 라이프타임 매개변수가 없으므로 함수 간 자유롭게 이동 가능
+    fn returns_parsed() -> Parsed {
+        Parsed::new(String::from("first second"))
+    }
+    let p2 = returns_parsed();
+    println!("p2.head = '{}'", p2.head());
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="10-11" onclick="runRust('10-11')">▶ 실행</button>
+        <span class="run-status" data-ex-id="10-11"></span>
+      </div>
+      <div class="output-box" id="out-10-11"></div>
+    </div>
+
+    <div class="callout callout-tip">
+      <strong>왜 이게 작동하는가</strong>
+      <code>Range&lt;usize&gt;</code>는 단순 숫자 두 개 — 참조가 아니므로 라이프타임 매개변수가 필요 없다.
+      슬라이스는 메서드 호출 시점에 <code>&amp;self.raw[range]</code>로 만들어내고, 그 결과는 <code>&amp;self</code>의 라이프타임 안에서만 산다.
+      자기참조의 "문제"가 사라진다.
+    </div>
+
+    <h2 id="part11">Part 11. 트레이트 객체와 라이프타임</h2>
+    <p>
+      <code>Box&lt;dyn Trait&gt;</code> 같은 트레이트 객체는 라이프타임 매개변수가 따라붙는다.
+      명시하지 않으면 컴파일러가 채워주는 기본값이 있는데, 그 기본값이 의외라서 혼란을 준다.
+    </p>
+
+    <h3 id="part11-1">11.1 <code>Box&lt;dyn Trait&gt;</code> 기본 라이프타임은 <code>'static</code></h3>
+    <p>
+      <code>Box&lt;dyn Trait&gt;</code>는 <code>Box&lt;dyn Trait + 'static&gt;</code>의 단축형이다. 그래서 박스 안의 객체는
+      참조를 캡처하지 않는 자기 완결형이어야 한다.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">11.1</span>기본 'static 바운드</h4></div>
+      <div class="example-desc"><code>String</code>은 'static 바운드를 만족하므로 OK.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="11-1">use std::fmt::Display;
+
+fn boxed_displayable(s: String) -&gt; Box&lt;dyn Display&gt; {
+    Box::new(s)   // String: 'static 만족
+}
+
+fn main() {
+    let b = boxed_displayable(String::from("hi"));
+    println!("{}", b);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="11-1" onclick="runRust('11-1')">▶ 실행</button>
+        <span class="run-status" data-ex-id="11-1"></span>
+      </div>
+      <div class="output-box" id="out-11-1"></div>
+    </div>
+
+    <h3 id="part11-2">11.2 빌림을 박싱하려면 <code>+ 'a</code> 명시</h3>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">11.2</span>&amp;str을 박싱 — 'static 없으면 에러</h4></div>
+      <div class="example-desc">의도된 에러. <code>&amp;str</code>가 'static이 아닐 수 있는데 기본은 'static 요구.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="11-2">use std::fmt::Display;
+
+fn boxed(s: &amp;str) -&gt; Box&lt;dyn Display&gt; {
+    Box::new(s)   // s의 라이프타임이 'static이 아니라서 에러
+}
+
+fn main() {
+    let owned = String::from("hi");
+    let b = boxed(&amp;owned);
+    println!("{}", b);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="11-2" onclick="runRust('11-2')">▶ 실행</button>
+        <span class="run-status" data-ex-id="11-2"></span>
+      </div>
+      <div class="output-box" id="out-11-2"></div>
+    </div>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">11.3</span>+ 'a 명시로 해결</h4></div>
+      <div class="example-desc"><code>Box&lt;dyn Display + 'a&gt;</code>로 라이프타임 바운드를 풀어줌.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="11-3">use std::fmt::Display;
+
+fn boxed&lt;'a&gt;(s: &amp;'a str) -&gt; Box&lt;dyn Display + 'a&gt; {
+    Box::new(s)
+}
+
+fn main() {
+    let owned = String::from("hi");
+    let b = boxed(&amp;owned);
+    println!("{}", b);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="11-3" onclick="runRust('11-3')">▶ 실행</button>
+        <span class="run-status" data-ex-id="11-3"></span>
+      </div>
+      <div class="output-box" id="out-11-3"></div>
+    </div>
+
+    <h3 id="part11-3">11.3 <code>&amp;dyn Trait</code> — 참조 형태 트레이트 객체</h3>
+    <p><code>&amp;dyn Trait</code>의 기본 라이프타임은 <code>Box&lt;dyn Trait&gt;</code>와 다르다. 참조의 라이프타임을 따른다.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">11.4</span>&amp;dyn Trait — 참조의 라이프타임 따라감</h4></div>
+      <div class="example-desc">아무 'static 없이도 동작.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="11-4">use std::fmt::Display;
+
+fn print_via_dyn(x: &amp;dyn Display) {
+    println!("{}", x);
+}
+
+fn main() {
+    let owned = String::from("via &amp;dyn");
+    print_via_dyn(&amp;owned);
+
+    let n: i32 = 42;
+    print_via_dyn(&amp;n);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="11-4" onclick="runRust('11-4')">▶ 실행</button>
+        <span class="run-status" data-ex-id="11-4"></span>
+      </div>
+      <div class="output-box" id="out-11-4"></div>
+    </div>
+
+    <h2 id="part12">Part 12. HRTB — <code>for&lt;'a&gt;</code></h2>
+    <p>
+      Higher-Ranked Trait Bound. "<strong>어떤 라이프타임이 와도</strong> 만족하는 트레이트"를 표현한다.
+      클로저를 함수 매개변수로 받을 때 가장 자주 등장한다.
+    </p>
+
+    <h3 id="part12-1">12.1 클로저와 라이프타임 — 왜 HRTB가 필요한가</h3>
+    <p>
+      <code>Fn(&amp;str) -&gt; usize</code> 를 받는 함수를 만들면, 호출자는 <code>&amp;str</code>의 라이프타임을 모른다.
+      클로저는 호출되는 시점마다 다른 라이프타임의 <code>&amp;str</code>를 받을 수 있어야 한다.
+      그것이 <code>for&lt;'a&gt; Fn(&amp;'a str) -&gt; usize</code> 의 의미다.
+    </p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">12.1</span>클로저를 받는 함수 — 암묵적 HRTB</h4></div>
+      <div class="example-desc">사실 <code>Fn(&amp;str) -&gt; usize</code>는 컴파일러가 <code>for&lt;'a&gt; Fn(&amp;'a str)</code>로 자동 확장한다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="12-1">fn apply&lt;F&gt;(f: F) -&gt; usize
+where F: Fn(&amp;str) -&gt; usize    // 암묵적 for&lt;'a&gt; Fn(&amp;'a str) -&gt; usize
+{
+    let s1 = String::from("short");
+    let s2 = String::from("a bit longer");
+    f(&amp;s1) + f(&amp;s2)
+}
+
+fn main() {
+    let total = apply(|s| s.len());
+    println!("total len = {}", total);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="12-1" onclick="runRust('12-1')">▶ 실행</button>
+        <span class="run-status" data-ex-id="12-1"></span>
+      </div>
+      <div class="output-box" id="out-12-1"></div>
+    </div>
+
+    <h3 id="part12-2">12.2 <code>for&lt;'a&gt;</code> 명시</h3>
+    <p>실제로 HRTB를 직접 써야 하는 경우는 드물지만, 트레이트 별칭이나 함수 포인터 타입에서 등장한다.</p>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">12.2</span>for&lt;'a&gt;를 명시한 함수 포인터</h4></div>
+      <div class="example-desc">두 표현은 동일하다.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="12-2">// 두 시그니처는 같다
+type Mapper1 = for&lt;'a&gt; fn(&amp;'a str) -&gt; &amp;'a str;
+type Mapper2 = fn(&amp;str) -&gt; &amp;str;   // 컴파일러가 위로 확장
+
+fn identity(s: &amp;str) -&gt; &amp;str { s }
+
+fn run(f: Mapper1, x: &amp;str) {
+    println!("{}", f(x));
+}
+
+fn main() {
+    let s = String::from("HRTB!");
+    run(identity, &amp;s);
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="12-2" onclick="runRust('12-2')">▶ 실행</button>
+        <span class="run-status" data-ex-id="12-2"></span>
+      </div>
+      <div class="output-box" id="out-12-2"></div>
+    </div>
+
+    <div class="example">
+      <div class="example-header"><h4 class="example-title"><span class="ex-num">12.3</span>HRTB가 진짜 필요한 경우 — where 절</h4></div>
+      <div class="example-desc">클로저가 어떤 라이프타임으로든 호출 가능해야 함을 명시.</div>
+      <div class="example-body">
+<pre><code class="lang-rust" data-code-id="12-3">fn each_borrowed&lt;F&gt;(items: &amp;[String], f: F)
+where F: for&lt;'a&gt; Fn(&amp;'a str) -&gt; usize
+{
+    for item in items {
+        let len = f(item.as_str());   // &amp;String → &amp;str 명시
+        println!("'{}' → {}", item, len);
+    }
+}
+
+fn main() {
+    let items = vec![String::from("a"), String::from("bb"), String::from("ccc")];
+    each_borrowed(&amp;items, |s| s.len());
+}</code></pre>
+      </div>
+      <div class="run-row">
+        <button class="run-btn" data-ex-id="12-3" onclick="runRust('12-3')">▶ 실행</button>
+        <span class="run-status" data-ex-id="12-3"></span>
+      </div>
+      <div class="output-box" id="out-12-3"></div>
+    </div>
+
+    <div class="callout callout-info">
+      <strong>한 줄 요약</strong>
+      <code>fn f(s: &amp;str)</code>를 받는 모든 자리는 사실 HRTB가 작동 중이다. 거의 항상 컴파일러가 자동으로 처리해주므로
+      <code>for&lt;'a&gt;</code> 를 직접 쓸 일은 라이브러리 작성자가 아닌 한 드물다.
+    </div>
+
+    <h2 id="summary">정리 및 체크리스트</h2>
+
+    <h3>한눈에 보는 결정 트리</h3>
+
+    <table>
+      <thead><tr><th>상황</th><th>선택</th></tr></thead>
+      <tbody>
+        <tr><td>읽기만 — 함수 매개변수</td><td><code>&amp;str</code></td></tr>
+        <tr><td>가변 변경 — 함수 매개변수</td><td><code>&amp;mut String</code></td></tr>
+        <tr><td>소유권 가져가기</td><td><code>String</code></td></tr>
+        <tr><td>다양한 문자열형 받기</td><td><code>impl AsRef&lt;str&gt;</code></td></tr>
+        <tr><td>새 String 보관용 인자</td><td><code>impl Into&lt;String&gt;</code></td></tr>
+        <tr><td>때에 따라 빌리거나 소유</td><td><code>Cow&lt;'_, str&gt;</code></td></tr>
+        <tr><td>크기 줄이기 (변경 없을 때)</td><td><code>Box&lt;str&gt;</code></td></tr>
+        <tr><td>다중 소유자 공유</td><td><code>Arc&lt;str&gt;</code> / <code>Rc&lt;str&gt;</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3>라이프타임 체크리스트</h3>
+    <ul>
+      <li><strong>생략 규칙 3개</strong>로 해결되면 안 쓴다. 안 되면 명시.</li>
+      <li>구조체에 참조 필드가 있으면 <code>struct X&lt;'a&gt; { ... }</code> 형태로 선언.</li>
+      <li><code>impl</code>도 두 번 표기 (<code>impl&lt;'a&gt; X&lt;'a&gt;</code>).</li>
+      <li>스레드/콜백/박싱 시 <code>'static</code> 바운드 함정을 의심.</li>
+      <li>NLL 덕분에 같은 변수의 불변 → 가변 빌림 교차가 가능하다.</li>
+      <li>자기 참조 구조체는 만들 수 없다. 인덱스로 우회하거나 <code>ouroboros</code>/<code>yoke</code>.</li>
+    </ul>
+
+    <h3>에러 코드 → 의미 빠른 참조</h3>
+    <table>
+      <thead><tr><th>코드</th><th>의미</th><th>해결 첫 시도</th></tr></thead>
+      <tbody>
+        <tr><td>E0106</td><td>라이프타임 누락</td><td><code>'a</code> 명시</td></tr>
+        <tr><td>E0597</td><td>빌린 값이 더 짧게 삼</td><td>변수 선언 위치 조정</td></tr>
+        <tr><td>E0515</td><td>지역값 참조 반환</td><td><code>String</code> 반환으로 변경</td></tr>
+        <tr><td>E0716</td><td>임시값이 빌림 중 drop</td><td>변수 바인딩 추가</td></tr>
+        <tr><td>E0502</td><td>불변/가변 빌림 충돌</td><td>스코프 분리, 또는 사용 순서 변경</td></tr>
+        <tr><td>E0507</td><td>빌림 통한 move 시도</td><td><code>.clone()</code> 또는 <code>mem::take</code></td></tr>
+        <tr><td>E0382</td><td>이미 move된 값 재사용</td><td>빌리거나 clone</td></tr>
+        <tr><td>E0521</td><td>스레드/콜백에 빌림 전달</td><td><code>move</code> 추가, 또는 <code>Arc</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3>마지막 한마디</h3>
+    <p>
+      Rust의 라이프타임은 처음엔 거부감이 든다. 자바엔 없는 개념이고 컴파일러가 까다롭기 때문이다.
+      그런데 이 가이드의 80여 개 예제를 차례로 실행해보고 나면, 사실은 <strong>"참조가 데이터보다 오래 살면 안 된다"</strong>는 단 한 가지 규칙임이 보인다.
+      나머지는 그 규칙을 다양한 표현으로 풀어쓴 것뿐이다.
+    </p>
+
+
+    <div class="footer">
+      <p>Rust String / &amp;str / Lifetime 완벽 가이드 &middot; 모든 코드는 <code>rust-1.82.0 (edition 2021)</code> 기준</p>
+      <p>실행 환경: <a href="https://wandbox.org" target="_blank" rel="noopener">Wandbox</a></p>
+    </div>
+  </main>
+</div>
+<script>
+/* ============================================================
+   Rust String/&str/Lifetime 가이드 — 메인 JavaScript
+   ============================================================ */
+
+/* ---------- 테마 토글 ---------- */
+(function initTheme() {
+  const stored = localStorage.getItem('rsl-theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = stored || (prefersDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+})();
+
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('rsl-theme', next);
+  document.querySelectorAll('.theme-icon').forEach(el => {
+    el.textContent = next === 'dark' ? '☀' : '☾';
+  });
+  document.querySelectorAll('.theme-label').forEach(el => {
+    el.textContent = next === 'dark' ? '라이트' : '다크';
+  });
+}
+
+/* ---------- 사이드바 토글 (모바일) ---------- */
+function toggleMenu() {
+  document.querySelector('.sidebar').classList.toggle('open');
+}
+
+/* ---------- Rust 신택스 하이라이터 ---------- */
+const RUST_KEYWORDS = new Set([
+  'fn','let','mut','const','static','if','else','match','for','while','loop',
+  'break','continue','return','ref','move','as','in','where','async','await',
+  'use','mod','pub','crate','self','Self','super','impl','trait','type',
+  'struct','enum','union','dyn','unsafe','extern','true','false','box'
+]);
+const RUST_TYPES = new Set([
+  'i8','i16','i32','i64','i128','isize',
+  'u8','u16','u32','u64','u128','usize',
+  'f32','f64','bool','char','str',
+  'String','Vec','Box','Rc','Arc','Cell','RefCell','Mutex','RwLock',
+  'Option','Result','Some','None','Ok','Err','Cow',
+  'HashMap','BTreeMap','HashSet','BTreeSet',
+  'Iterator','IntoIterator','FromIterator',
+  'Fn','FnMut','FnOnce','Send','Sync','Sized','Copy','Clone','Drop',
+  'Display','Debug','Default','PartialEq','Eq','PartialOrd','Ord','Hash',
+  'From','Into','TryFrom','TryInto','AsRef','AsMut','Deref','DerefMut','Borrow',
+  'Read','Write','BufRead','Error','ToString','ToOwned'
+]);
+
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function highlightRust(src) {
+  // 토큰을 placeholder로 추출한 뒤 마지막에 escape + 치환
+  const tokens = [];
+  const placeholder = (i) => `\u0001T${i}\u0001`;
+  let out = src;
+
+  // 1) 블록 주석 /* ... */ (중첩 미지원, 가이드 예제용 충분)
+  out = out.replace(/\/\*[\s\S]*?\*\//g, m => {
+    const i = tokens.length;
+    tokens.push(`<span class="tok-com">${escapeHtml(m)}</span>`);
+    return placeholder(i);
+  });
+  // 2) 라인 주석 // ... (개행 전까지)
+  out = out.replace(/\/\/[^\n]*/g, m => {
+    const i = tokens.length;
+    tokens.push(`<span class="tok-com">${escapeHtml(m)}</span>`);
+    return placeholder(i);
+  });
+  // 3) 문자열 리터럴 "..." (이스케이프 \" 처리)
+  out = out.replace(/"(?:\\.|[^"\\])*"/g, m => {
+    const i = tokens.length;
+    tokens.push(`<span class="tok-str">${escapeHtml(m)}</span>`);
+    return placeholder(i);
+  });
+  // 4) 문자 리터럴 'x' (단일 문자만)
+  out = out.replace(/'(?:\\.|[^'\\])'/g, m => {
+    const i = tokens.length;
+    tokens.push(`<span class="tok-str">${escapeHtml(m)}</span>`);
+    return placeholder(i);
+  });
+  // 5) 라이프타임 'a, 'static 등 (식별자가 따라오는 single quote)
+  out = out.replace(/'([a-zA-Z_][a-zA-Z0-9_]*)/g, (m, name) => {
+    const i = tokens.length;
+    tokens.push(`<span class="tok-lt">${escapeHtml(m)}</span>`);
+    return placeholder(i);
+  });
+  // 6) 매크로 호출 ident!
+  out = out.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)!/g, (m, name) => {
+    const i = tokens.length;
+    tokens.push(`<span class="tok-mac">${escapeHtml(name)}!</span>`);
+    return placeholder(i);
+  });
+  // 7) 숫자 (16/8/2진수, 부동, 접미사 포함)
+  out = out.replace(/\b(?:0x[0-9a-fA-F_]+|0o[0-7_]+|0b[01_]+|\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d+)?)(?:[iu](?:8|16|32|64|128|size)|f(?:32|64))?\b/g, m => {
+    const i = tokens.length;
+    tokens.push(`<span class="tok-num">${escapeHtml(m)}</span>`);
+    return placeholder(i);
+  });
+  // 8) 함수 호출 ident( — 단, 키워드/타입 제외
+  out = out.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)(?=\s*\()/g, (m, name) => {
+    if (RUST_KEYWORDS.has(name) || RUST_TYPES.has(name)) return m;
+    const i = tokens.length;
+    tokens.push(`<span class="tok-fn">${escapeHtml(name)}</span>`);
+    return placeholder(i);
+  });
+  // 9) 식별자 → 키워드/타입 분류
+  out = out.replace(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g, m => {
+    if (RUST_KEYWORDS.has(m)) {
+      const i = tokens.length;
+      tokens.push(`<span class="tok-kw">${escapeHtml(m)}</span>`);
+      return placeholder(i);
+    }
+    if (RUST_TYPES.has(m)) {
+      const i = tokens.length;
+      tokens.push(`<span class="tok-ty">${escapeHtml(m)}</span>`);
+      return placeholder(i);
+    }
+    return m;
+  });
+
+  // 나머지 HTML 이스케이프
+  out = escapeHtml(out);
+  // placeholder 복원
+  out = out.replace(/\u0001T(\d+)\u0001/g, (_, i) => tokens[parseInt(i, 10)]);
+  return out;
+}
+
+/* ---------- 페이지 로드 시 코드 블록 마크업 ---------- */
+function applyHighlighting() {
+  document.querySelectorAll('pre code.lang-rust').forEach(el => {
+    const raw = el.textContent;
+    el.setAttribute('data-original-code', raw); // 실행용 원본 보존
+    el.innerHTML = highlightRust(raw);
+  });
+  // 인라인 시그니처 박스
+  document.querySelectorAll('.signature').forEach(el => {
+    const raw = el.textContent;
+    el.innerHTML = highlightRust(raw);
+  });
+}
+
+/* ---------- 사이드바 IntersectionObserver 활성 하이라이트 ---------- */
+function initSidebarObserver() {
+  const links = document.querySelectorAll('.sidebar a[href^="#"]');
+  const map = new Map();
+  links.forEach(a => {
+    const id = a.getAttribute('href').slice(1);
+    const el = document.getElementById(id);
+    if (el) map.set(el, a);
+  });
+  const visibleSet = new Set();
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) visibleSet.add(e.target);
+      else visibleSet.delete(e.target);
+    });
+    // 가장 위에 있는 visible 헤딩을 active로
+    let topEl = null, topY = Infinity;
+    visibleSet.forEach(el => {
+      const r = el.getBoundingClientRect();
+      if (r.top < topY && r.top > -50) { topY = r.top; topEl = el; }
+    });
+    links.forEach(a => a.classList.remove('active'));
+    if (topEl && map.get(topEl)) map.get(topEl).classList.add('active');
+  }, { rootMargin: '-10% 0px -70% 0px', threshold: 0 });
+  map.forEach((_a, el) => observer.observe(el));
+
+  // 클릭 시 부드러운 스크롤 + URL 업데이트
+  links.forEach(a => {
+    a.addEventListener('click', (ev) => {
+      const id = a.getAttribute('href').slice(1);
+      const el = document.getElementById(id);
+      if (el) {
+        ev.preventDefault();
+        history.pushState(null, '', '#' + id);
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (window.innerWidth <= 900) {
+          document.querySelector('.sidebar').classList.remove('open');
+        }
+      }
+    });
+  });
+}
+
+/* ---------- Wandbox 실행 ---------- */
+// 컴파일러 우선순위: rust-1.82.0 → rustc-head → rust-head → 동적 폴백
+let cachedRustCompiler = null;
+
+async function resolveRustCompiler() {
+  if (cachedRustCompiler) return cachedRustCompiler;
+  const preferred = ['rust-1.82.0', 'rustc-head', 'rust-head'];
+  try {
+    const res = await fetch('https://wandbox.org/api/list.json');
+    if (res.ok) {
+      const list = await res.json();
+      const rusts = list.filter(c => c.language === 'Rust').map(c => c.name);
+      for (const name of preferred) {
+        if (rusts.includes(name)) { cachedRustCompiler = name; return name; }
+      }
+      // 폴백: 가장 최신 rust-x.y.z
+      const sorted = rusts.filter(n => /^rust-\d/.test(n)).sort().reverse();
+      if (sorted.length) { cachedRustCompiler = sorted[0]; return sorted[0]; }
+    }
+  } catch (e) { /* 네트워크 실패 */ }
+  cachedRustCompiler = 'rust-1.82.0';
+  return cachedRustCompiler;
+}
+
+async function runRust(exId) {
+  const codeEl = document.querySelector(`[data-code-id="${exId}"]`);
+  const outBox = document.getElementById(`out-${exId}`);
+  const btn = document.querySelector(`button.run-btn[data-ex-id="${exId}"]`);
+  const status = document.querySelector(`.run-status[data-ex-id="${exId}"]`);
+  if (!codeEl || !outBox) return;
+
+  const code = codeEl.getAttribute('data-original-code') || codeEl.textContent;
+
+  outBox.classList.add('show');
+  outBox.innerHTML = '<span class="out-label">컴파일 중...</span>';
+  if (btn) btn.disabled = true;
+  if (status) status.textContent = '';
+
+  try {
+    const compiler = await resolveRustCompiler();
+    const payload = {
+      compiler,
+      code,
+      'compiler-option-raw': '--edition\n2021',
+      'runtime-option-raw': '',
+      save: false
+    };
+    const res = await fetch('https://wandbox.org/api/compile.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    let html = '';
+    if (data.compiler_output) {
+      html += '<span class="err-label">컴파일러 메시지</span>' + escapeHtml(data.compiler_output);
+    }
+    if (data.compiler_error) {
+      html += '<span class="err-label">컴파일 에러</span>' + escapeHtml(data.compiler_error);
+    }
+    if (data.program_output) {
+      html += '<span class="out-label">표준 출력</span>' + escapeHtml(data.program_output);
+    }
+    if (data.program_error) {
+      html += '<span class="err-label">표준 에러</span>' + escapeHtml(data.program_error);
+    }
+    if (!html) html = '<span class="out-label">(출력 없음)</span>';
+    outBox.innerHTML = html;
+    if (status) status.textContent = `컴파일러: ${compiler}`;
+  } catch (e) {
+    outBox.innerHTML = '<span class="err-label">실행 실패</span>' + escapeHtml(String(e));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+/* ---------- 초기화 ---------- */
+document.addEventListener('DOMContentLoaded', () => {
+  applyHighlighting();
+  initSidebarObserver();
+  // 테마 아이콘 초기화
+  const cur = document.documentElement.getAttribute('data-theme');
+  document.querySelectorAll('.theme-icon').forEach(el => {
+    el.textContent = cur === 'dark' ? '☀' : '☾';
+  });
+  document.querySelectorAll('.theme-label').forEach(el => {
+    el.textContent = cur === 'dark' ? '라이트' : '다크';
+  });
+});
+
+</script>
+</body>
+</html>
